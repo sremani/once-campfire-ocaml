@@ -136,7 +136,13 @@ let room_show c = room_or_root c (fun room ->
   | None ->
   read c (fun db ->
     let account = Db_accounts.Account.first db in
-    let messages = M.Message.last_page db room.R.Room.id
+    let messages = (match number c "message_id" with
+      | Some id ->
+          (match M.Message.find_by_id db id with
+          | Some message when message.M.Message.room_id=room.R.Room.id ->
+              M.Message.page_around db room.R.Room.id message
+          | _ -> M.Message.last_page db room.R.Room.id)
+      | None -> M.Message.last_page db room.R.Room.id)
       |> List.map (View_presenter.message c db room) in
     let direct_names = if room.R.Room.room_type=R.Direct then
       R.Room.users db room |> List.filter_map (fun (user:U.t) ->
@@ -270,10 +276,28 @@ let direct_create c = match user_id c with
         let ids = existing_ids (Db_runtime.conn tx) ids in
         R.Room.find_or_create_direct_for tx ~now:c.H.now
           ~user_ids:ids ~creator_id:uid) >>= fun room ->
-      read c (fun db -> R.Membership.for_room db room.R.Room.id)
-      >>= fun memberships ->
+      read c (fun db ->
+        let memberships=R.Membership.for_room db room.R.Room.id in
+        let context=context_for_account c db (Db_accounts.Account.first db) in
+        let room_users=R.Room.users db room in
+        let rendered=List.map (fun (membership:R.Membership.t) ->
+          let others=List.filter (fun (member:U.t) ->
+            member.id<>membership.user_id) room_users in
+          let members=if others=[] then
+            List.filter (fun (member:U.t) ->
+              member.id=membership.user_id) room_users else others in
+          let entry:Views.sidebar_entry = {
+            room=View_presenter.room room;
+            unread=R.Membership.unread membership;
+            members=List.map (View_presenter.user c) members;
+          } in
+          membership.user_id,
+          Views.render (Views.sidebar_direct_room ~context entry)) memberships in
+        memberships,rendered)
+      >>= fun (memberships,rendered) ->
       with_cable c (fun cable -> Cable_broadcasts.direct_room_create cable
-        ~room ~memberships ~render:(fun _ -> room_sidebar_html room));
+        ~room ~memberships ~render:(fun (membership:R.Membership.t) ->
+          List.assoc membership.user_id rendered));
       redirect c (room_path room.R.Room.id)
 let direct_edit c = room_or_root c ~kind:`Direct (fun room ->
   if not (accepts c Http_format.Html) then error 406 else

@@ -167,6 +167,25 @@ let test_rooms_and_messages () = with_seed "default" (fun runtime ->
     runtime `PATCH "/rooms/654632876/involvement" in
   Alcotest.(check int) "involvement update" 302 (status involvement))
 
+let test_room_permalink_pagination () = with_seed "default" (fun runtime ->
+  let cookie=mint_session runtime 127326141L in
+  let first,body=send ~cookie runtime `GET "/rooms/486777696/@933434510" in
+  Alcotest.(check int) "first-message permalink" 200 (status first);
+  check "permalink includes first message"
+    (contains body "data-message-id=\"933434510\"");
+  check "permalink starts around requested message"
+    (not (contains body "data-message-id=\"933434601\""));
+  let middle,body=send ~cookie runtime `GET "/rooms/486777696/@933434570" in
+  Alcotest.(check int) "middle-message permalink" 200 (status middle);
+  check "permalink includes middle message"
+    (contains body "data-message-id=\"933434570\"");
+  check "permalink includes older neighboring page"
+    (contains body "data-message-id=\"933434530\"");
+  let missing,body=send ~cookie runtime `GET "/rooms/486777696/@999999999" in
+  Alcotest.(check int) "missing-message permalink" 200 (status missing);
+  check "missing permalink falls back to latest page"
+    (contains body "data-message-id=\"933434601\""))
+
 let test_bot_and_search () = with_seed "default" (fun runtime ->
   let key = "394959859-BenderBot123" in
   let room = "/rooms/486777696/"^key^"/messages" in
@@ -515,6 +534,7 @@ let () = Alcotest.run "M3 room and message controllers" [
   "routes",[Alcotest.test_case "inventory" `Quick test_inventory];
   "http",[
     Alcotest.test_case "rooms and messages" `Quick test_rooms_and_messages;
+    Alcotest.test_case "room permalink pagination" `Quick test_room_permalink_pagination;
     Alcotest.test_case "bot and search" `Quick test_bot_and_search;
     Alcotest.test_case "restricted, autocomplete, paging" `Quick test_restricted_autocomplete_and_paging;
     Alcotest.test_case "autocomplete wildcard format" `Quick test_autocomplete_format_negotiation;
