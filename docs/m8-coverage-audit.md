@@ -24,13 +24,14 @@ M8-T3, M8-T5 and the release milestone remain open.
 Current clean executable source `2a511ac` removes the retained Lexxy room-script
 difference and matches text, attachment edit, involvement-frame, group-name
 and avatar-upload responses. The pinned seeded room bodies match Rust directly
-at rows 95/100; the 16 previously failing
-HTTP/state cells pass exactly across four populated seeds on `e4b71e6`. Focused
+at rows 95/100; the 16 previously failing HTTP/state cells pass exactly
+across four populated seeds on `e4b71e6`. Focused
 `d223a0f` attachment-edit browser cells pass 4/4 and `7352f48` involvement
 cells pass 16/16, and `2a511ac` group-name/avatar-upload cells pass 8/8,
 across server, live DOM, accessibility, network, Cable and pixels. The full
-current-revision M3 route
-gate, M8-T3 browser matrix, and final-image release audit remain open. The
+`2a511ac` five-seed shared HTTP gate also passes 3,186/3,186 eligible cases
+and 30/30 positive writes; 354 first-run roles lack a signed fixture.
+The M8-T3 browser matrix and final-image release audit remain open. The
 historical `d6600ed` results below retain their original evidence scope.
 
 ## Golden corpus coverage (M8-T1)

@@ -55,6 +55,9 @@ transaction, concurrency, and search behavior matches Rust tests and fixture sta
 
 Manager: `m3_manager`. Gate: every application route has the Rust status, redirect, headers,
 authorization, and response shape under the shared HTTP fixture suite.
+**Gate complete on `2a511ac`:** five-seed route/state comparison passes 3,186/3,186
+eligible cases, with 354 first-run roles unavailable for lack of a signed fixture;
+the separate positive-write suite passes 30/30 exactly. See [route audit](m3-route-audit.md).
 
 - [x] **M3-T1 HTTP foundation.** Build request/response/context, params and multipart parsing,
   sessions, errors, content negotiation, gzip, and server startup with established OCaml HTTP
@@ -71,8 +74,8 @@ authorization, and response shape under the shared HTTP fixture suite.
   d6600ed five-seed sweep has no controller/status/state difference; crowd
   autocomplete JSON and Link match Rust 3/3. Source `e4b71e6` removes the
   former room-page Lexxy script difference; its 16 affected role/seed cells
-  now pass exactly. Other paths changed since the prior full sweep still need
-  a current-revision check for the literal milestone gate. See [route audit](m3-route-audit.md).
+  now pass exactly. The later `2a511ac` five-seed sweep closes the literal
+  milestone gate with zero eligible differences. See [route audit](m3-route-audit.md).
 - [x] **M3-T4 Auxiliary controllers.** Port direct uploads, avatars/logos, PWA, QR, webhook/bot
   routes, link unfurling, and other exposed application paths. Its 31 assigned routes pass
   124/124 default-seed role cases in the [immutable HTTP matrix](m8-t2-http-state.md);

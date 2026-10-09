@@ -78,9 +78,11 @@ password buffer after each call. The database model tests verify Rails-issued `$
 
 ## Port sequence
 
-M1–M2 and the local M5–M7 gates are complete. M3's final response rerun is pending;
-M4-T4 browser behavior, M8-T3 browser parity,
-and M8-T5 release audit are the three open tickets. M8-T1 golden-vector coverage, M8-T2
+M1–M3 and the local M5–M7 gates are complete. M3's current-source five-seed
+HTTP/state rerun passes 3,186 eligible cases and 30 positive writes exactly;
+354 first-run signed/denied roles lack a fixture session. M4-T4 browser behavior,
+M8-T3 browser parity, and M8-T5 release audit are the three open tickets.
+M8-T1 golden-vector coverage, M8-T2
 HTTP/state differential, and M8-T4 performance and resilience have passed their recorded
 gates. A published multiarchitecture image and an actual ONCE deployment have not been
 verified. See the [ticket plan](docs/milestones.md) for exact gates and evidence.

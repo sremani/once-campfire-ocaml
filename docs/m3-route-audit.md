@@ -62,23 +62,30 @@ Credential-free reports and their hashes are in
 `/tmp/m3-route-gate-e4b71e6-summary.md`; per-seed safe JSON and Markdown
 reports use `/tmp/m3-route-gate-e4b71e6-wire-{default,crowd,restricted,custom_styles}`.
 
-This closes the observed room-response difference. The literal every-route
-gate still needs current-revision coverage of other controller and view paths
-changed since the `d6600ed` five-seed sweep. The earlier results below remain
-their original immutable evidence; no failing M3 response is currently known.
-The source-impact map at `/tmp/m3-route-impact-e4b71e6.md` identifies 112 new
-ordinary route/role/seed cases and positive branches that ordinary fixtures
-cannot reach. A full current-revision five-seed sweep is the clearest final
-gate check.
+This closed the observed room-response difference. The source-impact map at
+`/tmp/m3-route-impact-e4b71e6.md` identified 112 additional ordinary
+route/role/seed cases changed after the earlier `d6600ed` sweep. The current
+full five-seed check below covers those cases; the older results remain
+immutable historical evidence.
 Source `d223a0f` changes only the attachment edit-frame serializer after
 this rerun; its four focused Rust/OCaml attachment browser cells are exact.
 Source `7352f48` additionally changes room involvement `Turbo-Frame` layout.
 Its 16 focused browser cells are exact on raw network response, including
 headers and body hashes. Current source `2a511ac` also fixes the group
 direct-room sentence and profile avatar upload; its eight focused browser
-cells are exact. The final ordinary sweep is running against its pinned binary
-through `/tmp/m3-2a51-full-http-sweep.sh`. Offline source, binary and fixture
-preflight passed; the complete route result is pending.
+cells are exact. The 2a511ac ordinary sweep completed all 177 route rows under
+four roles across five independent seeds: **3,186 eligible cases pass exactly,
+zero fail**, with 354 first-run signed/denied cases explicitly unavailable
+because that seed has no signed session. Each populated seed passes 708/708;
+first run passes all 354 available cases. The same pinned executable passes
+the separate default-seed positive-write comparison **30/30 exact**. The
+shared HTTP fixture gate for M3 is complete at this revision. The independent
+five-seed aggregation and report hashes are in
+`/tmp/m3-2a511ac-five-seed-audit.md`; the positive-write report is
+`/tmp/m3-2a511ac-positive-writes.json`. The original wrapper's last aggregate
+assertion used the historical 3,170 pass count and failed after all five
+per-seed gates passed; its expected total was corrected to 3,186 without
+rerunning cases. The reported application comparisons have no failure.
 
 The final clean packaged d6600ed sweep compared all 177 routes under four
 roles on fresh independent copies of `default`, `crowd`, `restricted`, and

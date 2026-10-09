@@ -7,9 +7,11 @@ The current code source is `2a511ac6f74fc3689f72bd039bc11d286e71d1c4`.
 assets and zero local Gumbo checksum errors. The forced OCaml suite passes
 41 suites and 297 cases. Group direct-room naming and avatar uploads pass
 eight focused browser cells in all six layers, with zero retries or errors.
-The 2a511ac full five-seed HTTP sweep is running; the all-seed browser and
-current-source image release gates remain open. The offline release runner
-`/tmp/m8-t5-2a511ac-release-verify.sh` passes both architecture preflights.
+The 2a511ac five-seed shared HTTP gate passes 3,186/3,186 eligible cases
+with 354 first-run roles unavailable, and positive writes pass 30/30 exact.
+The all-seed browser and current-source image release gates remain open.
+The local runner `/tmp/m8-t5-2a511ac-release-verify.sh` has passed both
+architecture preflights and is executing the image checks.
 
 ### Earlier involvement-frame source checkpoint: `7352f48`
 
