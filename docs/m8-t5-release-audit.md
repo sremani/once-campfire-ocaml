@@ -1,5 +1,44 @@
 # M8-T5 release candidate audit (in progress)
 
+## Current candidate: `98ac889`
+
+Clean source `98ac88910ce3811e0dc4cba6ee87b33606ef8b69` fixes the
+browser-discovered duplicate-email join redirect, invalid join-code MIME,
+blocked-browser VAPID metadata, and wildcard autocomplete negotiation. The
+full Dune suite passes with loopback access for its socket tests; the source
+manifest `/tmp/campfire-source-98ac889.json` reports `source_dirty: false` and
+zero local Gumbo checksum errors. The committed source was built into these
+local images:
+
+| Architecture | Image ID | Inventory |
+| --- | --- | --- |
+| amd64 | `sha256:f57475e0e019d8f87876f86a4044861f837746f93f4b052ffd36f8c4d483e349` | `/tmp/campfire-image-98ac889-amd64.json`: 350 runtime packages, 288 builder packages, 321 exact assets, zero issues |
+| arm64 | `sha256:7ff604b1fb9360bc945e705c1789b83b86241c55eebfb6671c75352166967ba9` | `/tmp/campfire-image-98ac889-arm64.json`: 347 runtime packages, 287 builder packages, 321 exact assets, zero issues |
+
+Both images passed copied Rails upgrade/restart, backup/restore, rollback,
+169-message and 14-blob preservation, and clean shutdown in
+`/tmp/campfire-lifecycle-98ac889-{amd64,arm64}.log`. Both passed disposable
+local Pebble issuance and renewal, HTTP/2 `/up=200`, redirect/Host policy,
+TLS Cable restart, and SIGTERM exit 0 in
+`/tmp/campfire-98ac889-protocol-{amd64,arm64}.json`. The arm64 image passed
+233/233 pinned Rust signed-media comparisons in
+`/tmp/m8-t5-98ac889-arm64-signed-media.json`; the prior d660 amd64 image
+also passed 233/233, and the signed-media implementation did not change.
+
+The full default-seed HTTP/state matrix on the 98ac889 amd64 binary is
+**704 exact, four retained Lexxy room-script differences**. Focused join and
+autocomplete rows 49, 50, and 74 are exact on crowd, custom styles, and
+restricted seeds (12/12 each); first-run has 6/6 available cases exact and
+six signed/denied cases unavailable. Reports are
+`/tmp/m8-t2-98ac889-default.md` and
+`/tmp/m8-t2-98ac889-{crowd,custom_styles,restricted,first_run}-focused.md`.
+The corrected browser run uses a clean detached 98ac889 checkout and exact
+image wrapper. Its first 84-cell default-seed batch is **84/84 exact with
+zero retries**; the remaining all-seed lean/full batches are in progress
+under `/tmp/m8-t3-harness-wt/parity/out/m8-t3-98ac889-all/summary.json`.
+M8-T5 stays open for that browser gate, review of the documented Lexxy,
+Caddy, gzip-wire and performance limitations, and publication/deployment.
+
 This is a working provenance record, **not release clearance**. Clean local candidate
 `bcb440cec2760d0c116f37520585f2f24e663813` now has amd64 and arm64 images,
 complete package/license inventories, and passing copied-install upgrade/rollback on both
