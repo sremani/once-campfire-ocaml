@@ -13,6 +13,10 @@ Nokogiri archive; three of seven vendored WebSocket files differ from
 upstream as the documented local fork. The forced OCaml suite passes
 41 suites and 297 cases. Group direct-room naming and avatar uploads pass
 eight focused browser cells in all six layers, with zero retries or errors.
+The 123-file view matrix on the current checkout reports 121 rendered passes,
+two linked input metadata cases, and zero failures or unsupported cases in
+`/tmp/campfire-2a511ac-view-goldens.json`; changes since `2a511ac` are
+limited to README and documentation files.
 The 2a511ac five-seed shared HTTP gate passes 3,186/3,186 eligible cases
 with 354 first-run roles unavailable, and positive writes pass 30/30 exact.
 The local release runner `/tmp/m8-t5-2a511ac-release-verify.sh all` passed
@@ -28,7 +32,9 @@ shutdown passed on both architectures in
 `/tmp/campfire-2a511ac-protocol-{amd64,arm64}.json`.
 Signed media is 233/233 exact per architecture in
 `/tmp/m8-t5-2a511ac-{amd64,arm64}-signed-media.json`.
-The final all-seed browser matrix is running against the frozen source.
+The final all-seed browser matrix is running against the frozen source; all
+five lean seeds are 956/956 exact across six layers with zero retries or
+errors. The full matrix remains in progress.
 An uncached repeat-build comparison is prepared at
 `/tmp/m8-t5-2a511ac-reproducibility.py`; its source and inventory preflight
 passes, and the Docker rebuild waits for browser capture to release the
@@ -37,7 +43,7 @@ shared environment. A final-image shared contract and resilience probe at
 preflight and waits for that Docker interval. M8-T5 remains open for those
 gates and external manifest
 publication and ONCE deployment; no Git remote, registry destination, or
-target host/CLI is configured.
+target host/CLI is configured, and `gh auth status` reports an invalid token.
 
 ### Earlier involvement-frame source checkpoint: `7352f48`
 
