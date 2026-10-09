@@ -37,8 +37,9 @@ five lean seeds are 956/956 exact across six layers with zero retries or
 errors. Its first five default-seed full batches are 2,145/2,145 exact,
 with zero final flaky cases, failures, or errors. The fifth batch had one
 Rust-side WebKit capture retry after `page.evaluate: Target crashed`; a
-fresh one-cell recapture remains pending. The remaining full matrix is in
-progress.
+fresh one-cell recapture remains pending. The sixth batch passes 416/416
+exact with no retries, bringing full coverage to 2,561/2,561 across six
+batches. The remaining full matrix is in progress.
 An uncached repeat-build comparison is prepared at
 `/tmp/m8-t5-2a511ac-reproducibility.py`; its source and inventory preflight
 passes, and the Docker rebuild waits for browser capture to release the
