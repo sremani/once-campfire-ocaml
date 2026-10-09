@@ -9,9 +9,23 @@ assets and zero local Gumbo checksum errors. The forced OCaml suite passes
 eight focused browser cells in all six layers, with zero retries or errors.
 The 2a511ac five-seed shared HTTP gate passes 3,186/3,186 eligible cases
 with 354 first-run roles unavailable, and positive writes pass 30/30 exact.
-The all-seed browser and current-source image release gates remain open.
-The local runner `/tmp/m8-t5-2a511ac-release-verify.sh` has passed both
-architecture preflights and is executing the image checks.
+The local release runner `/tmp/m8-t5-2a511ac-release-verify.sh all` passed
+on both architectures. The image inventories have 321 exact assets and zero
+issues: amd64 `sha256:18a4cce33ec9ea7c5120feb4f758c7684e12cb3f658b5220bb38557f4562d9cd`
+and arm64 `sha256:deffe1bbb71549c135ea6fc457da3fc6704bd3c6173d0322ea654a1075629194`.
+See `/tmp/campfire-image-2a511ac-{amd64,arm64}.json`.
+Copied Rails installation upgrade, restart, backup/restore, and rollback
+passed on both images, preserving 169 messages and 14 blob checksums;
+`/tmp/campfire-lifecycle-2a511ac-{amd64,arm64}.log` records the checks.
+TLS, HTTP/2, certificate issuance and renewal, WebSocket restart, and clean
+shutdown passed on both architectures in
+`/tmp/campfire-2a511ac-protocol-{amd64,arm64}.json`.
+Signed media is 233/233 exact per architecture in
+`/tmp/m8-t5-2a511ac-{amd64,arm64}-signed-media.json`.
+The final all-seed browser matrix is running against the frozen source.
+M8-T5 remains open for that gate and external manifest publication and ONCE
+deployment; no Git remote, registry destination, or target host/CLI is
+configured.
 
 ### Earlier involvement-frame source checkpoint: `7352f48`
 

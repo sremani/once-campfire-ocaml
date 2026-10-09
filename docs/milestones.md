@@ -184,3 +184,7 @@ differences are intentional, and deployable release artifacts are verified.
   release finding. See [performance evidence](m8-t4-performance.md).
 - [ ] **M8-T5 Release audit.** Verify license/dependency provenance, Docker images, upgrade
   instructions, complete tests, known differences, and reproducible release build.
+  Local amd64 and arm64 images from `2a511ac` pass inventory, copied Rails
+  installation lifecycle, TLS/HTTP2/ACME, WebSocket restart, and 233/233
+  signed-media comparisons each. The full browser gate and external manifest
+  publication/ONCE deployment remain open. See [release audit](m8-t5-release-audit.md).
