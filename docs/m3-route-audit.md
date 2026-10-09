@@ -70,6 +70,9 @@ The source-impact map at `/tmp/m3-route-impact-e4b71e6.md` identifies 112 new
 ordinary route/role/seed cases and positive branches that ordinary fixtures
 cannot reach. A full current-revision five-seed sweep is the clearest final
 gate check.
+Source `d223a0f` changes only the attachment edit-frame serializer after
+this rerun; its four focused Rust/OCaml attachment browser cells are exact.
+The final current-revision ordinary sweep should use the d223 binary.
 
 The final clean packaged d6600ed sweep compared all 177 routes under four
 roles on fresh independent copies of `default`, `crowd`, `restricted`, and

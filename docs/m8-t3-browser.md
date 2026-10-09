@@ -218,6 +218,18 @@ The earlier eight exact cells are at
 Together they resolve all ten focused states; the full matrix below remains
 the M8-T3 gate.
 
+The subsequent `e4b71e6` default lean run completed 178/178 exact cells in
+its first two batches. Its third batch completed 78 pass and four fail, with
+zero retries/errors: every failure was a network-only raw response hash for
+the attachment edit form. Source `d223a0f` gives the attachment branch the
+same Rust-exact edit-frame serialization; a fresh four-cell Chromium
+desktop/phone, light/dark comparison passed **4/4 exact**, zero retries or
+errors, at
+`/tmp/m8-t3-harness-wt/parity/out/m8-t3-attachment-edit-focused/report.json`.
+The old-image sweep was stopped after the third batch. The clean `d223a0f`
+all-seed lean/full run is active under
+`/tmp/m8-t3-harness-wt/parity/out/m8-t3-d223a0f-all/summary.json`.
+
 Run each seed in both matrices using the pinned Playwright image and frozen
 clock, for example:
 

@@ -1,6 +1,19 @@
 # M8-T5 release candidate audit (in progress)
 
-## Current clean source target: `e4b71e6`
+## Current clean source target: `d223a0f`
+
+The current code source is `d223a0f2f778b0d8e033b4d721f9dddcde4a8aad`.
+`/tmp/campfire-source-d223a0f.json` records a clean checkout, 321 pinned
+assets and zero local Gumbo checksum errors. The full OCaml suite passes
+41 suites and 296 cases, and all 123 view files are accounted for. The
+attachment edit response fix passes four focused browser cells in all six
+layers. The new all-seed lean/full run is active under
+`/tmp/m8-t3-harness-wt/parity/out/m8-t3-d223a0f-all/summary.json`. No
+amd64/arm64 release image inventory, lifecycle, protocol or signed-media
+report has yet been produced from this revision. The earlier local source
+evidence below remains a historical checkpoint.
+
+### Earlier script-free source checkpoint: `e4b71e6`
 
 The frozen code source is `e4b71e6c922438649df873682884fb1423d9b31b`.
 `/tmp/campfire-source-e4b71e6.json` records a clean worktree, 321 pinned

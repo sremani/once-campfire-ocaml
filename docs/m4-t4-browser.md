@@ -165,3 +165,10 @@ cells on the first script-free image; its only remaining differences were raw
 edit-frame response hashes. The edit serializer was aligned with Rust's
 Askama/ERB bytes, and those two cells then passed exactly with no errors or
 retries. M4-T4 still awaits the complete all-seed browser matrix.
+
+The next 82-cell default lean batch on `e4b71e6` found four attachment
+edit-form cells whose sole difference was the GET edit response hash. The
+document, pixels, live DOM, accessibility, and Cable were exact. Source
+`d223a0f` aligns that attachment frame with the pinned Rust raw template;
+the four-cell Chromium desktop/phone light/dark recapture passes exactly
+with zero retries. The broad matrix restarted on the clean `d223a0f` image.

@@ -335,3 +335,6 @@ frame copied Rust's raw Askama whitespace, attribute order, and no-block
 delete-form serialization. The shared Chromium smoke and two-tab repeated-edit
 regression pass after their test actions wait for Lexxy's mounted editing
 root; see [browser evidence](m4-t4-browser.md).
+Source `d223a0f` also matches the attachment edit-frame wire bytes; a
+four-cell Chromium desktop/phone light/dark recapture passes all six
+comparison layers exactly.
