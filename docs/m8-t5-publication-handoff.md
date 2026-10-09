@@ -73,7 +73,9 @@ PY
 : "${PUBLISHED_DIGEST:?set exact sha256 index digest from inspection}"
 ```
 
-The exact published arch tags from the tag event are
+Run the following inventory on each matching architecture, or with working
+arm64 emulation for the arm64 image. The exact published architecture tags
+from the tag event are
 `$IMAGE_REPO:$RELEASE_TAG-amd64` and
 `$IMAGE_REPO:$RELEASE_TAG-arm64`. Pull and audit them against the clean source
 before relying on the CI-only inventory:
