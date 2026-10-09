@@ -32,7 +32,10 @@ The final all-seed browser matrix is running against the frozen source.
 An uncached repeat-build comparison is prepared at
 `/tmp/m8-t5-2a511ac-reproducibility.py`; its source and inventory preflight
 passes, and the Docker rebuild waits for browser capture to release the
-shared environment. M8-T5 remains open for those gates and external manifest
+shared environment. A final-image shared contract and resilience probe at
+`/tmp/m8-t4-2a511ac-probe/run.sh` also passes its offline source/image
+preflight and waits for that Docker interval. M8-T5 remains open for those
+gates and external manifest
 publication and ONCE deployment; no Git remote, registry destination, or
 target host/CLI is configured.
 
