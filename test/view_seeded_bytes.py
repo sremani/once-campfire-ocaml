@@ -58,11 +58,9 @@ for row, role, length, expected in cases:
         raise SystemExit(1)
     print(f"row {row}: {length} seeded Rust bytes match")
 
-# The room page carries a small Lexxy mount shim required for two-tab edit
-# readiness. Every other byte, including 40 cached message fragments, must
-# equal the pinned Rust room-show response.
+# The room page, including 40 cached message fragments, must match the pinned
+# Rust response byte for byte.
 room_expected = "aaa9305357de289a4cc1b53a71b8dab8003c13634fb01eaae6fd3ee6c105cc54"
-shim_start = b'<script>\n  document.addEventListener("lexxy:initialize"'
 for row in (95, 100):
     env = os.environ.copy()
     env["M4_T2_PROBE_PATH"] = routes_module.concrete_path(routes[row], labels, sessions)
@@ -70,14 +68,9 @@ for row in (95, 100):
         [exe, str(row), "signed"], cwd=root, env=env,
         capture_output=True, check=True,
     ).stdout
-    start = body.index(shim_start)
-    end = body.index(b"</script>", start) + len(b"</script>")
-    if body.count(shim_start) != 1:
-        raise SystemExit(f"row {row}: expected one Lexxy mount shim")
-    source_aligned = body[:start] + body[end:]
-    actual = hashlib.sha256(source_aligned).hexdigest()
-    if len(source_aligned) != 416349 or actual != room_expected:
-        print(f"row {row}: expected 416349/{room_expected[:12]} after Lexxy shim, "
-              f"got {len(source_aligned)}/{actual[:12]}")
+    actual = hashlib.sha256(body).hexdigest()
+    if len(body) != 416349 or actual != room_expected:
+        print(f"row {row}: expected 416349/{room_expected[:12]}, "
+              f"got {len(body)}/{actual[:12]}")
         raise SystemExit(1)
-    print(f"row {row}: 416349 Rust bytes match after required Lexxy shim")
+    print(f"row {row}: 416349 Rust bytes match")

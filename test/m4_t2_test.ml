@@ -418,7 +418,7 @@ let test_message_stream_goldens () =
   let edit = Views.message_edit ~context:sample_context message in
   check_contains "Turbo edit frame" edit "id=\"edit_message_fresh-1\"";
   check_contains "Lexxy edit field" edit "aria-label=\"Edit message\"";
-  check_contains "Lexxy edit waits for mount" edit "data-wait-for-mount=\"\"";
+  check_absent "Lexxy edit uses Rails markup" edit "data-wait-for-mount";
   let sidebar = Views.sidebar_frame ~context:sample_context ~rooms:[room]
     ~rooms_stream_name:"rooms-signature"
     ~user_rooms_stream_name:"user-rooms-signature" () |> Views.render in

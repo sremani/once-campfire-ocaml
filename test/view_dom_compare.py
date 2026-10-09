@@ -16,6 +16,7 @@ class Tokens(html.parser.HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
         self.items = []
+        self.open_delete_form = False
 
     def handle_starttag(self, tag, attrs):
         values = dict(attrs)
@@ -33,44 +34,27 @@ class Tokens(html.parser.HTMLParser):
         if "data-copy-to-clipboard-content-value" in values:
             value = values.pop("data-copy-to-clipboard-content-value")
             values["data-copy-to-clipboard-url-value"] = urlsplit(value).path
+        if tag == "form" and values.get("id", "").startswith("delete_form_message_"):
+            self.open_delete_form = True
         self.items.append(("start", tag, tuple(sorted(values.items()))))
 
     def handle_startendtag(self, tag, attrs):
         self.handle_starttag(tag, attrs)
 
     def handle_endtag(self, tag):
+        # Rails form_with without a block leaves this delete form open; the
+        # browser closes it when the surrounding div ends.
+        if tag == "div" and self.open_delete_form:
+            self.items.append(("end", "form"))
+            self.open_delete_form = False
+        elif tag == "form":
+            self.open_delete_form = False
         self.items.append(("end", tag))
 
     def handle_data(self, data):
         value = re.sub(r"\s+", " ", data).strip()
         if value:
             self.items.append(("text", value))
-
-
-def without_lexxy_mount_shim(items):
-    """The OCaml editor readiness shim is an intentional runtime addition."""
-    result = []
-    index = 0
-    while index < len(items):
-        if (items[index][:2] == ("start", "script") and
-                index + 2 < len(items) and
-                items[index + 1][0] == "text" and
-                'lexxy:initialize' in items[index + 1][1] and
-                'data-wait-for-mount' in items[index + 1][1] and
-                items[index + 2][:2] == ("end", "script")):
-            index += 3
-            continue
-        token = items[index]
-        if token[:2] == ("start", "lexxy-editor"):
-            attrs = dict(token[2])
-            if (attrs.get("data-wait-for-mount") == "" and
-                    attrs.get("style") == "visibility: hidden"):
-                attrs.pop("data-wait-for-mount")
-                attrs.pop("style")
-                token = ("start", "lexxy-editor", tuple(sorted(attrs.items())))
-        result.append(token)
-        index += 1
-    return result
 
 
 def main():
@@ -92,7 +76,6 @@ def main():
             else:
                 a.feed(token)
     b.feed(actual_html)
-    b.items = without_lexxy_mount_shim(b.items)
     if len(sys.argv) > 3 and sys.argv[3] == "--legacy-transfer":
         # The pinned Rails fixture omits the closing form tag. Rust's parity
         # test first checks the renderer has a complete form, then removes its

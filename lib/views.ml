@@ -50,24 +50,6 @@ let default_context = {
 let asset ctx name = match List.assoc_opt name ctx.assets with
   | Some path -> path
   | None -> (try Assets.asset_path name with _ -> "/assets/" ^ name)
-let lexxy_ready_head = elt "script" [] [raw (Trusted_html {|
-  document.addEventListener("lexxy:initialize", (event) => {
-    const editor = event.target;
-    if (!editor.matches?.("lexxy-editor[data-wait-for-mount]")) return;
-    const revealWhenMounted = () => {
-      if (!editor.isConnected || !editor.hasAttribute("data-wait-for-mount")) return;
-      if (editor.editor?.getRootElement()) {
-        editor.style.removeProperty("visibility");
-        if (!editor.getAttribute("style")) editor.removeAttribute("style");
-        editor.removeAttribute("data-wait-for-mount");
-      } else {
-        requestAnimationFrame(revealWhenMounted);
-      }
-    };
-    revealWhenMounted();
-  });
-|})]
-
 (* Rails/Askama preserve the layout's literal whitespace and serialize some
    tags differently from Tyxml. Dynamic text and attributes still pass
    through Tyxml's encoder. *)
@@ -3041,8 +3023,7 @@ let message_edit ~context message =
     "data-blob-url-template",context.base_url ^ "/rails/active_storage/blobs/redirect/:signed_id/:filename";
     "id","message_body";
     "input","message_body_trix_input_" ^ message_dom_id message "";
-    "name","message[body]";"value",message.editable_body;
-    "style","visibility: hidden";"data-wait-for-mount",""] [
+    "name","message[body]";"value",message.editable_body] [
       elt "lexxy-prompt" ["trigger","@";"name","mention";
         "src","/autocompletable/users?room_id=" ^ i64 message.room_id;
         "remote-filtering","true";"empty-results","No matches"] []] in
@@ -3080,7 +3061,72 @@ let message_edit ~context message =
         "data-turbo-frame",message_dom_id message "edit";
         "accept-charset","UTF-8"] (permalink message)
         (input ~name:"_method" ~kind:"hidden" ~value:"delete" ())]] in
-  page ~context ~head:lexxy_ready_head frame
+  (* Keep the pinned Askama/ERB wire format, including its no-block delete
+     form, so Turbo's edit response has the same bytes and cache validator. *)
+  let exact_text_frame () =
+    let edit_id=legacy_attribute (message_dom_id message "edit") in
+    let form_id=legacy_attribute (message_dom_id message "form") in
+    let delete_id=legacy_attribute (message_dom_id message "delete_form") in
+    let message_id=legacy_attribute (message_dom_id message "") in
+    let path=legacy_attribute (permalink message) in
+    let prompt=legacy_attribute
+      ("/autocompletable/users?room_id=" ^ i64 message.room_id) in
+    String.concat "" [
+      {|<turbo-frame id="|};edit_id;{|">
+  <div class="message__body position-relative" data-controller="scroll-into-view">
+    <div class="message__body-content message__body-content--editing gap">
+        <div class="composer--edit composer--rich-text">
+          <form id="|};form_id;{|" data-controller="form" data-action="lexxy:file-accept-&gt;form#preventAttachment keydown.esc-&gt;form#cancel keydown.ctrl+enter-&gt;form#submit:prevent keydown.meta+enter-&gt;form#submit:prevent" action="|};path;{|" accept-charset="UTF-8" method="post"><input type="hidden" name="_method" value="patch" />
+            <div class="full-width input input--actor min-width fill-white">
+              <lexxy-editor rows="1" class="input lexxy-content" aria-multiline="true" aria-label="Edit message" autofocus="autofocus" permitted-attachment-types="application/vnd.campfire.mention application/vnd.actiontext.opengraph-embed" data-action="lexxy:change-&gt;typing-notifications#start keydown-&gt;composer#submitByKeyboard:capture" data-direct-upload-url="|};
+      legacy_attribute (context.base_url ^ "/rails/active_storage/direct_uploads");
+      {|" data-blob-url-template="|};
+      legacy_attribute (context.base_url ^ "/rails/active_storage/blobs/redirect/:signed_id/:filename");
+      {|" id="message_body" input="message_body_trix_input_|};message_id;
+      {|" name="message[body]" value="|};legacy_attribute message.editable_body;
+      {|">
+                <lexxy-prompt trigger="@" name="mention" src="|};prompt;
+      {|" remote-filtering="true" empty-results="No matches"></lexxy-prompt>
+</lexxy-editor>            </div>
+
+            <a data-form-target="cancel" hidden="hidden" href="|};path;
+      {|">Close editor and discard changes</a>
+
+            <div class="message__edit-btns flex align-center justify-space-between gap full-width pad-block-start-half">
+              <button name="button" type="submit" class="btn btn--reversed">
+                |};legacy_img context "check.svg" ["aria-hidden","true"];
+      {|
+                <span class="for-screen-reader">Save changes</span>
+</button>
+              <button name="button" type="submit" class="btn btn--negative" form="|};
+      delete_id;{|" data-turbo-confirm="Are you sure you want to delete this message?">
+                |};legacy_img context "trash.svg" ["aria-hidden","true"];
+      {|
+                <span class="for-screen-reader">Delete message</span>
+</button>            </div>
+</form>        </div>
+    </div>
+
+    <div class="message__actions flex flex-wrap">
+      <a class="message__action-btn message__edit-close-btn txt-small btn btn--borderless" href="|};
+      path;{|">
+        |};legacy_img context "remove.svg"
+          ["class","colorize--black";"aria-hidden","true"];
+      {|
+        <span class="for-screen-reader">Close editor and discard changes</span>
+</a>    </div>
+
+    <form id="|};delete_id;{|" data-turbo-frame="|};edit_id;
+      {|" action="|};path;
+      {|" accept-charset="UTF-8" method="post"><input type="hidden" name="_method" value="delete" />
+  </div>
+</turbo-frame>
+|}]
+  in
+  let frame=match message.content with
+    | Attachment _ | Media_attachment _ -> frame
+    | _ -> raw (Trusted_html (exact_text_frame ())) in
+  page ~context frame
 let message_json ?(base_url="") ?(plain_text_body="") message =
   let full path = if String.starts_with ~prefix:"http" path then path
     else base_url ^ path in
@@ -3904,7 +3950,6 @@ let room_invitation context join_code =
 let room_show_with_content ~context ~(room:room) ~message_content ~messages_stream_name
     ?invitation_join_code () =
   let head=raw (Trusted_html (String.concat "" [
-    render lexxy_ready_head;
     {|
   <meta name="turbo-cache-control" content="no-preview">
   <meta name="current-room-id" content="|};i64 room.id;{|">|}])) in
