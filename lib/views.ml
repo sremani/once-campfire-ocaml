@@ -1940,24 +1940,20 @@ let sidebar_shared_room (entry:sidebar_entry) =
   <span class="overflow-ellipsis">|};legacy_text entry.room.name;
     {|</span>
 </a>|}]))
-let sidebar_frame ~context ~rooms ?entries ?(placeholders=[]) ?(can_create_rooms=true)
-    ~rooms_stream_name ~user_rooms_stream_name () =
-  let entries = Option.value entries ~default:(List.map (fun room ->
-    {room;unread=false;members=[]}) rooms) in
-  let icon ?size ?(class_name="") ?(style="") name =
-    let src = if String.starts_with ~prefix:"/" name then name
-      else asset context name in
-    let attributes=["aria-hidden","true"] @
-      (if class_name="" then [] else ["class",class_name]) @
-      (if style="" then [] else ["style",style]) in
-    let attributes=attributes @ ["src",src] @
-      (match size with None -> [] | Some size ->
-        ["width",string_of_int size;"height",string_of_int size]) in
-    "<img " ^ String.concat " " (List.map (fun (key,value) ->
-      key ^ "=\"" ^ legacy_attribute value ^ "\"") attributes) ^ " />" in
-  let first_name (user:user) = match String.split_on_char ' ' user.name with
-    | first::_ -> first | [] -> user.name in
-  let member_initials members =
+let sidebar_icon ~context ?size ?(class_name="") ?(style="") name =
+  let src = if String.starts_with ~prefix:"/" name then name
+    else asset context name in
+  let attributes=["aria-hidden","true"] @
+    (if class_name="" then [] else ["class",class_name]) @
+    (if style="" then [] else ["style",style]) in
+  let attributes=attributes @ ["src",src] @
+    (match size with None -> [] | Some size ->
+      ["width",string_of_int size;"height",string_of_int size]) in
+  "<img " ^ String.concat " " (List.map (fun (key,value) ->
+    key ^ "=\"" ^ legacy_attribute value ^ "\"") attributes) ^ " />"
+let sidebar_first_name (user:user) = match String.split_on_char ' ' user.name with
+  | first::_ -> first | [] -> user.name
+let sidebar_member_initials members =
     let initials = members |> List.map (fun (user:user) ->
     String.split_on_char ' ' user.name |> List.filter ((<>) "")
     |> List.filteri (fun i _ -> i < 3)
@@ -1967,8 +1963,9 @@ let sidebar_frame ~context ~rooms ?entries ?(placeholders=[]) ?(can_create_rooms
     | [] -> ""
     | [one] -> one
     | [last;first] -> first ^ "+" ^ last
-    | last::rest -> String.concat ", " (List.rev rest) ^ ", and " ^ last in
-  let direct_link (entry:sidebar_entry) =
+    | last::rest -> String.concat ", " (List.rev rest) ^ ", and " ^ last
+let sidebar_direct_room ~context (entry:sidebar_entry) =
+    let icon=sidebar_icon ~context in
     let members=entry.members in
     let avatars=match members with
       | [member] -> String.concat "" [
@@ -1987,7 +1984,7 @@ let sidebar_frame ~context ~rooms ?entries ?(placeholders=[]) ?(can_create_rooms
 |}]));
           {|      </div>
 |}] in
-    String.concat "" [
+    raw (Trusted_html (String.concat "" [
       {|  <a class="|};(if entry.unread then "direct unread" else "direct");
       {|" id="|};legacy_attribute (room_dom_id entry.room "list");
       {|" data-rooms-list-target="room" data-room-id="|};i64 entry.room.id;
@@ -2000,12 +1997,17 @@ let sidebar_frame ~context ~rooms ?entries ?(placeholders=[]) ?(can_create_rooms
       <span class="txt-nowrap overflow-ellipsis">
         <span class="for-screen-reader">Ping with</span>
           |};
-      legacy_text (match members with [member] -> first_name member
-        | _ -> member_initials members);
+      legacy_text (match members with [member] -> sidebar_first_name member
+        | _ -> sidebar_member_initials members);
       {|
       </span>
     </span>
-</a>|}] in
+</a>|}]))
+let sidebar_frame ~context ~rooms ?entries ?(placeholders=[]) ?(can_create_rooms=true)
+    ~rooms_stream_name ~user_rooms_stream_name () =
+  let entries = Option.value entries ~default:(List.map (fun room ->
+    {room;unread=false;members=[]}) rooms) in
+  let icon=sidebar_icon ~context in
   let placeholder (user:user) = String.concat "" [
     {|<form class="button_to" method="post" action="|};
     legacy_attribute (Route_helpers.rooms_directs () ^ "?user_ids%5B%5D=" ^ i64 user.id);
@@ -2018,7 +2020,7 @@ let sidebar_frame ~context ~rooms ?entries ?(placeholders=[]) ?(can_create_rooms
   <span class="direct__author flex align-center gap max-width min-width border-radius txt-small">
     <span class="txt-nowrap overflow-ellipsis">
       <span class="for-screen-reader">Start a ping with</span>
-      |};legacy_text (first_name user);
+      |};legacy_text (sidebar_first_name user);
     {|
     </span>
   </span>
@@ -2054,7 +2056,8 @@ let sidebar_frame ~context ~rooms ?entries ?(placeholders=[]) ?(can_create_rooms
         <div id="direct_rooms" contents data-controller="sorted-list" data-action="rooms-list:unread@window->sorted-list#updateItem">
           |};
     String.concat "\n" (List.mapi (fun index entry ->
-      (if index=0 then "\n" else "") ^ direct_link entry) directs);
+      (if index=0 then "\n" else "") ^
+        render (sidebar_direct_room ~context entry)) directs);
     {|        </div>
 
         <div contents>

@@ -106,6 +106,7 @@ type room_kind = Open | Closed | Direct
 type room = { id:int64; kind:room_kind; name:string; updated_at_ms:int64 }
 type sidebar_entry = { room:room; unread:bool; members:user list }
 val sidebar_shared_room : sidebar_entry -> fragment
+val sidebar_direct_room : context:context -> sidebar_entry -> fragment
 val sidebar_frame : context:context -> rooms:room list ->
   ?entries:sidebar_entry list -> ?placeholders:user list ->
   ?can_create_rooms:bool ->
