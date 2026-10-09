@@ -77,7 +77,8 @@ never reach route dispatch. `Front_target.read_line` counts request-line and
 header bytes against **64 KiB**, with a separate 256-line cap. The earlier
 **302** observation came from the old `campfire-ocaml:m7-t3` image; a current
 packaged-image probe remains for the M8 security gate. The current Caddy
-configuration also sets `max_header_size 64KiB`.
+configuration sets Caddy `max_header_size 60KiB` to account for Go's roughly
+4 KiB parser slack and enforce the 64 KiB front/target boundary in live probes.
 
 The first immutable M8-T2 default-seed matrix had 20 signed **400** cases with
 different cache, MIME, cookie, security, version and `Vary` headers: route rows

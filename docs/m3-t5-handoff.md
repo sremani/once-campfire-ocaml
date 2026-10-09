@@ -2,7 +2,7 @@
 
 The implementation is `lib/http_cache.ml`, integrated through `lib/http_app.ml`
 and the eligible room/message/search controllers. Its focused suite is
-`test/m3_t5_test.ml` (eight passing cases). It was read against pinned Rust
+`test/m3_t5_test.ml` (13 passing cases). It was read against pinned Rust
 `crates/kit/src/ctx.rs`, `crates/kit/src/front/cache.rs`,
 `crates/kit/src/front/handler.rs`, `crates/campfire/src/response_cache.rs`,
 and the room/message controller route tests. M3-T5 stays open for the gaps below.
@@ -100,11 +100,7 @@ HTTP/state rerun and conditional/public/private cache route scenarios.
 
 ## Open parity work
 
-1. Bound `Http_cache.finish` for unusually large finite bodies. It skips
-   streamed digests but buffers finite bodies for Rack ETags. The seeded HEAD,
-   initial gzip miss, gzip cache hit, conditional HEAD and streamed-file
-   cases now pass.
-2. Integrate remaining controller-specific cache keys and page-part digests
+1. Integrate remaining controller-specific cache keys and page-part digests
    for rooms/messages and template/frame/flash etaggers.
    `Controller_rooms.message_index` now uses `Http_cache.rendered_freshness`
    for the pinned `messages#index` byte-body fallback: SHA-256 of rendered
@@ -112,12 +108,16 @@ HTTP/state rerun and conditional/public/private cache route scenarios.
    and no `Last-Modified`. The scoped seed test checks its 304 GET, HEAD
    validator and identity length, and IMS-only 200. Current views do not
    expose page-part digests; a room page still gets a Rack body digest.
-   Account avatar/logo handlers already set record-key validators; no-account
+   `Http_cache.Page_parts.of_offsets` now matches the pinned Rust whole/mixed
+   splice ETag vectors exactly. It requires renderer-recorded fragment byte
+   offsets and applies Rust's 1024-byte minimum fragment and 256-byte glue
+   threshold. Current `Views.room_show` returns one string and exposes no
+   offsets or parts, so the room route still gets Rack's whole-body ETag and
+   one materialized body. Integration requires a renderer seam and frame
+   transport work; deriving offsets by searching final HTML is unsafe when
+   identical fragments repeat. Account avatar/logo handlers already set record-key validators; no-account
    logo must omit ETag, which was sent to M3-T2.
-3. Add flash-aware private-cache bypass once flash is represented in the HTTP
-   context. Sidebar lookup now has a seeded HTTP hit and revoked-session check;
-   exact sidebar body and headers remain in the live differential gate.
-4. Compare exact route headers and body frames with pinned Rust/Rails after
+2. Compare exact route headers and body frames with pinned Rust/Rails after
    M4 views, M5 live responses and M6 storage streams settle. Pinned Rust
    `rooms/tests.rs::pages_of_messages_go_out_in_parts` requires over 40 body
    frames, identical plain/gzip/HEAD ETags, plain `Content-Length`, and no gzip
@@ -126,12 +126,41 @@ HTTP/state rerun and conditional/public/private cache route scenarios.
    requires a weak ETag, 304 and no `Last-Modified`; the focused room route
    confirms those response semantics, but does not claim exact message-page parity.
 
-The ten tests exercise actual SHA-256 bytes, 304/HEAD/empty body behavior,
+## 2026-10-09 offline flash, Vary and finite-body gate
+
+`Http_app.flash` loads Rails' `{"discard":[],"flashes":{...}}` session value
+lazily, filters previously discarded keys, and marks loaded flashes for
+consumption during commit. `View_presenter.context` supplies notice/alert to
+the existing view. Pending flash bypasses private lookup and admission, while
+a newly assigned redirect flash survives for the next request. This follows
+pinned `kit/session.rs::Flash::from_session_value` and
+`campfire/response_cache.rs::{lookup,prepare}`. The seeded route test warms a
+room response, creates a denied-room flash, verifies `/up` leaves it pending,
+then verifies room rendering, cookie consumption, no cache admission and a
+clean cached response afterward.
+
+`Http_format.should_apply_vary_header` follows pinned
+`kit/format.rs::should_apply_vary_header`; `Http_app.commit` adds `Vary: Accept`
+to rendered HTML responses when format negotiation used a valid Accept
+header. The seeded room and sidebar responses now retain it alongside
+`Accept-Encoding`, including private cache hits. Browser-like wildcard Accept
+and explicit format parameters are covered by focused tests. This addresses
+the network-header portion of the M8-T3 browser capture; its sidebar body
+hash still belongs to view parity.
+
+`Http_cache.finish` hashes finite `String`/`Strings` bodies in 64 KiB slices
+without joining their chunks, preserving the original body and exact Rack
+SHA-256/HEAD length for a 3 MiB regression. Stream bodies are marked
+`digestible:false` at the sole application finalizer call in `Http_app.handle`;
+file routes keep their explicit length/Last-Modified or model validator, as
+in pinned Rust `kit/ctx.rs::rack_etag` (Bytes/Parts only).
+
+The thirteen tests exercise actual SHA-256 bytes, 304/HEAD/empty body behavior,
 date and directive formatting, public eligibility, Vary/URI/limit checks,
 private ticket isolation and generation/TTL/size rejection, a public QR route
 miss/hit/304/Range bypass, and pinned Rails seed room/sidebar routes through
 private hits, message-index conditional GET/HEAD, identity/gzip lengths, streamed HEAD,
 SQLite commit invalidation and session revocation.
-`dune exec --build-dir _build_m3_t5 ./test/m3_t5_test.exe` passed 10/10;
+`dune exec --build-dir _build_m3_t5 ./test/m3_t5_test.exe` passed 13/13;
 M3-T3 focused suite passed 9/9 after message-index integration. These are
 targeted route checks, not full body/header parity.

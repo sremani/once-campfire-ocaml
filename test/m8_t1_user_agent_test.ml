@@ -122,9 +122,10 @@ let check_http_browser_guard () =
     let dispatch endpoint = if endpoint="sessions#new" then Some Http_app.{
       before_action=before ~access:Public ();
       action=(fun _ -> Lwt.return (text ~status:201 "action reached"))} else None in
-    let send ?(accept="text/html") ?frame ua =
+    let send ?(accept="text/html") ?frame ?request_id ua =
       let headers=["host","chat.example.test";"accept",accept;"user-agent",ua] @
-        (match frame with None -> [] | Some value -> ["turbo-frame",value]) in
+        (match frame with None -> [] | Some value -> ["turbo-frame",value]) @
+        (match request_id with None -> [] | Some value -> ["x-request-id",value]) in
       let request=Cohttp.Request.make ~headers:(Cohttp.Header.of_list headers)
         (Uri.of_string "http://chat.example.test/session/new") in
       let response,body=Lwt_main.run (Http_app.handle ~runtime ~secret_key_base:"test-only"
@@ -145,11 +146,69 @@ let check_http_browser_guard () =
     let response,body=send "Chrome/140.0" in
     Alcotest.(check int) "current browser reaches action" 201
       (Cohttp.Code.code_of_status (Cohttp.Response.status response));
-    Alcotest.(check string) "action result" "action reached" body)
+    Alcotest.(check string) "action result" "action reached" body;
+    let request_id=Cohttp.Header.get (Cohttp.Response.headers response) "x-request-id" in
+    Alcotest.(check bool) "generated request ID has UUID length" true
+      (match request_id with Some id -> String.length id=36 | None -> false);
+    let traced,_=send ~request_id:"abc-123<script>" "Chrome/140.0" in
+    Alcotest.(check (option string)) "request ID sanitization"
+      (Some "abc-123script")
+      (Cohttp.Header.get (Cohttp.Response.headers traced) "x-request-id"))
+let count_sub string needle =
+  let n=String.length needle in
+  let rec loop i count =
+    if i+n>String.length string then count
+    else if String.sub string i n=needle then loop (i+n) (count+1)
+    else loop (i+1) count in loop 0 0
+let check_request_error_logs () =
+  let path=Filename.temp_file "m8-request-log-" ".sqlite3" in
+  let runtime=Db_runtime.open_db path in
+  let output=Buffer.create 512 in
+  let formatter=Format.formatter_of_buffer output in
+  let prior_reporter=Logs.reporter () and prior_level=Logs.level () in
+  Logs.set_reporter (Logs_fmt.reporter ~dst:formatter ());
+  Logs.set_level (Some Logs.Debug);
+  Fun.protect ~finally:(fun () ->
+    Logs.set_reporter prior_reporter;
+    Logs.set_level prior_level;
+    Db_runtime.close runtime;
+    Sys.remove path) (fun () ->
+    let dispatch endpoint =
+      if endpoint="sessions#new" then Some Http_app.{
+        before_action=before ~access:Public ();
+        action=(fun _ -> failwith "saving the upload: disk full")}
+      else if endpoint="sessions#create" then Some Http_app.{
+        before_action=before ~access:Public ();
+        action=(fun _ -> Lwt.return (text ~status:200 "ok"))}
+      else None in
+    let send ?(meth=`GET) ?(headers=[]) ?(body="") uri =
+      let request=Cohttp.Request.make ~meth ~headers:(Cohttp.Header.of_list headers)
+        (Uri.of_string ("http://chat.example.test"^uri)) in
+      let response,_=Lwt_main.run (Http_app.handle ~runtime
+        ~secret_key_base:"test-only" ~dispatch request (Cohttp_lwt.Body.of_string body)) in
+      Cohttp.Code.code_of_status (Cohttp.Response.status response) in
+    (* Cohttp.Request.make normalizes malformed %-escapes in a URI, so use
+       the parser directly for the malformed-query rejection path. *)
+    (match Http_params.parse_query "a=%" with
+     | Error reason -> Http_request_log.rejected reason
+     | Ok _ -> Alcotest.fail "malformed query accepted");
+    Alcotest.(check int) "bad form status" 400
+      (send ~meth:`POST ~headers:["content-type","application/x-www-form-urlencoded"]
+        ~body:"b=%" "/session");
+    Alcotest.(check int) "failing action status" 500 (send "/session/new");
+    Format.pp_print_flush formatter ();
+    let logs=Buffer.contents output in
+    Alcotest.(check int) "one log per rejected request" 2
+      (count_sub logs "request rejected error=bad request: invalid %-encoding (%)");
+    Alcotest.(check int) "failure retains cause and path" 1
+      (count_sub logs "request failed error=saving the upload: disk full path=\"/session/new\"");
+    Alcotest.(check int) "no doubled bad-request prefix" 0
+      (count_sub logs "bad request: bad request"))
 let () = Alcotest.run "M8 user-agent corpus" [
   "agents",[Alcotest.test_case "385 complete cases" `Quick check_agents];
   "versions",[Alcotest.test_case "44 versions and 352 comparisons" `Quick check_versions];
   "page",[Alcotest.test_case "request decision and defaults" `Quick check_page_decision];
   "passwords",[Alcotest.test_case "40 pinned Rails bcrypt checks" `Quick check_password_vectors];
   "HTTP",[Alcotest.test_case "browser before action" `Quick check_http_browser_guard];
-  "storage corpus",[Alcotest.test_case "uncovered metadata sections" `Quick check_storage_vector_sections]]
+  "storage corpus",[Alcotest.test_case "uncovered metadata sections" `Quick check_storage_vector_sections];
+  "logging",[Alcotest.test_case "request rejection and cause" `Quick check_request_error_logs]]

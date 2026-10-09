@@ -307,6 +307,8 @@ let test_message_stream_goldens () =
   check_contains "rich text kept" create "Fresh <em>message</em>";
   check_contains "relative permalink" create
     "href=\"/rooms/654632876/@933434495\"";
+  check_contains "search result room separator" create
+    "class=\"message__room\"> <a";
   check_absent "cache safe host" create "campfire.test";
   let destroy = Views.message_destroy_stream message in
   let expected_destroy = fixture_json "fixtures/views_messages_destroy.json"

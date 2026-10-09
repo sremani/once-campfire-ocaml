@@ -37,6 +37,14 @@ This `campfire-candidate:latest` image is a direct app listener with a short
 single-process boot script and **does not contain Caddy**. Its preflight is
 useful for application contracts only.
 
+The clean packaged `189d1ed` image then passed the shared two-round preflight
+at verification commit `c39d51d`: Rust and OCaml each passed all eight route
+contracts and the zero-write database audit in both isolated rounds. The OCaml
+checkout was clean at the image's `GIT_REVISION`, and the harness marked the
+source/image pairing release-comparable. This is a contract preflight, not a
+timed throughput result. Raw output and source/image identities are in
+`once-campfire-verification/tmp/bench/m8-t4-189d1ed-preflight-0930/`.
+
 ## Provisional direct-listener resilience
 
 `scripts/m8_t4_resilience.py` defines bounded criteria before the run: four
@@ -76,30 +84,54 @@ Separate probes against that old packaged image sent fresh HTTP sockets with
 front and its direct loopback target returned the ordinary anonymous 302 for
 those requests. The target was not reachable via the host's non-loopback
 interface. Current `Front_target` source counts a 64 KiB header limit in its
-injected Cohttp `read_line`; the discrepancy needs a fresh-image retest before
-changing target parser logic. Caddy now explicitly emits
-`max_header_size 64KiB` in the current source. Caddy 2.6 accepted that syntax
-with a 65,536-byte parsed limit, and the focused M7 configuration test passed
-8/8. Raw old-image probes are in
+injected Cohttp `read_line`; the old image predates that fix. Raw old-image probes are in
 `once-campfire-verification/tmp/bench/m8-t4-resilience-1791532038-43580/`
 and `...-1791532048-45515/`.
 
+The clean `189d1ed` packaged image (`sha256:4636f3e8e077786aa1bec9c637dc139d375202caa0c1873c56eb4d6a00df10a0`)
+showed why the first 65 KiB header probe still failed: Caddy returned 502
+after the target closed, while a 72 KiB header was rejected at Caddy. Its
+adapted JSON contained `max_header_bytes: 65536`, but Go's HTTP reader allows
+roughly 4 KiB of parser slack above that value. A disposable build with
+`max_header_size 60KiB` returned 431 at Caddy, closed the target connection,
+returned normal 302s at both listeners, and kept the target private for the
+65 KiB probe. The source now uses that tested setting; rebuild a clean image
+before treating the result as a release gate. Raw experimental probe:
+`once-campfire-verification/tmp/bench/m8-t4-resilience-1791537447-2402214/`.
+
+The same disposable `campfire-ocaml:header-60k` image
+(`sha256:73b0b1deeb1cd648ae646dfba9b3bfa887fb7ccb17e67434ed6ac469ebe7a6c7`)
+completed the full provisional resilience script. Its four simultaneous
+eight-second validated workers returned 43 room reads, 56 searches and 79
+acknowledged writes across two rooms, all with zero errors or invalid responses.
+Exact Action Text, FTS, room-count and SQLite-integrity audits passed. Two Cable
+subscribers received all five paced and 353 saturated posts. Slow, malformed,
+oversized-body and 65 KiB-header requests returned 504, 400, 413 and 431;
+20 disconnected clients left health at 200. During the 60-second sustained run,
+15,051 validated room reads completed with peak memory 108,842,189 bytes and
+79 PIDs. SIGKILL/restart, backup/restore, integrity and acknowledged-write
+audits passed; the restored database held 606 messages. The raw summary and
+supporting artifacts are in
+`once-campfire-verification/tmp/bench/m8-t4-resilience-1791537692-2473296/`.
+The disposable image is a diagnostic build, so this establishes a complete
+provisional workload pass, not a final release or comparative throughput result.
+
 ## Validator hardening before the release run
 
-The pending shared benchmark update records a SHA-256 manifest of tracked and
+The shared benchmark update at local verification commit `c39d51d` records a SHA-256 manifest of tracked and
 non-ignored untracked source files before and after every app round. It rejects
 source edits between rounds. For a release-comparable OCaml run, the checkout
 must be clean and the packaged image's `GIT_REVISION` must equal its Git HEAD.
 `--allow-dirty-source` permits an explicitly provisional check and marks its
 summary `release_comparable: false`. Image IDs, fixture SHA-256 and loadgen
-SHA-256 remain in the summary. This update still needs Ruby checks in the
-pinned toolchain before any final benchmark.
+SHA-256 remain in the summary. The pinned toolchain's complete `bin/check`
+passed after this change, including the new source-identity tests.
 
 The standalone `--header-probe` now passes only when normal anonymous room
 requests redirect through both listeners, a header above 64 KiB is rejected
 by both listeners, and the target is unreachable through the host's non-loopback
 interface. A socket timeout fails the probe. Four focused offline Python tests
-pass; the fresh packaged image still needs the live probe.
+pass; the final clean image still needs the live probe.
 
 After the source is committed and the packaged image built with that HEAD as
 `GIT_REVISION`, run the checks in this order, during a quiet Docker interval:

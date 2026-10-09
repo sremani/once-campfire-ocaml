@@ -58,6 +58,95 @@ let rack_etag body =
   if body = "" then None
   else Some ("W/\"" ^ String.sub (hex (sha256 body)) 0 32 ^ "\"")
 
+(* Cohttp's finite [`Strings] body need not be joined to compute Rack's ETag.
+   Feed bounded slices, so a large already materialized response does not
+   require another full-size string or Cstruct allocation. *)
+let finite_etag body =
+  let chunks = match body with
+    | `Empty -> Some [] | `String value -> Some [value]
+    | `Strings values -> Some values | `Stream _ -> None in
+  Option.map (fun chunks ->
+    let state = ref Mirage_crypto.Hash.SHA256.empty in
+    let length = ref 0 in
+    List.iter (fun value ->
+      let size = String.length value in
+      length := !length + size;
+      let rec feed offset =
+        if offset < size then (
+          let n = min 65536 (size - offset) in
+          state := Mirage_crypto.Hash.SHA256.feed !state
+            (Cstruct.of_string (String.sub value offset n));
+          feed (offset + n)) in
+      feed 0) chunks;
+    let etag = if !length = 0 then None else
+      Some ("W/\"" ^ String.sub (hex (Cstruct.to_string
+        (Mirage_crypto.Hash.SHA256.get !state))) 0 32 ^ "\"") in
+    etag, !length) chunks
+
+module Page_parts = struct
+  (* [text] omits fragments; each offset is the byte position in that text
+     where a fragment was inserted. These offsets must come from the renderer,
+     never from searching the final HTML for duplicate fragment bytes. *)
+  type part = Text of string | Fragment of string * string
+  let min_fragment = 1024
+  let max_glue = 256
+
+  let splice ~text fragments =
+    let between = Buffer.create 1024 in
+    let parts = ref [] in
+    let position = ref 0 in
+    let valid = ref true in
+    List.iter (fun (offset, fragment) ->
+      if offset < !position || offset > String.length text then valid := false
+      else if !valid then (
+        Buffer.add_substring between text !position (offset - !position);
+        position := offset;
+        if String.length fragment < min_fragment then
+          Buffer.add_string between fragment
+        else (
+          let gap = Buffer.contents between in
+          Buffer.clear between;
+          let follows_fragment = match !parts with Fragment _ :: _ -> true | _ -> false in
+          if follows_fragment && String.length gap <= max_glue then
+            parts := Fragment (gap, fragment) :: !parts
+          else (
+            if gap <> "" then parts := Text gap :: !parts;
+            parts := Fragment ("", fragment) :: !parts)))) fragments;
+    if not !valid then None else (
+      Buffer.add_substring between text !position (String.length text - !position);
+      let rest = Buffer.contents between in
+      if rest <> "" then parts := Text rest :: !parts;
+      let parts = List.rev !parts in
+      if List.exists (function Fragment _ -> true | _ -> false) parts
+      then Some parts else None)
+
+  let etag parts =
+    let state = ref Mirage_crypto.Hash.SHA256.empty in
+    let feed text = state := Mirage_crypto.Hash.SHA256.feed !state
+      (Cstruct.of_string text) in
+    let feed_len length =
+      let n = Int64.of_int length in
+      let bytes = String.init 8 (fun i ->
+        Char.chr (Int64.to_int (Int64.logand 255L
+          (Int64.shift_right_logical n (i * 8))))) in
+      feed bytes in
+    List.iter (function
+      | Text text ->
+          feed "T";
+          feed_len (String.length text);
+          feed (sha256 text)
+      | Fragment (glue, fragment) ->
+          feed "F";
+          feed_len (String.length glue);
+          feed glue;
+          feed_len (String.length fragment);
+          feed (sha256 fragment)) parts;
+    String.sub (hex (Cstruct.to_string
+      (Mirage_crypto.Hash.SHA256.get !state))) 0 32
+
+  let of_offsets ~text fragments = Option.map etag (splice ~text fragments)
+end
+
 let combined_etag ?(strong=false) ?(frame=false) ?template ?(flash=[]) validator =
   let parts = (match validator with None -> [] | Some text -> [text]) @
     (if frame then ["frame"] else []) @
@@ -155,13 +244,14 @@ let finish ?(digestible=true) ?(control=empty_control) ~request (response, body)
   let needs_digest = digestible && (status=200 || status=201) &&
     not (Cohttp.Header.mem headers "etag" || Cohttp.Header.mem headers "last-modified") in
   (if needs_digest then
-     Cohttp_lwt.Body.to_string body >|= fun bytes ->
-       let headers = match rack_etag bytes with
-         | None -> headers
-         | Some etag -> Cohttp.Header.replace headers "etag" etag in
-       headers, Cohttp_lwt.Body.of_string bytes,
-       (Option.is_some (rack_etag bytes)),
-       Some (string_of_int (String.length bytes))
+     (match finite_etag body with
+      | Some (etag, length) ->
+          let headers = match etag with
+            | None -> headers
+            | Some etag -> Cohttp.Header.replace headers "etag" etag in
+          Lwt.return (headers, body, Option.is_some etag,
+            Some (string_of_int length))
+      | None -> Lwt.return (headers, body, false, None))
    else if method_="HEAD" && status=200 && digestible &&
      not (Cohttp.Header.mem headers "content-length") then
      Cohttp_lwt.Body.length body >|= fun (length, body) ->

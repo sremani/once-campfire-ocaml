@@ -464,5 +464,5 @@
 (test
  (name m8_t1_user_agent_test)
  (modules m8_t1_user_agent_test)
- (libraries campfire alcotest yojson cohttp cohttp-lwt lwt.unix unix)
+ (libraries campfire alcotest yojson cohttp cohttp-lwt lwt.unix unix logs logs.fmt)
  (deps fixtures/campfire_user_agents.json fixtures/rails_compat.json fixtures/storage.json))

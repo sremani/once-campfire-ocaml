@@ -81,7 +81,7 @@ let config_text () =
   check bool "canonical redirect" true
     (contains "redir https://chat.example.com{uri} permanent");
   check bool "body limit delegated to Cohttp" false (contains "max_size 1024");
-  check bool "external header limit" true (contains "max_header_size 64KiB");
+  check bool "external header limit" true (contains "max_header_size 60KiB");
   check bool "ACME directory" true (contains "https://acme.test/directory");
   check bool "EAB" true (contains "eab \"kid\" \"secret\"");
   check bool "no duplicate gzip" false (contains "encode gzip");

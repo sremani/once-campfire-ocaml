@@ -38,6 +38,61 @@ let rack_and_conditionals () =
   check (option string) "empty no etag" None (get (fst result) "etag");
   check (option string) "empty no-cache" (Some "no-cache") (get (fst result) "cache-control")
 
+let large_finite_body () =
+  let pieces=List.init 48 (fun i -> String.make 65537 (Char.chr (65+i mod 26))) in
+  let body=Cohttp_lwt.Body.of_string_list pieces in
+  let req=request "/large" in
+  let reply,finished=Lwt_main.run (C.finish ~request:req (response (),body)) in
+  let expected=String.concat "" pieces in
+  check (option string) "large finite digest" (C.rack_etag expected) (get reply "etag");
+  check bool "finite chunks stay separate" true
+    (match finished with `Strings _ -> true | _ -> false);
+  check string "finite chunks preserve bytes" expected
+    (Lwt_main.run (Cohttp_lwt.Body.to_string finished));
+  let head,_=Lwt_main.run (C.finish ~request:(request ~meth:`HEAD "/large")
+    (response (),body)) in
+  check (option string) "large HEAD validator" (get reply "etag") (get head "etag");
+  check (option string) "large HEAD length" (Some (string_of_int (String.length expected)))
+    (get head "content-length")
+
+let page_part_vectors () =
+  let message n = Printf.sprintf "<div id=\"message_%d\" class=\"message\">%s</div>\n"
+    n (String.concat "" (List.init (40+n mod 7)
+      (fun _ -> "<button>Boost</button> hello there "))) in
+  let page build =
+    let text=Buffer.create 1024 and fragments=ref [] in
+    let append s = Buffer.add_string text s in
+    let fragment s = fragments := (Buffer.length text,s) :: !fragments in
+    build append fragment;
+    C.Page_parts.of_offsets ~text:(Buffer.contents text) (List.rev !fragments) in
+  let whole=page (fun append fragment ->
+    append "<html><head>layout</head><body>";
+    for n=0 to 29 do append "  "; fragment (message n) done;
+    append "</body></html>") in
+  check (option string) "Rust whole page-part ETag"
+    (Some "79e220089f196fbabb4a04d3a545749e") whole;
+  let mixed=page (fun append fragment ->
+    append "<p>"; fragment (message 0); append (String.make 300 'x');
+    fragment (message 1); append "  "; fragment "<i>small</i>";
+    append "  "; fragment (message 2); append "</p>") in
+  check (option string) "Rust mixed page-part ETag"
+    (Some "ca77a29a2de60cdd36f203de61f1f9cb") mixed;
+  check (option string) "invalid renderer offset rejected" None
+    (C.Page_parts.of_offsets ~text:"hello" [6,message 0])
+
+let rendered_vary_rules () =
+  let vary=Campfire.Http_format.should_apply_vary_header in
+  check bool "explicit Accept makes rendered page vary" true
+    (vary ~accept:"text/html" ~xhr:false ());
+  check bool "browser wildcard Accept does not vary" false
+    (vary ~accept:"text/html,\t*/*" ~xhr:false ());
+  check bool "format param takes precedence" false
+    (vary ~format_param:"html" ~accept:"text/html" ~xhr:false ());
+  check bool "XHR content type can select format" true
+    (vary ~content_type:"application/json" ~xhr:true ());
+  check bool "empty XHR content type cannot select format" false
+    (vary ~content_type:"" ~xhr:true ())
+
 let explicit_freshness () =
   let etag=C.combined_etag (Some "users/1-2024") in
   let req=request ~headers:["if-none-match",etag;"if-modified-since","Sat, 01 Jan 2050 00:00:00 GMT"] "/user/1" in
@@ -286,8 +341,9 @@ let private_route_invalidation () =
       ~capacity:(4*1024*1024) runtime) in
     Fun.protect ~finally:(fun () -> Campfire.Http_app.close_private_cache cache)
       (fun () ->
-        let send ?(meth=`GET) ?(extra=[]) ?(path="/rooms/654632876") () =
-          let headers=headers (["host","chat.example.com";"cookie",cookie;
+        let send ?(meth=`GET) ?(extra=[]) ?cookie_header ?(path="/rooms/654632876") () =
+          let cookie_header=Option.value cookie_header ~default:cookie in
+          let headers=headers (["host","chat.example.com";"cookie",cookie_header;
             "origin","https://chat.example.com";"accept","text/html"] @ extra) in
           let req=Cohttp.Request.make ~meth ~headers
             (Uri.of_string ("https://chat.example.com"^path)) in
@@ -297,10 +353,41 @@ let private_route_invalidation () =
           fst result,body_text result in
         let initial,body=send () in
         check int "private room 200" 200 (code initial);
+        check bool "rendered room varies on Accept" true
+          (Option.value (get initial "vary") ~default:"" |>
+           fun vary -> String.split_on_char ',' vary |>
+             List.exists (fun item -> String.trim item="Accept"));
         check (option string) "plain GET length"
           (Some (string_of_int (String.length body)))
           (get initial "content-length");
         check int "private item stored" 1 (Hashtbl.length cache.store.items);
+        let rec contains source wanted at =
+          at+String.length wanted<=String.length source &&
+          (String.sub source at (String.length wanted)=wanted ||
+           contains source wanted (at+1)) in
+        let denied,_=send ~path:"/rooms/0" () in
+        check int "denied room redirects with flash" 302 (code denied);
+        let flash_cookie=Cohttp.Header.get_multi (Cohttp.Response.headers denied)
+          "set-cookie" |> List.find_opt
+            (String.starts_with ~prefix:"_campfire_session=")
+          |> Option.get |> String.split_on_char ';' |> List.hd in
+        let flashed_cookie=cookie ^ "; " ^ flash_cookie in
+        let health,_=send ~path:"/up" ~cookie_header:flashed_cookie () in
+        check int "health does not consume flash" 200 (code health);
+        check bool "health does not write flash cookie" false
+          (Cohttp.Header.get_multi (Cohttp.Response.headers health) "set-cookie"
+           |> List.exists (String.starts_with ~prefix:"_campfire_session="));
+        let flashed,flashed_body=send ~cookie_header:flashed_cookie () in
+        check int "flashed room 200" 200 (code flashed);
+        check bool "flash rendered through cache path" true
+          (contains flashed_body "Room not found or inaccessible" 0);
+        check bool "flash consumption writes cookie" true
+          (Cohttp.Header.get_multi (Cohttp.Response.headers flashed) "set-cookie"
+           |> List.exists (String.starts_with ~prefix:"_campfire_session="));
+        check int "flashed response not admitted" 1 (Hashtbl.length cache.store.items);
+        let _,clean_body=send () in
+        check bool "clean cached room has no alert" false
+          (contains clean_body "Room not found or inaccessible" 0);
         let etag=Option.get (get initial "etag") in
         let gzip,gzip_body=send ~extra:["accept-encoding","gzip";
           "cache-control","no-store"] () in
@@ -391,10 +478,6 @@ let private_route_invalidation () =
           {item with body="private cache sentinel"}) cache.store.items;
         let _,hit=send () in
         check string "private route uses stored response" "private cache sentinel" hit;
-        let rec contains source wanted at =
-          at+String.length wanted<=String.length source &&
-          (String.sub source at (String.length wanted)=wanted ||
-           contains source wanted (at+1)) in
         check bool "old room name" true (contains body "Designers" 0);
         Campfire.Db_runtime.write runtime (fun tx ->
           let db=Campfire.Db_runtime.conn tx in
@@ -419,6 +502,10 @@ let private_route_invalidation () =
         let sidebar="/users/me/sidebar" in
         let sidebar_response,sidebar_body=send ~path:sidebar () in
         check int "private sidebar 200" 200 (code sidebar_response);
+        check bool "rendered sidebar varies on Accept" true
+          (Option.value (get sidebar_response "vary") ~default:"" |>
+           fun vary -> String.split_on_char ',' vary |>
+             List.exists (fun item -> String.trim item="Accept"));
         check bool "sidebar contains changed room" true
           (contains sidebar_body "Cache Changed" 0);
         Hashtbl.iter (fun key item -> Hashtbl.replace cache.store.items key
@@ -440,6 +527,9 @@ let private_route_invalidation () =
 let () = run "m3-t5-cache" [
   "response", [
     test_case "Rack ETag and conditional GET" `Quick rack_and_conditionals;
+    test_case "large finite body preserves chunking and validator" `Quick large_finite_body;
+    test_case "pinned Rust page-part ETag vectors" `Quick page_part_vectors;
+    test_case "rendered Accept Vary rules" `Quick rendered_vary_rules;
     test_case "fresh_when and HTTP dates" `Quick explicit_freshness;
     test_case "message content and template validator" `Quick rendered_message_freshness;
     test_case "Cache-Control normalization" `Quick cache_control;

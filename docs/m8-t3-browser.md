@@ -1,7 +1,8 @@
 # M8-T3 browser parity evidence
 
-Status: inventory passed on all five seeds and a 40-cell interim Chromium
-diagnostic completed. Browser lean/full release matrices remain pending.
+Status: inventory passed on all five seeds. A 40-cell Chromium diagnostic on
+the packaged `rc-189d1ed` image completed with 24 passes and 16 differences.
+Browser lean/full release matrices remain pending.
 
 ## Pinned sources and local images
 
@@ -130,6 +131,34 @@ not. The room refresh and sidebar resource responses also have Rust
 These are findings from the immutable interim image. M3/M4 owners were sent
 the exact report and resource paths. Rebuild and rerun after their route and
 view integration; do not infer final source behavior from this image.
+
+### Packaged release-candidate diagnostic
+
+A second bounded run used packaged `campfire-ocaml:rc-189d1ed-amd64` (image ID
+`sha256:4636f3e8e077786aa1bec9c637dc139d375202caa0c1873c56eb4d6a00df10a0`)
+and the pinned parity wrapper built on it (image ID
+`sha256:8241bd412963cad37456201c9b6c5360c71bd49a56dddbe27e5f4ede0819d5c7`).
+The Rust candidate and Playwright image IDs above remained fixed. This image
+predates the latest offline M4 view-byte edits and is a diagnostic, not final
+release evidence. Both default-seed inventories again passed 198/0. The same
+ten states and Chromium desktop/phone light/dark command above, with output
+`parity/out/m8-t3-default-40-rc-189d1ed`, completed 40 cells in 52.4 seconds:
+**24 pass, 16 fail, 0 error, 0 allowed, 0 flaky**. None of the ten states
+mutates data. The report is
+`/home/srikanth/projects/once-campfire-rust/parity/out/m8-t3-default-40-rc-189d1ed/report.html`.
+
+| State family | Four cells | Remaining difference |
+| --- | --- | --- |
+| Sign-in, join, admin edit, bots, new room, profile | 4 pass each | All six layers equal. This closes the prior avatar header and simplified new-room differences for these cells. |
+| Designers and direct rooms | 4 fail each | Pixels, live DOM, ARIA and Cable equal. The server layer has only the intentional three-line Lexxy mount script. The network layer differs on the document and sidebar body hashes and on missing `accept` in the `Vary` value of the room refresh and sidebar responses. The direct-room name now appears in live DOM. |
+| Search results | 4 fail | Normalized server HTML, live DOM, network and Cable equal. Compact raw HTML removes a space before the room link: ARIA says `JZ 3:30 PM →All Talk` instead of `JZ 3:30 PM → All Talk`; pixels differ. Recent links and controls now render. |
+| Welcome with no rooms | 4 fail | Pixels, server HTML, live DOM, ARIA and Cable equal. The sidebar network response differs in body hash and has `Vary: accept-encoding` rather than `accept, accept-encoding`. |
+
+The packaged image shows that several interim differences were fixed, but the
+resource response hashes and `Vary` values remain distinct product behavior.
+The search accessibility spacing is also a real remaining difference despite
+equal normalized HTML. The final image must be recaptured after current source
+changes; no result here is counted toward the 874-cell default lean sweep.
 
 ### Full release sweep
 

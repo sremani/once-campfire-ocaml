@@ -86,13 +86,15 @@ let importmap_tags = lazy (Assets.javascript_importmap_tags ()
 
 let context ?(has_custom_logo=false) (ctx : Http_app.context)
     (account : A.Account.t option) : V.context =
+  let flash = Http_app.flash ctx in
+  let flash_string key = match List.assoc_opt key flash with
+    | Some (`String value) -> Some value | _ -> None in
   let account_name = match account with None -> "" | Some row -> row.name in
   let custom_styles = Option.bind account (fun row -> row.custom_styles) in
   let logo_url = Route_helpers.fresh_account_logo
     ?v:(Option.map (fun (row : A.Account.t) -> timestamp_number row.updated_at) account)
     () in
-  { V.default_context with
-    base_url=Http_app.base_url ctx;
+  { V.base_url=Http_app.base_url ctx;
     account_name;
     logo_url;
     has_custom_logo;
@@ -103,6 +105,8 @@ let context ?(has_custom_logo=false) (ctx : Http_app.context)
     stylesheet_tags=Some (Lazy.force stylesheet_tags);
     importmap_tags=Some (Lazy.force importmap_tags);
     custom_styles;
+    flash_notice=flash_string "notice";
+    flash_alert=flash_string "alert";
     vapid_public_key=Sys.getenv_opt "VAPID_PUBLIC_KEY";
     app_version=(match Sys.getenv_opt "APP_VERSION", Sys.getenv_opt "GIT_REVISION" with
       | Some version, _ when version <> "" -> version

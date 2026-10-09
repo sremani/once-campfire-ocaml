@@ -142,8 +142,11 @@ let caddyfile c =
   let protocols = if tls_enabled c then "    protocols h1 h2\n"
     else if c.h2c_enabled then "    protocols h1 h2c\n"
     else "    protocols h1\n" in
+  (* Go's HTTP reader admits roughly 4 KiB above MaxHeaderBytes for parser
+     slack. Set the Caddy value lower so a 65 KiB field is rejected at the
+     front before the 64 KiB target closes the upstream connection. *)
   let global = Printf.sprintf
-    "{\n  admin off\n  http_port %d\n  https_port %d\n  storage file_system %s\n  auto_https disable_redirects\n  servers {\n    max_header_size 64KiB\n%s    timeouts {\n      read_header %ds\n      read_body %ds\n      write %ds\n      idle %ds\n    }\n  }\n}\n\n"
+    "{\n  admin off\n  http_port %d\n  https_port %d\n  storage file_system %s\n  auto_https disable_redirects\n  servers {\n    max_header_size 60KiB\n%s    timeouts {\n      read_header %ds\n      read_body %ds\n      write %ds\n      idle %ds\n    }\n  }\n}\n\n"
     c.http_port c.https_port (quote (Filename.concat c.storage_path "caddy"))
     protocols c.http_read_timeout c.http_read_timeout c.http_write_timeout c.http_idle_timeout in
   let proxy = reverse_proxy c in

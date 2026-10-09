@@ -51,6 +51,9 @@ type context = {
   mutable response_headers : (string * string) list;
   mutable session_data : (string * Yojson.Basic.t) list option;
   mutable session_changed : bool;
+  mutable flash_loaded : bool;
+  mutable flash_initial : Yojson.Basic.t option;
+  mutable flash_replaced : bool;
   mutable skip_cookie_commit : bool;
   upload_workers : unit Lwt.t list ref;
 }
@@ -139,6 +142,7 @@ let load_session ctx = match ctx.session_data with
 
 let session_get ctx key = List.assoc_opt key (load_session ctx)
 let session_set ctx key value =
+  if key = "flash" then ctx.flash_replaced <- true;
   let data = load_session ctx in
   if List.assoc_opt key data <> Some value then (
     let data = if List.mem_assoc key data then
@@ -152,7 +156,29 @@ let session_remove ctx key =
     ctx.session_changed <- true)
 let reset_session ctx =
   ctx.session_data <- Some ["session_id", `String (hex (Secure_random.bytes 16))];
-  ctx.session_changed <- true
+  ctx.session_changed <- true;
+  ctx.flash_loaded <- false;
+  ctx.flash_initial <- None;
+  ctx.flash_replaced <- false
+
+(* ActionDispatch::Flash marks values loaded from the session for discard at
+   request completion. A newly assigned flash stays for the next request. *)
+let flash ctx =
+  if not ctx.flash_loaded then (
+    ctx.flash_initial <- session_get ctx "flash";
+    ctx.flash_loaded <- true);
+  let current = if ctx.flash_replaced then session_get ctx "flash"
+    else ctx.flash_initial in
+  match current with
+  | Some (`Assoc fields) ->
+      let discarded = match List.assoc_opt "discard" fields with
+        | Some (`List values) -> List.filter_map (function `String s -> Some s | _ -> None) values
+        | _ -> [] in
+      (match List.assoc_opt "flashes" fields with
+       | Some (`Assoc flashes) ->
+           List.filter (fun (key, _) -> not (List.mem key discarded)) flashes
+       | _ -> [])
+  | _ -> []
 
 let base_url ctx =
   let host = Option.value (header ctx "host") ~default:"localhost" in
@@ -165,6 +191,7 @@ let private_lookup ctx =
         Http_cache.Private.eligible_request
           ~endpoint:ctx.route.endpoint ~original_method:ctx.original_method
           ~raw_post:ctx.raw_post ctx.request ->
+      if flash ctx <> [] then None else
       (match Http_cache.Observer.version cache.observer with
        | Some current when current=generation ->
            (match Http_cache.Private.key ~generation
@@ -320,6 +347,8 @@ let commit ctx (response, body) =
   if Cohttp.Header.mem (Cohttp.Response.headers response)
        "x-campfire-public-exception" then response, body
   else (
+    if ctx.flash_loaded && not ctx.flash_replaced &&
+       Option.is_some (session_get ctx "flash") then session_remove ctx "flash";
     if not ctx.skip_cookie_commit && ctx.session_changed then (
       let data = Option.value ctx.session_data ~default:[]
         |> List.filter (fun (_, value) -> value <> `Null) in
@@ -333,6 +362,19 @@ let commit ctx (response, body) =
       let host = Option.value (header ctx "host") ~default:"localhost" in
       Cookie_http.set_cookie_headers ctx.cookies ~ssl:ctx.ssl ~host in
     let headers = Cohttp.Response.headers response in
+    let rendered_html = Cohttp.Response.status response = `OK &&
+      (match Cohttp.Header.get headers "content-type" with
+       | Some content_type -> String.starts_with ~prefix:"text/html" content_type
+       | None -> false) &&
+      (match body with `String text -> text <> "" | `Strings parts -> parts <> []
+        | _ -> false) in
+    let headers = if rendered_html && not (Cohttp.Header.mem headers "vary") &&
+        Http_format.should_apply_vary_header
+          ?format_param:(param_string ctx "format")
+          ?accept:(header ctx "accept")
+          ?content_type:(header ctx "content-type")
+          ~xhr:(header ctx "x-requested-with" = Some "XMLHttpRequest") ()
+      then Cohttp.Header.add headers "vary" "Accept" else headers in
     let headers = List.fold_left (fun headers (name, value) ->
       if Cohttp.Header.mem headers name then headers else Cohttp.Header.add headers name value)
       headers ctx.response_headers in
@@ -373,7 +415,8 @@ let read_body_bounded ~limit body =
         else (Buffer.add_string buffer chunk; read size)
   in read 0
 
-let parse_request_body ~content_type ~raw_method ?max_body_bytes body =
+let parse_request_body ?(on_error=(fun (_:Http_params.error) -> ()))
+    ~content_type ~raw_method ?max_body_bytes body =
   let multipart = match Routes.media_type content_type with
     | Some ("multipart/form-data" | "multipart/related" | "multipart/mixed") ->
         (match Option.bind content_type (fun value ->
@@ -390,7 +433,7 @@ let parse_request_body ~content_type ~raw_method ?max_body_bytes body =
       (Cohttp_lwt.Body.to_stream body) >|= (function
       | Ok (params, paths) -> Ok ("", params, paths)
       | Error Http_params.Too_large -> Error 413
-      | Error _ -> Error 400)
+      | Error reason -> on_error reason; Error 400)
   else
     let default_limit = 16 * 1024 * 1024 in
     let limit = Option.fold ~none:default_limit ~some:(min default_limit) max_body_bytes in
@@ -400,7 +443,7 @@ let parse_request_body ~content_type ~raw_method ?max_body_bytes body =
         (match body_params ~method_:raw_method content_type body with
          | Ok params -> Ok (body, params, [])
          | Error Http_params.Too_large -> Error 413
-         | Error _ -> Error 400)
+         | Error reason -> on_error reason; Error 400)
 
 let now_utc () =
   let now = Option.get (Ptime.of_float_s (Unix.gettimeofday ())) in
@@ -437,12 +480,15 @@ let handle_uncompressed ~runtime ~secret_key_base ?cable ?private_cache
   let uploaded_paths = ref [] in
   let upload_workers = ref [] in
   Lwt.finalize (fun () ->
-    parse_request_body ~content_type ~raw_method ?max_body_bytes body >>= function
+    parse_request_body ~on_error:Http_request_log.rejected
+      ~content_type ~raw_method ?max_body_bytes body >>= function
     | Error status -> Lwt.return (error ~status)
     | Ok (body, request_params, paths) ->
         uploaded_paths := paths;
         match Http_params.parse_query query with
-        | Error _ -> Lwt.return (error ~status:400)
+        | Error reason ->
+            Http_request_log.rejected reason;
+            Lwt.return (error ~status:400)
         | Ok query_params ->
       let form_method = if Routes.form_data_media_type content_type then
         Http_params.find_string "_method" request_params else None in
@@ -490,6 +536,7 @@ let handle_uncompressed ~runtime ~secret_key_base ?cable ?private_cache
                  current_user = None;
                  bot_user = None; authenticated_by = Nothing;
                  response_headers = []; session_data = None; session_changed = false;
+                 flash_loaded = false; flash_initial = None; flash_replaced = false;
                  skip_cookie_commit = false;
                  upload_workers;
                } in
@@ -498,7 +545,9 @@ let handle_uncompressed ~runtime ~secret_key_base ?cable ?private_cache
                  endpoint.before_action ctx >>= function
                  | Error response -> Lwt.return (commit ctx response)
                  | Ok () -> endpoint.action ctx >|= commit ctx)
-                 (fun _ -> Lwt.return (error ~status:500))))
+                 (fun cause ->
+                   Http_request_log.failed ~path cause;
+                   Lwt.return (error ~status:500))))
     (fun () ->
       Lwt.no_cancel (Lwt.join !upload_workers) >>= fun () ->
       Http_params.cleanup_uploads !uploaded_paths;

@@ -151,13 +151,26 @@ let parse_accept header =
   in collect [] weighted
 
 let browser_like accept =
-  let compact = String.split_on_char ' ' accept |> String.concat "" in
+  let compact = String.to_seq accept |> List.of_seq
+    |> List.filter (function ' ' | '\t' | '\r' | '\n' -> false | _ -> true)
+    |> List.to_seq |> String.of_seq in
   let rec find i =
     if i + 3 > String.length compact then false
     else if String.sub compact i 3 = "*/*" &&
       ((i > 0 && compact.[i - 1] = ',') ||
        (i + 3 < String.length compact && compact.[i + 3] = ','))
     then true else find (i + 1) in find 0
+
+(* ActionDispatch's _set_vary_header is used by render, including rendered
+   room and sidebar pages. Redirects do not call it. *)
+let should_apply_vary_header ?format_param ?accept ?content_type ~xhr () =
+  match format_param with
+  | Some _ -> false
+  | None ->
+      let accept = Option.value accept ~default:"" |> String.trim in
+      (xhr && (accept <> "" ||
+        (match content_type with Some value -> value <> "" | None -> false))) ||
+      (accept <> "" && not (browser_like accept))
 
 let parse_formats ?format_param ?accept ?content_type ~path ~xhr () =
   match format_param with

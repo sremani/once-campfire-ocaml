@@ -63,8 +63,11 @@ authorization, and response shape under the shared HTTP fixture suite.
   users, profiles, bans, joins, bots, and settings routes with permission tests.
 - [ ] **M3-T3 Rooms, messages, and search controllers.** Port all CRUD and fragments, read state,
   boosts, search, and pagination with authenticated end-to-end tests.
-- [ ] **M3-T4 Auxiliary controllers.** Port direct uploads, avatars/logos, PWA, QR, webhook/bot
-  routes, link unfurling, and other exposed application paths.
+- [x] **M3-T4 Auxiliary controllers.** Port direct uploads, avatars/logos, PWA, QR, webhook/bot
+  routes, link unfurling, and other exposed application paths. Its 31 assigned routes pass
+  124/124 default-seed role cases in the [immutable HTTP matrix](m8-t2-http-state.md);
+  positive manifest/service-worker and signed unfurl responses pass 3/3 exact live checks,
+  with QR, media, and guarded integration evidence in the [T4 handoff](m3-t4-handoff.md).
 - [ ] **M3-T5 Response/cache semantics.** Port ETags, conditional responses, public/private
   caches, invalidation, redirects, and limits; compare headers and bodies against Rust.
 

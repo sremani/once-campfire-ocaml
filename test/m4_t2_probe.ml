@@ -53,7 +53,8 @@ let () =
     let path = match row with
       | 28 -> "/account/bots"
       | 49 -> "/join/" ^ string "join_codes.signal" labels
-      | _ -> failwith "unsupported offline probe row" in
+      | _ -> (match Sys.getenv_opt "M4_T2_PROBE_PATH" with
+        | Some path -> path | None -> failwith "unsupported offline probe row") in
     let sessions = Yojson.Safe.from_file
       "test/fixtures/campfire_sessions.json" in
     let cookie = sessions |> member "sessions" |> Yojson.Safe.Util.to_list
@@ -68,7 +69,8 @@ let () =
       "user-agent","Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/126.0.0.0 Safari/537.36"] in
     let headers = if role="signed" || role="denied" then
       ("cookie",cookie) :: headers else headers in
-    let request = Cohttp.Request.make ~meth:`GET
+    let meth = if row=137 then `POST else `GET in
+    let request = Cohttp.Request.make ~meth
       ~headers:(Cohttp.Header.of_list headers)
       (Uri.of_string ("http://campfire.test" ^ path)) in
     let _,body = Lwt_main.run (Http_app.handle ~runtime

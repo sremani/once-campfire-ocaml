@@ -144,12 +144,33 @@ with exact status, headers, all 20,624 body bytes, and SQLite state. The
 Rust and OCaml app containers used for this check were stopped; the shared
 test proxy/network remained available for M8.
 
-Row 28's remaining v1 deficit is 1,765 whitespace bytes across 259 edits
-plus 53 bytes of attribute-order/entity-spelling edits. Row 49's deficit is
-483 whitespace bytes across 78 edits plus 11 bytes of other serialization
-edits. These are page-template/helper details; a new integrated M8 run must
-measure their v2 totals. Five M3-T3 captures have identical full DOM tokens
-and byte deltas -323/+22/-115/-104/+14 for rows 74/92/128/130/137 on the
-interim source. `dune build bin/main.exe @check`, 8/8 focused view tests, the
-25,184-byte sign-in fixture, and the 123-file golden accounting pass after
-the layout update.
+The next offline pass rendered the same frozen default seed and request data
+through `test/m4_t2_probe.exe`, then compared each complete body byte for byte
+with private pinned Rust captures. Source-aligned Askama whitespace and helper
+attribute order now match row 28 bots index (38,500 bytes), row 49 join
+(27,281), row 74 user autocomplete (8,846), row 92 involvement (21,144),
+row 128 boost index (22,691), row 130 new boost (22,146), and row 137
+deleted-room message (20,647). Each comparison is exact. Dynamic text and
+attributes still pass through Tyxml encoders; the scoped literal strings
+hold only template markup. The special-character message ID fixture in the
+golden matrix caught and verified the ID attribute encoding.
+
+The offline pass also preserved row 17's 25,184-byte sign-in fixture, `dune
+build bin/main.exe @check`, 8/8 focused view tests, and the 123-file golden
+accounting (121 rendered pass, two input metadata links, zero fail). The
+integrated M8 matrix and fresh browser capture are still needed because the
+offline probe does not exercise Caddy, full wire headers, or browser state.
+
+The packaged `189d1ed` browser diagnostic found one search-result room-link
+spacing difference: the compact message heading had `→All Talk` in its
+accessible name, while the pinned template's whitespace yields `→ All Talk`.
+`Views.message_item` now emits a single text-space before the room link, with
+a focused assertion. The saved browser response has exactly one such heading.
+After this change the 123-file golden matrix, 8 focused tests, and the eight
+offline exact-body probes above still pass. Fresh browser capture must verify
+the accessible name and pixels. The same prior browser report shows
+`welcome/no_rooms` has exact normalized server HTML, live DOM, ARIA, pixels,
+and Cable; its sidebar XHR differs in the raw response body hash and `Vary`
+header. The sidebar fragment uses compact Tyxml serialization, so this
+remaining body hash is a scoped serialization difference pending integrated
+capture; M3-T5 owns the `Vary` header.

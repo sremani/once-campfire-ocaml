@@ -71,6 +71,8 @@ let lexxy_ready_head = elt "script" [] [raw (Trusted_html {|
    tags differently from Tyxml. Dynamic text and attributes still pass
    through Tyxml's encoder. *)
 let legacy_text value = render (text value)
+let legacy_apostrophes value =
+  String.concat "&#39;" (String.split_on_char '\'' value)
 let legacy_attribute value =
   let encoded=render (void "x" ["data-value",value]) in
   let prefix="<x data-value=\"" in
@@ -776,78 +778,105 @@ let account_edit_page ~context ?last_room_id ~account_id ~join_code
     cls "span" "version-badge" [text context.app_version]] in
   page ~title:"Account settings" ~context ~nav ~footer content
 let join_new_with ~context ~join_code ?help_contact () =
-  let icon ?(size=None) ?(attributes=[]) name =
-    void "img" (attributes @ ["src",asset context name] @
-      match size with None -> [] | Some size ->
-        ["width",string_of_int size;"height",string_of_int size]) in
-  let nav=cls "div" "flex-item-justify-end" [
-    elt "a" ["class","btn flex-item-justify-end";
-      "href",Route_helpers.new_session ()] [
-      icon "login-keys.svg" ~attributes:["aria-hidden","true"];
-      cls "span" "for-screen-reader" [text "Sign in"]]] in
-  let field key kind placeholder attrs =
-    cls "div" "flex align-center gap" [
-      translation_button context
-        (if key="name" then "user_name" else key);
-      cls "label" "flex align-center gap flex-item-grow txt-large input input--actor" [
-        void "input" (["name","user[" ^ key ^ "]";
-          "id","user_" ^ key;"class","input";
-          "placeholder",placeholder;"type",kind;
-          "required","required"] @ attrs);
-        icon ~size:(Some 24)
-          ~attributes:["aria-hidden","true";"class","colorize--black"]
-          (match key with "name" -> "person.svg"
-           | "email_address" -> "email.svg"
-           | _ -> key ^ ".svg")]] in
-  let logo=cls "figure" "account-logo avatar " [
-    void "img" ["alt","Account logo";"src",context.logo_url;
-      "width","300";"height","300"]] in
-  let content=form ~attrs:["class","center";
-    "enctype","multipart/form-data";"accept-charset","UTF-8"]
-    (Route_helpers.join join_code) (cls "section" "nametag u-relative" [
-      cls "div" "flex justify-center align-center pad-block" [
-        icon "lanyard.svg" ~attributes:["class","nametag__lanyard";
-          "aria-hidden","true"]];
-      cls "div" "nametag__inner flex flex-column gap" [
-        cls "fieldset" "flex flex-column center-block" [
-          cls "legend" "txt-align-center flex gap" [
-            logo;
-            cls "strong" "txt-large" [text context.account_name]];
-          elt "label" ["class","align-center center avatar__form gap";
-            "data-controller","upload-preview"] [
-            cls "div" "btn input--file" [
-              icon "camera.svg" ~attributes:["aria-hidden","true"];
-              void "input" ["name","user[avatar]";"id","user_avatar";
-                "class","input";"type","file";"accept","image/*";
-                "data-upload-preview-target","input";
-                "data-action","upload-preview#previewImage"];
-              cls "span" "for-screen-reader" [text "Upload avatar"]];
-            cls "div" "btn avatar input--file txt-xx-large" [
-              icon "default-avatar.svg" ~attributes:[
-                "aria-hidden","true";"data-upload-preview-target","image"];
-              cls "span" "for-screen-reader" [text "Avatar"]]]];
-        field "name" "text" "Name"
-          ["autocomplete","name";"autofocus","autofocus";
-            "data-1p-ignore","true"];
-        field "email_address" "email" "Email address"
-          ["autocomplete","username"];
-        field "password" "password" "Password"
-          ["autocomplete","new-password";"maxlength","72";"size","72"];
-        elt "button" ["name","button";"class","btn btn--reversed center txt-large";
-          "type","submit"] [
-          icon "check.svg" ~attributes:["aria-hidden","true"];
-          cls "span" "for-screen-reader" [text "Save"]]]]) in
-  let contact=match help_contact with None -> concat [] | Some (name,email) ->
-    elt "div" ["class","txt-align-center margin-block-double full-width"] [
-      elt "a" ["class","btn center";"title","Email " ^ name;
-        "href","mailto:\"" ^ name ^ "\" <" ^ email ^ ">"] [
-        icon "lifebuoy.svg" ~attributes:["aria-hidden","true"];
-        elt "span" [] [text email]];
-      cls "div" "txt-align-center center margin-block txt-subtle" [
-        text "Campfire™ version ";
-        cls "span" "version-badge" [text context.app_version]]] in
+  let nav=raw (Trusted_html (String.concat "" [
+    {|  <div class="flex-item-justify-end">
+    <a class="btn flex-item-justify-end" href="|};
+    legacy_attribute (Route_helpers.new_session ());
+    {|">
+      |};legacy_img context "login-keys.svg" ["aria-hidden","true"];
+    {|
+      <span class="for-screen-reader">Sign in</span>
+</a>  </div>
+|}])) in
+  let field key kind placeholder options icon_name = String.concat "" [
+    {|      <div class="flex align-center gap">
+        |};legacy_translation_button context
+      (if key="name" then "user_name" else key);
+    {|
+        <label class="flex align-center gap flex-item-grow txt-large input input--actor">
+          <input class="input" |};options;
+    {| placeholder="|};legacy_attribute placeholder;{|"|};
+    (if key="name" then " autofocus=\"autofocus\"" else "");
+    {| required="required"|};
+    (if key="name" then " data-1p-ignore=\"true\"" else "");
+    (if key="password" then " maxlength=\"72\" size=\"72\"" else "");
+    {| type="|};kind;{|" name="user[|};key;{|]" id="user_|};key;{|" />
+          |};legacy_img ~size:(Some 24) context icon_name
+      ["aria-hidden","true";"class","colorize--black"];
+    {|
+        </label>
+      </div>
+
+|}] in
+  let contact=match help_contact with None -> "" | Some (name,email) ->
+    String.concat "" [
+      {|  <div class="txt-align-center margin-block-double full-width">
+    <a class="btn center" title="|};legacy_attribute ("Email " ^ name);
+      {|" href="|};legacy_attribute ("mailto:\"" ^ name ^ "\" <" ^ email ^ ">");
+      {|">
+      |};legacy_img context "lifebuoy.svg" ["aria-hidden","true"];
+      {|
+      <span>|};legacy_text email;{|</span>
+</a>
+    <div class="txt-align-center center margin-block txt-subtle">Campfire&trade; version <span class="version-badge">|};
+      legacy_text context.app_version;{|</span></div>
+  </div>
+|}] in
+  let content=String.concat "" [
+    {|<form class="center" enctype="multipart/form-data" action="|};
+    legacy_attribute (Route_helpers.join join_code);
+    {|" accept-charset="UTF-8" method="post">
+  <section class="nametag u-relative">
+    <div class="flex justify-center align-center pad-block">
+      |};legacy_img context "lanyard.svg"
+      ["class","nametag__lanyard";"aria-hidden","true"];
+    {|
+    </div>
+
+    <div class="nametag__inner flex flex-column gap">
+      <fieldset class="flex flex-column center-block">
+        <legend class="txt-align-center flex gap">
+          <figure class="account-logo avatar "><img alt="Account logo" src="|};
+    legacy_attribute context.logo_url;
+    {|" width="300" height="300" /></figure>
+          <strong class="txt-large">|};legacy_text context.account_name;
+    {|</strong>
+        </legend>
+
+        <label class="align-center center avatar__form gap" data-controller="upload-preview">
+          <div class="btn input--file">
+            |};legacy_img context "camera.svg" ["aria-hidden","true"];
+    {|
+            <input class="input" accept="image/*" data-upload-preview-target="input" data-action="upload-preview#previewImage" type="file" name="user[avatar]" id="user_avatar" />
+            <span class="for-screen-reader">Upload avatar</span>
+          </div>
+
+          <div class="btn avatar input--file txt-xx-large">
+            |};legacy_img context "default-avatar.svg"
+      ["aria-hidden","true";"data-upload-preview-target","image"];
+    {|
+            <span class="for-screen-reader">Avatar</span>
+          </div>
+        </label>
+      </fieldset>
+
+|};
+    field "name" "text" "Name" "autocomplete=\"name\"" "person.svg";
+    field "email_address" "email" "Email address"
+      "autocomplete=\"username\"" "email.svg";
+    field "password" "password" "Password"
+      "autocomplete=\"new-password\"" "password.svg";
+    {|      <button name="button" type="submit" class="btn btn--reversed center txt-large">
+        |};legacy_img context "check.svg" ["aria-hidden","true"];
+    {|
+        <span class="for-screen-reader">Save</span>
+</button>    </div>
+  </section>
+</form>
+|};contact;{|
+|}] in
   page ~title:"Sign up" ~body_class:"signup" ~context ~nav
-    (concat [content;contact])
+    (raw (Trusted_html content))
 let join_new ~context ~join_code =
   join_new_with ~context ~join_code ()
 let session_transfer ~context ~transfer_id =
@@ -859,82 +888,112 @@ let session_transfer ~context ~transfer_id =
   legacy_page ~context ~title:"Campfire" ~body_class:""
     ~head:"" ~nav:"" ~content ~footer:"" ~sidebar:""
 let bots_index ~context ~bots =
-  let icon ?(size=None) ?(attributes=[]) name =
-    void "img" (attributes @ ["src",asset context name] @
-      match size with None -> [] | Some size ->
-        ["width",string_of_int size;"height",string_of_int size]) in
-  let nav=cls "div" "flex-item-justify-start" [
-    elt "a" ["class","btn";"href","/account/edit"] [
-      icon "arrow-left.svg" ~size:(Some 20)
-        ~attributes:["aria-hidden","true"];
-      cls "span" "for-screen-reader" [text "Go Back"]]] in
-  let command_line ~icon_name ~label ~copy_label value =
-    cls "div" "flex align-center gap" [
-      icon icon_name ~size:(Some 24)
-        ~attributes:["aria-hidden","true";"class","colorize--black"];
-      cls "div" "flex-item-grow" [
-        void "input" ["type","text";
-          "class","input full-width fill-white";
-          "value",value;"aria-label",label;"readonly",""]];
-      cls "div" "txt-small" [
-        elt "button" ["class","btn";"data-controller","copy-to-clipboard";
-          "data-action","copy-to-clipboard#copy";
-          "data-copy-to-clipboard-success-class","btn--success";
-          "data-copy-to-clipboard-content-value",value] [
-          icon "copy-paste.svg" ~size:(Some 20)
-            ~attributes:["aria-hidden","true"];
-          cls "span" "for-screen-reader" [text copy_label]]]] in
+  let nav=raw (Trusted_html (String.concat "" [
+    {|  <div class="flex-item-justify-start">
+    <a class="btn" href="/account/edit">|};
+    legacy_img ~size:(Some 20) context "arrow-left.svg" ["aria-hidden","true"];
+    {|<span class="for-screen-reader">Go Back</span></a>
+  </div>
+|}])) in
+  let command_line ~icon_name ~label ~copy_label value = String.concat "" [
+    {|      <div class="flex align-center gap">
+        |};legacy_img ~size:(Some 24) context icon_name
+      ["aria-hidden","true";"class","colorize--black"];
+    {|
+
+        <div class="flex-item-grow">
+          <input type="text" class="input full-width fill-white" value="|};
+    legacy_attribute value;{|" aria-label="|};legacy_attribute label;
+    {|" readonly>
+        </div>
+
+        <div class="txt-small">
+          <button class="btn" data-controller="copy-to-clipboard" data-action="copy-to-clipboard#copy" data-copy-to-clipboard-success-class="btn--success" data-copy-to-clipboard-content-value="|};
+    legacy_attribute value;{|">
+            |};legacy_img ~size:(Some 20) context "copy-paste.svg"
+      ["aria-hidden","true"];
+    {|
+            <span class="for-screen-reader">|};legacy_text copy_label;
+    {|</span>
+</button>        </div>
+      </div>
+|}] in
   let bot_item ((bot:user), rooms) =
-    elt "li" ["class","flex flex-column gap flush fill-shade border-radius pad-block pad-inline-double"] [
-      cls "div" "flex align-center gap" [
-        elt "figure" ["class","avatar flex-item--no-shrink";
-          "style","--avatar-size: 2.65em;"] [
-          elt "a" ["class","btn avatar";"data-turbo-frame","_top";
-            "href",relative_user bot.id;"title",bot.name] [
-            void "img" ["aria-hidden","true";"loading","lazy";
-              "src",bot.avatar_url;"width","48";"height","48"]]];
-        cls "div" "min-width" [
-          cls "div" "overflow-ellipsis txt-large" [
-            elt "strong" [] [text bot.name]]];
-        elt "a" ["class","btn flex-item-justify-end";
-          "style","view-transition-name: chat-bot-" ^ i64 bot.id;
-          "href","/account/bots/" ^ i64 bot.id ^ "/edit"] [
-          icon "pencil.svg" ~size:(Some 20)
-            ~attributes:["aria-hidden","true"];
-          cls "span" "for-screen-reader" [text ("Edit " ^ bot.name)]]];
-      concat (List.map (fun (name,path) ->
-        let endpoint=if String.starts_with ~prefix:"http" path then path
-          else context.base_url ^ path in
-        elt "fieldset" ["class","gap max-width pad border border-radius"] [
-          cls "legend" "min-width txt-align-start pad-inline" [
-            cls "strong" "overflow-ellipsis" [text name]];
-          command_line ~icon_name:"messages-outlined.svg"
-            ~label:"curl command for posting messages"
-            ~copy_label:"Copy message command"
-            ("curl -d 'Hello!' " ^ endpoint);
-          command_line ~icon_name:"attachment.svg"
-            ~label:"curl command for posting attachments"
-            ~copy_label:"Copy attachment command"
-            ("curl -F \"attachment=@/path/to/file\" " ^ endpoint)]) rooms)] in
-  let content=elt "section" [
-    "class","panel panel--wide txt-align-center flex flex-column position-relative";
-    "style","view-transition-name: chat-bots"] [
-    cls "div" "flex align-center gap" [
-      cls "div" "panel__button" [translation_button context "chat_bots"];
-      cls "div" "pad-inline-double center" [
-        cls "h1" "margin-none" [text "Chat bots"];
-        cls "p" "margin-none-block-start" [
-          text "With Chat bots, other sites and services can post updates directly to Campfire."];
-        elt "a" ["class","btn btn--reversed txt-large";
-          "aria-label","Add a chat bot";"href","/account/bots/new"] [
-          icon "bot.svg" ~size:(Some 20)
-            ~attributes:["aria-hidden","true"];
-          icon "add.svg" ~size:(Some 20)
-            ~attributes:["aria-hidden","true"]]]];
-    elt "div" ["class","pad-inline pad-block-start "] [
-      elt "menu" ["class","flex flex-column gap margin-none pad"]
-        (List.map bot_item bots)]] in
-  page ~title:"Chat bots" ~context ~nav content
+    let room_item (name,path) =
+      let endpoint=if String.starts_with ~prefix:"http" path then path
+        else context.base_url ^ path in
+      String.concat "" [
+        {|    <fieldset class="gap max-width pad border border-radius">
+      <legend class="min-width txt-align-start pad-inline">
+        <strong class="overflow-ellipsis">|};legacy_text name;
+        {|</strong>
+      </legend>
+
+|};
+        command_line ~icon_name:"messages-outlined.svg"
+          ~label:"curl command for posting messages"
+          ~copy_label:"Copy message command"
+          ("curl -d 'Hello!' " ^ endpoint);
+        {|
+|};
+        command_line ~icon_name:"attachment.svg"
+          ~label:"curl command for posting attachments"
+          ~copy_label:"Copy attachment command"
+          ("curl -F \"attachment=@/path/to/file\" " ^ endpoint);
+        {|    </fieldset>
+|}] in
+    String.concat "" [
+      {|<li class="flex flex-column gap flush fill-shade border-radius pad-block pad-inline-double">
+  <div class="flex align-center gap">
+    <figure class="avatar flex-item--no-shrink" style="--avatar-size: 2.65em;">
+      <a title="|};legacy_attribute bot.name;
+      {|" class="btn avatar" data-turbo-frame="_top" href="|};
+      legacy_attribute (relative_user bot.id);{|"><img aria-hidden="true" loading="lazy" src="|};
+      legacy_attribute bot.avatar_url;{|" width="48" height="48" /></a>
+    </figure>
+
+    <div class="min-width">
+      <div class="overflow-ellipsis txt-large"><strong>|};legacy_text bot.name;
+      {|</strong></div>
+    </div>
+
+    <a class="btn flex-item-justify-end" style="view-transition-name: chat-bot-|};
+      i64 bot.id;{|" href="/account/bots/|};i64 bot.id;{|/edit">
+      |};legacy_img ~size:(Some 20) context "pencil.svg" ["aria-hidden","true"];
+      {|
+      <span class="for-screen-reader">Edit |};legacy_text bot.name;
+      {|</span>
+</a>  </div>
+
+|};String.concat "" (List.map room_item rooms);{|</li>
+|}] in
+  let content=String.concat "" [
+    {|<section class="panel panel--wide txt-align-center flex flex-column position-relative" style="view-transition-name: chat-bots">
+  <div class="flex align-center gap">
+    <div class="panel__button">
+      |};legacy_translation_button context "chat_bots";
+    {|
+    </div>
+    <div class="pad-inline-double center">
+      <h1 class="margin-none">Chat bots</h1>
+      <p class="margin-none-block-start">With Chat bots, other sites and services can post updates directly to Campfire.</p>
+
+      <a class="btn btn--reversed txt-large" aria-label="Add a chat bot" href="/account/bots/new">
+        |};legacy_img ~size:(Some 20) context "bot.svg" ["aria-hidden","true"];
+    {|
+        |};legacy_img ~size:(Some 20) context "add.svg" ["aria-hidden","true"];
+    {|
+</a>    </div>
+  </div>
+
+  <div class="pad-inline pad-block-start ">
+    <menu class="flex flex-column gap margin-none pad">
+      |};String.concat "" (List.map bot_item bots);
+    {|    </menu>
+  </div>
+</section>
+|}] |> legacy_apostrophes in
+  page ~title:"Chat bots" ~context ~nav (raw (Trusted_html content))
 let bot_form_page ~context ?bot_id ?name ?webhook_url
     ?avatar_attachment_url () =
   let icon ?(size=None) ?(attributes=[]) name =
@@ -1327,15 +1386,32 @@ let og_embed (embed:og_embed) =
         | None -> concat [])]]]
 let mention_item (mention:mention_user) =
   let user=mention.user in
-  elt "lexxy-prompt-item" ["search",user.name;"sgid",mention.sgid] [
-    elt "template" ["type","menu"] [
-      cls "span" "autocomplete__item flex align-center gap unpad" [
-        mention_avatar mention;
-        cls "span" "autocompletable__name" [text user.name]]];
-    elt "template" ["type","editor"] [
-      elt "span" ["class","mention";"sgid",mention.sgid] [
-        mention_avatar mention;text (" " ^ user.name)]]]
-let autocomplete_users users = concat (List.map mention_item users)
+  let avatar=String.concat "" [
+    {|<a title="|};legacy_attribute user.title;
+    {|" class="btn avatar" data-turbo-frame="_top" href="|};
+    legacy_attribute (relative_user user.id);
+    {|"><img aria-hidden="true" src="|};legacy_attribute user.avatar_url;
+    {|" width="48" height="48" /></a>|}] in
+  raw (Trusted_html (String.concat "" [
+    {|<lexxy-prompt-item search="|};legacy_attribute user.name;
+    {|" sgid="|};legacy_attribute mention.sgid;{|">
+  <template type="menu">
+    <span class="autocomplete__item flex align-center gap unpad">
+      |};avatar;
+    {|
+      <span class="autocompletable__name">|};legacy_text user.name;
+    {|</span>
+    </span>
+  </template>
+  <template type="editor">
+    <span class="mention" sgid="|};legacy_attribute mention.sgid;{|">|};
+    avatar;{| |};legacy_text user.name;{|</span>
+
+  </template>
+</lexxy-prompt-item>
+|}] |> legacy_apostrophes))
+let autocomplete_users users =
+  concat (List.map mention_item users @ [raw (Trusted_html "\n")])
 let autocomplete_users_json ~base_url users =
   Rails_format.encode (`List (List.map (fun (mention:mention_user) ->
     let user=mention.user in
@@ -1899,35 +1975,39 @@ let message_presentation message = match message.content with
                [text ("Share "^file.filename)]]])
   | Unrenderable -> elt "span" ["class","message--unrenderable"]
       [text "This message could not be displayed"]
-let boost_item (boost : boost) = concat [
-  elt "div" ["id","boost_" ^ i64 boost.id;
-    "class","boost boost-item flex-inline postion--relative max-width align-center fill-white gap";
-    "data-controller","boost-delete";
-    "data-boost-delete-perform-class","boost--deleting";
-    "data-boost-delete-reveal-class","expanded";
-    "data-boost-delete-booster-id-value",i64 boost.booster.id] [
-      cls "figure" "avatar boost__avatar flex-item-no-shrink" [
-        elt "a" ["title",boost.booster.title;"class","btn avatar";
-          "data-turbo-frame","_top";"href",relative_user boost.booster.id] [
-          void "img" ["aria-label",boost.booster.name ^ " boosted " ^ boost.content;
-            "src",boost.booster.avatar_url;"width","48";"height","48"]]];
-      elt "span" ["role","button";
-        "class",(if boost.all_emoji then "txt-small txt-medium" else "txt-small");
-        "data-action","click->boost-delete#reveal keydown.enter->boost-delete#reveal:prevent";
-        "data-boost-delete-target","content"] [text boost.content];
-      form ~attrs:["class","button_to"]
-        ("/messages/" ^ i64 boost.message_id ^ "/boosts/" ^ i64 boost.id)
-        (concat [
-          input ~name:"_method" ~kind:"hidden" ~value:"delete" ();
-          elt "button" ["data-action","boost-delete#perform";
-            "data-boost-delete-target","button";
-            "class","btn btn--negative flex-item-justify-end boost__delete";
-            "type","submit"] [
-            void "img" ["aria-hidden","true";"src",global_asset "minus.svg";
-              "width","20";"height","20"];
-            cls "span" "for-screen-reader" [text "Delete this boost"]]])];
-  elt "span" ["id","delete_boost_accessible_label";
-    "class","for-screen-reader"] [text "Press enter to delete this boost"]]
+let boost_item (boost : boost) =
+  let booster=boost.booster in
+  raw (Trusted_html (String.concat "" [
+    {|  <div id="boost_|}; i64 boost.id;
+    {|"
+      class="boost boost-item flex-inline postion--relative max-width align-center fill-white gap"
+      data-controller="boost-delete" data-boost-delete-perform-class="boost--deleting" data-boost-delete-reveal-class="expanded" data-boost-delete-booster-id-value="|};
+    i64 booster.id; {|">
+    <figure class="avatar boost__avatar flex-item-no-shrink">
+      <a title="|}; legacy_attribute booster.title;
+    {|" class="btn avatar" data-turbo-frame="_top" href="|};
+    legacy_attribute (relative_user booster.id);
+    {|"><img aria-label="|};
+    legacy_attribute (booster.name ^ " boosted " ^ boost.content);
+    {|" src="|}; legacy_attribute booster.avatar_url;
+    {|" width="48" height="48" /></a>
+    </figure>
+
+    <span role="button" class="|};
+    (if boost.all_emoji then "txt-small txt-medium" else "txt-small");
+    {|" data-action="click-&gt;boost-delete#reveal keydown.enter-&gt;boost-delete#reveal:prevent" data-boost-delete-target="content">|};
+    legacy_text boost.content;
+    {|</span>
+
+    <form class="button_to" method="post" action="|};
+    legacy_attribute ("/messages/" ^ i64 boost.message_id ^ "/boosts/" ^ i64 boost.id);
+    {|"><input type="hidden" name="_method" value="delete" /><button data-action="boost-delete#perform" data-boost-delete-target="button" class="btn btn--negative flex-item-justify-end boost__delete" type="submit">
+      <img aria-hidden="true" src="|}; legacy_attribute (global_asset "minus.svg");
+    {|" width="20" height="20" />
+      <span class="for-screen-reader">Delete this boost</span>
+</button></form>  </div>
+  <span id="delete_boost_accessible_label" class="for-screen-reader">Press enter to delete this boost</span>
+|}]))
 let action_icon name = void "img" ["class","colorize--black";"aria-hidden","true";
   "src",global_asset name;"width","20";"height","20"]
 let reactions = ["👍","Thumbs up";"👏","Clapping";"👋","Waving hand";
@@ -1988,64 +2068,71 @@ let message_actions message =
       elt "div" ["class","message__actions-menu border shadow";
         "data-popup-target","menu"] [quick;grid]]]
 let message_boosts message =
-  elt "turbo-frame" ["id",message_dom_id message "boosting"] [
-    elt "div" ["class","boosts flex flex-wrap align-center gap full-width";
-      "style","--column-gap: 0.4ch; --row-gap: 0";
-      "data-controller","turbo-streaming";
-      "data-action","turbo:submit-start->turbo-streaming#unsubscribe"] [
-      elt "div" ["class","flex-inline flex-wrap gap";
-        "id",message_dom_id message "boosts";
-        "data-turbo-streaming-target","container"]
-        (List.map boost_item message.boosts);
-      elt "turbo-frame" ["id",message_dom_id message "new_boost"] [
-        elt "div" ["class","flex-inline message__boost-inline";
-          "data-controller","soft-keyboard"] [
-          elt "a" ["class","boost__action txt-small btn";
-            "action","soft-keyboard#open";
-            "href","/messages/" ^ i64 message.id ^ "/boosts/new"] [
-            void "img" ["aria-hidden","true";"src",global_asset "boost.svg";
-              "width","20";"height","20"];
-            cls "span" "for-screen-reader" [text "Add a boost"]]]]]]
+  raw (Trusted_html (String.concat "" [
+    {|<turbo-frame id="|}; legacy_attribute (message_dom_id message "boosting"); {|">
+  <div class="boosts flex flex-wrap align-center gap full-width" style="--column-gap: 0.4ch; --row-gap: 0"
+      data-controller="turbo-streaming" data-action="turbo:submit-start->turbo-streaming#unsubscribe">
+    <div class="flex-inline flex-wrap gap" id="|}; legacy_attribute (message_dom_id message "boosts");
+    {|" data-turbo-streaming-target="container">|};
+    String.concat "" (List.map (fun boost -> "\n    " ^ render (boost_item boost)) message.boosts);
+    (if message.boosts=[] then "\n" else "");
+    {|    </div>
+
+    <turbo-frame id="|}; legacy_attribute (message_dom_id message "new_boost"); {|">
+      <div class="flex-inline message__boost-inline" data-controller="soft-keyboard">
+        <a class="boost__action txt-small btn" action="soft-keyboard#open" href="|};
+    legacy_attribute ("/messages/" ^ i64 message.id ^ "/boosts/new");
+    {|">
+          <img aria-hidden="true" src="|}; legacy_attribute (global_asset "boost.svg");
+    {|" width="20" height="20" />
+          <span class="for-screen-reader">Add a boost</span>
+</a>      </div>
+</turbo-frame>  </div>
+</turbo-frame>|}]))
 let message_new_boost ~context ~message ~(user:user) =
   let boosts_path="/messages/" ^ i64 message.id ^ "/boosts" in
-  elt "turbo-frame" ["id",message_dom_id message "new_boost"] [
-    elt "div" ["class","boost flex-inline postion--relative max-width fill-white";
-      "style","--column-gap: var(--inline-space-half)"] [
-      elt "form" ["class","boost__form flex align-center gap expanded";
-        "data-controller","form scroll-into-view";
-        "data-turbo-frame",message_dom_id message "boosting";
-        "data-action","keydown.esc->form#cancel";
-        "action",boosts_path;"accept-charset","UTF-8";"method","post"] [
-        elt "label" ["class","boost__form-label flex gap";
-          "style","--column-gap: 0.7ch;";"role","button";
-          "tabindex","0";"aria-label","Add a boost"] [
-          cls "figure" "avatar boost__avatar flex-item-no-shrink" [
-            elt "a" ["title",user.title;"class","btn avatar";
-              "data-turbo-frame","_top";"href",relative_user user.id] [
-              void "img" ["aria-hidden","true";"src",user.avatar_url;
-                "width","48";"height","48"]];
-            cls "span" "for-screen-reader" [text user.name]];
-          void "input" ["autofocus","autofocus";"autocomplete","off";
-            "autocorrect","off";"maxlength","16";"required","required";
-            "pattern","\\S+.*";"data-boost-form-target","input";
-            "class","input input--boost txt-small";"size","16";
-            "type","text";"name","boost[content]"]];
-        elt "button" ["name","button";"type","submit";
-          "class","btn btn--reversed"] [
-          void "img" ["aria-hidden","true";
-            "src",asset context "check.svg"];
-          cls "span" "for-screen-reader" [text "Submit"]];
-        elt "a" ["data-turbo-frame",message_dom_id message "boosts";
-          "data-form-target","cancel";"class","btn btn--negative";
-          "href",boosts_path] [
-          void "img" ["aria-hidden","true";
-            "src",asset context "minus.svg"];
-          cls "span" "for-screen-reader" [text "Cancel"]]]]]
+  raw (Trusted_html (String.concat "" [
+    {|<turbo-frame id="|}; legacy_attribute (message_dom_id message "new_boost"); {|">
+  <div class="boost flex-inline postion--relative max-width fill-white" style="--column-gap: var(--inline-space-half)">
+    <form class="boost__form flex align-center gap expanded" data-controller="form scroll-into-view" data-turbo-frame="|};
+    legacy_attribute (message_dom_id message "boosting");
+    {|" data-action="keydown.esc-&gt;form#cancel" action="|};
+    legacy_attribute boosts_path;
+    {|" accept-charset="UTF-8" method="post">
+      <label class="boost__form-label flex gap" style="--column-gap: 0.7ch;" role="button" tabindex="0" aria-label="Add a boost">
+        <figure class="avatar boost__avatar flex-item-no-shrink">
+          <a title="|}; legacy_attribute user.title;
+    {|" class="btn avatar" data-turbo-frame="_top" href="|};
+    legacy_attribute (relative_user user.id);
+    {|"><img aria-hidden="true" src="|}; legacy_attribute user.avatar_url;
+    {|" width="48" height="48" /></a>
+          <span class="for-screen-reader">|}; legacy_text user.name;
+    {|</span>
+        </figure>
+
+        <input autofocus="autofocus" autocomplete="off" autocorrect="off" maxlength="16" required="required" pattern="\S+.*" data-boost-form-target="input" class="input input--boost txt-small" size="16" type="text" name="boost[content]" />
+      </label>
+
+      <button name="button" type="submit" class="btn btn--reversed">
+        <img aria-hidden="true" src="|}; legacy_attribute (asset context "check.svg");
+    {|" />
+        <span class="for-screen-reader">Submit</span>
+</button>
+      <a data-turbo-frame="|}; legacy_attribute (message_dom_id message "boosts");
+    {|" data-form-target="cancel" class="btn btn--negative" href="|};
+    legacy_attribute boosts_path;
+    {|">
+        <img aria-hidden="true" src="|}; legacy_attribute (asset context "minus.svg");
+    {|" />
+        <span class="for-screen-reader">Cancel</span>
+</a></form>  </div>
+</turbo-frame>|}]))
 let message_room_not_found =
-  elt "turbo-frame" ["id","composer-frame"] [
-    elt "span" ["class","composer__input input input--actor shake margin-block-end txt-negative txt-align-center";
-      "style","--input-border-color: var(--color-negative)"] [
-      elt "span" [] [text "This room was deleted."]]]
+  raw (Trusted_html {|<turbo-frame id="composer-frame">
+  <span class="composer__input input input--actor shake margin-block-end txt-negative txt-align-center" style="--input-border-color: var(--color-negative)">
+      <span>This room was deleted.</span>
+  </span>
+</turbo-frame>|})
 let display_iso iso =
   if String.length iso >= 19 then String.sub iso 0 19 ^ "Z" else iso
 let message_item message =
@@ -2080,7 +2167,7 @@ let message_item message =
               elt "time" ["class","message__timestamp";
                 "datetime",display_iso message.created_at_iso;
                 "data-local-time-target","time"] []];
-            cls "span" "message__room" [elt "a" ["target","_top";
+            cls "span" "message__room" [text " "; elt "a" ["target","_top";
               "data-reply-target","link";"href",link] [text message.room_name]]];
           message_actions message];
           elt "div" ["id",message_dom_id message "presentation";"dir","auto";
@@ -2656,21 +2743,22 @@ let room_involvement_frame ~context ~(room:room) ~involvement =
     | _ -> "" in
   let label_id=room_dom_id room "involvement_label" in
   let path=Route_helpers.room_involvement (i64 room.id) in
-  elt "turbo-frame" ["data-controller","turbo-frame";
-    "data-action","notifications:ready@window->turbo-frame#load";
-    "data-turbo-frame-url-param",path;
-    "id",room_dom_id room "involvement"] [
-    form ~attrs:["class","button_to"]
-      (path ^ "?involvement=" ^ next order) (concat [
-      input ~name:"_method" ~kind:"hidden" ~value:"put" ();
-      elt "button" ["role","checkbox";"aria-checked","true";
-        "aria-labelledby",label_id;"tabindex","0";
-        "class","btn " ^ involvement;"type","submit"] [
-        void "img" ["aria-hidden","true";
-          "src",asset context ("notification-bell-" ^ involvement ^ ".svg");
-          "width","20";"height","20"];
-        elt "span" ["class","for-screen-reader";"id",label_id]
-          [text label]]])]
+  raw (Trusted_html (String.concat "" [
+    {|<turbo-frame data-controller="turbo-frame" data-action="notifications:ready@window-&gt;turbo-frame#load" data-turbo-frame-url-param="|};
+    legacy_attribute path; {|" id="|};
+    legacy_attribute (room_dom_id room "involvement"); {|">
+  <form class="button_to" method="post" action="|};
+    legacy_attribute (path ^ "?involvement=" ^ next order);
+    {|"><input type="hidden" name="_method" value="put" /><button role="checkbox" aria-checked="true" aria-labelledby="|};
+    legacy_attribute label_id; {|" tabindex="0" class="btn |};
+    legacy_attribute involvement; {|" type="submit">|};
+    {|<img aria-hidden="true" src="|};
+    legacy_attribute (asset context ("notification-bell-" ^ involvement ^ ".svg"));
+    {|" width="20" height="20" />|};
+    {|<span class="for-screen-reader" id="|}; legacy_attribute label_id;
+    {|">|}; legacy_text label;
+    {|</span></button></form>
+</turbo-frame>|}]))
 let room_nav context (room:room) =
   let settings_icon=void "img" ["aria-hidden","true";
     "src",asset context "menu-dots-horizontal.svg";"width","20";"height","20"] in
