@@ -1,10 +1,11 @@
 # Campfire in OCaml
 
 An OCaml port of [basecamp/once-campfire-rust](https://github.com/basecamp/once-campfire-rust).
-The compatibility, authenticated-session, database-model, HTTP, realtime, media, and
-local deployment milestones have passed their recorded gates. The HTTP/state differential
-and performance checks have also passed, with documented differences. Browser parity and
-the release audit remain in progress.
+The compatibility, authenticated-session, database-model, realtime, media, and local
+deployment milestones have passed their recorded gates. All HTTP controller tickets are
+implemented, while the M3 response gate still has 16 room-view body and derived-header
+differences. The HTTP/state differential and performance checks have passed with those
+differences documented. Browser parity and the release audit remain in progress.
 
 The port targets compatibility with existing Campfire installations: the SQLite schema, storage
 layout, and signed and encrypted cookies. The Rust source is pinned at
