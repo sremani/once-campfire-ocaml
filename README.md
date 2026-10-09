@@ -1,9 +1,10 @@
 # Campfire in OCaml
 
 An OCaml port of [basecamp/once-campfire-rust](https://github.com/basecamp/once-campfire-rust).
-The compatibility, authenticated-session, and database-model milestones are complete.
-Realtime, media, and local deployment checks have passed their milestone gates. Full
-HTTP, browser, differential, and external deployment/release verification is in progress.
+The compatibility, authenticated-session, database-model, HTTP, realtime, media, and
+local deployment milestones have passed their recorded gates. The HTTP/state differential
+and performance checks have also passed, with documented differences. Browser parity and
+the release audit remain in progress.
 
 The port targets compatibility with existing Campfire installations: the SQLite schema, storage
 layout, and signed and encrypted cookies. The Rust source is pinned at
@@ -27,7 +28,7 @@ The route, Rails compatibility, and schema fixtures under `test/fixtures/` come 
   cache handling, streamed multipart uploads, packaged assets, and a same-listener Cable upgrade.
 - Tyxml views, Action Text parsing, signed Active Storage responses, libvips/ffmpeg derivatives,
   jobs, Web Push, guarded outbound integrations, and a Caddy front configuration. These have
-  focused and seeded tests; the complete cross-implementation and browser gates remain open.
+  focused and seeded tests. The HTTP/state differential is complete; browser parity remains open.
 
 Build and test with OCaml 4.14 or newer, Dune, and the packages in
 [`dune-project`](dune-project):
@@ -74,7 +75,8 @@ password buffer after each call. The database model tests verify Rails-issued `$
 
 ## Port sequence
 
-M1 compatibility and sessions, M2 database models and transactions, and the local M5 realtime,
-M6 media, and M7 operations checks are complete. M3 HTTP, M4 browser, and M8 release checks
-remain open; external M7 publication and ONCE deployment have not been run. See the
-[ticket plan](docs/milestones.md) for exact gates and evidence.
+M1–M3 and the local M5–M7 gates are complete. M4-T4 browser behavior, M8-T3 browser parity,
+and M8-T5 release audit are the three open tickets. M8-T1 golden-vector coverage, M8-T2
+HTTP/state differential, and M8-T4 performance and resilience have passed their recorded
+gates. A published multiarchitecture image and an actual ONCE deployment have not been
+verified. See the [ticket plan](docs/milestones.md) for exact gates and evidence.

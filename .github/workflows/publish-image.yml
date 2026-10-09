@@ -20,8 +20,80 @@ env:
   SOURCE_URL: https://github.com/${{ github.repository }}
 
 jobs:
+  source-tests:
+    name: Source provenance and full Dune suite
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    timeout-minutes: 120
+    steps:
+      - name: Checkout OCaml source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: once-campfire-ocaml
+          persist-credentials: false
+
+      - name: Checkout pinned Rust and Rails fixtures
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: basecamp/once-campfire-rust
+          ref: 9872c1d9541551c0889a60e3d49a14488bd1e403
+          path: once-campfire-rust
+          persist-credentials: false
+          submodules: recursive
+
+      - name: Verify clean source and pinned manifest
+        working-directory: once-campfire-ocaml
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain)"
+          test "$(git -C ../once-campfire-rust rev-parse HEAD)" = 9872c1d9541551c0889a60e3d49a14488bd1e403
+          python3 scripts/release_source_manifest.py --output "$RUNNER_TEMP/source-manifest.json"
+          python3 - "$RUNNER_TEMP/source-manifest.json" "$GITHUB_SHA" <<'PY'
+          import json
+          import sys
+          manifest = json.load(open(sys.argv[1]))
+          assert manifest["source_revision"] == sys.argv[2]
+          assert manifest["source_dirty"] is False
+          assert manifest["gumbo"]["local_checksum_errors"] == []
+          assert manifest["static_assets"]["count"] == 321
+          PY
+
+      - name: Install OCaml test dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install --no-install-recommends -y \
+            build-essential pkg-config ocaml-nox=4.14.1-1ubuntu1 ocaml-findlib \
+            ocaml-dune=3.14.0-1 libalcotest-ocaml-dev \
+            libsqlite3-ocaml-dev liburi-ocaml-dev libipaddr-ocaml-dev \
+            libyojson-ocaml-dev libbase64-ocaml-dev libastring-ocaml-dev \
+            libocplib-endian-ocaml-dev libconduit-ocaml-dev=6.2.1-1build3 \
+            libmirage-crypto-ocaml-dev=0.11.2-2build3 libcstruct-ocaml-dev \
+            libpbkdf-ocaml-dev=1.2.0-3build7 libeqaf-ocaml-dev \
+            libptime-ocaml-dev libuutf-ocaml-dev libcohttp-ocaml-dev \
+            libcohttp-lwt-ocaml-dev libcohttp-lwt-unix-ocaml-dev=5.3.0-1build6 \
+            libconduit-lwt-ocaml-dev libssl-ocaml-dev liblwt-ocaml-dev \
+            liblogs-ocaml-dev libfmt-ocaml-dev libcmdliner-ocaml-dev \
+            libtyxml-ocaml-dev libcurl4-openssl-dev libqrencode-dev zlib1g-dev \
+            libvips42t64 ffmpeg
+
+      - name: Build pinned Rails parity seeds
+        working-directory: once-campfire-rust
+        run: |
+          parity/bin/reference build
+          parity/bin/seed build
+
+      - name: Clean release build and full Dune suite
+        working-directory: once-campfire-ocaml
+        run: |
+          dune clean
+          dune build --profile release
+          dune runtest --force
+
   build:
-    name: Build and push image (${{ matrix.arch }})
+    name: Audit and push image (${{ matrix.arch }})
+    needs: source-tests
     runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
@@ -53,6 +125,7 @@ jobs:
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ${{ env.REGISTRY }}
@@ -97,7 +170,7 @@ jobs:
           labels: |
             org.opencontainers.image.source=${{ env.SOURCE_URL }}
 
-      - name: Build and push (${{ matrix.platform }})
+      - name: Build local image (${{ matrix.platform }})
         id: build
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
@@ -109,7 +182,8 @@ jobs:
             APP_VERSION=${{ steps.version.outputs.version }}
             GIT_REVISION=${{ github.sha }}
           platforms: ${{ matrix.platform }}
-          push: ${{ github.event_name != 'pull_request' }}
+          load: true
+          push: false
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.platform }}
@@ -117,12 +191,47 @@ jobs:
           sbom: false
           provenance: false
 
+      - name: Audit local image before publishing
+        shell: bash
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          set -euo pipefail
+          first_tag="${TAGS%%$'\n'*}"
+          test -n "$first_tag"
+          python3 scripts/release_image_inventory.py \
+            --image "$first_tag" --revision "$GITHUB_SHA" \
+            --output "$RUNNER_TEMP/image-inventory-${{ matrix.arch }}.json"
+
+      - name: Push audited architecture tags
+        id: push
+        if: github.event_name != 'pull_request'
+        shell: bash
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          set -euo pipefail
+          pushed_digest=""
+          while IFS= read -r tag; do
+            [ -z "$tag" ] && continue
+            push_output="$(docker push "$tag")"
+            digest="$(printf '%s\n' "$push_output" | sed -nE 's/.*digest: (sha256:[0-9a-f]{64}).*/\1/p' | tail -n 1)"
+            test -n "$digest"
+            if [ -n "$pushed_digest" ]; then
+              test "$digest" = "$pushed_digest"
+            fi
+            pushed_digest="$digest"
+            printf '%s -> %s\n' "$tag" "$digest"
+          done <<< "$TAGS"
+          test -n "$pushed_digest"
+          echo "digest=$pushed_digest" >> "$GITHUB_OUTPUT"
+
       - name: Attest image provenance (per-arch)
         if: github.event_name != 'pull_request'
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-name: ${{ steps.vars.outputs.canonical }}
-          subject-digest: ${{ steps.build.outputs.digest }}
+          subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: false
 
   manifest:
