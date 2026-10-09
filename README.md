@@ -5,9 +5,9 @@ The compatibility, authenticated-session, database-model, realtime, media, and l
 deployment milestones have passed their recorded gates. All HTTP controller tickets are
 implemented. The extra room-view script that caused 16 M3 response differences has been
 removed, and all 16 formerly differing room-route cases now match on the pinned seeds.
-Other routes affected by later source changes still need a current-revision sweep. The HTTP/state
-differential and performance checks have passed their scoped gates. Browser parity and the
-release audit remain in progress.
+The current code source passes the five-seed HTTP/state comparison for all 3,186 eligible
+cases and 30 positive writes. The HTTP/state differential and performance checks have passed
+their scoped gates. Browser parity and the release audit remain in progress.
 
 The port targets compatibility with existing Campfire installations: the SQLite schema, storage
 layout, and signed and encrypted cookies. The Rust source is pinned at
