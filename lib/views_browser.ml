@@ -60,7 +60,8 @@ let context account =
   let logo_url=Route_helpers.fresh_account_logo
     ?v:(Option.map (fun (a:Db_accounts.Account.t) -> timestamp_number a.updated_at) account) () in
   { Views.default_context with account_name;custom_styles;logo_url;assets;
-    stylesheet_tags=Some stylesheet_tags;importmap_tags=Some importmap_tags }
+    stylesheet_tags=Some stylesheet_tags;importmap_tags=Some importmap_tags;
+    vapid_public_key=Sys.getenv_opt "VAPID_PUBLIC_KEY" }
 let render ?(frame=false) ~account ~view () =
   let ctx=context account in
   let asset name=Views.asset ctx name in

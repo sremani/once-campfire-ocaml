@@ -305,6 +305,20 @@ let test_http_exception_shapes () = with_seed "default" (fun runtime ->
   Alcotest.(check string) "JSON public exception body"
     "{\"status\":404,\"error\":\"Not Found\"}" body)
 
+let test_autocomplete_format_negotiation () = with_seed "default" (fun runtime ->
+  let cookie = mint_session runtime 127326141L in
+  let path = "/autocompletable/users?room_id=654632876&filter=a" in
+  let html,html_body = send ~cookie ~accept:"*/*" runtime `GET path in
+  Alcotest.(check int) "wildcard autocomplete status" 200 (status html);
+  check "wildcard selects HTML prompt items"
+    (String.starts_with ~prefix:"text/html" (Option.value (header html "content-type") ~default:"")
+     && contains html_body "<lexxy-prompt-item");
+  let json,json_body = send ~cookie ~accept:"application/json" runtime `GET path in
+  Alcotest.(check int) "explicit JSON autocomplete status" 200 (status json);
+  check "explicit JSON remains JSON"
+    (String.starts_with ~prefix:"application/json" (Option.value (header json "content-type") ~default:"")
+     && String.starts_with ~prefix:"[" json_body))
+
 let test_content_pages () = with_seed "default" (fun runtime ->
   let admin = mint_session runtime 127326141L in
   let autocomplete,body = send ~cookie:admin runtime `GET
@@ -426,6 +440,7 @@ let () = Alcotest.run "M3 room and message controllers" [
     Alcotest.test_case "rooms and messages" `Quick test_rooms_and_messages;
     Alcotest.test_case "bot and search" `Quick test_bot_and_search;
     Alcotest.test_case "restricted, autocomplete, paging" `Quick test_restricted_autocomplete_and_paging;
+    Alcotest.test_case "autocomplete wildcard format" `Quick test_autocomplete_format_negotiation;
     Alcotest.test_case "bot lifecycle" `Quick test_bot_lifecycle;
     Alcotest.test_case "form and search presenter inputs" `Quick test_form_and_search_presenter_inputs;
     Alcotest.test_case "custom logo page context" `Quick test_custom_logo_page_context;

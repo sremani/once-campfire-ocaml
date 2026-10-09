@@ -178,6 +178,9 @@ let test_session_account_and_join () = with_seed "default" (fun runtime ->
   Alcotest.(check int) "member cannot administer" 403 (status denied);
   let invalid,_ = send runtime `GET "/join/invalid" in
   Alcotest.(check int) "invalid join code" 404 (status invalid);
+  Alcotest.(check (option string)) "invalid join code has bare HTML MIME"
+    (Some "text/html")
+    (Cohttp.Header.get (Cohttp.Response.headers invalid) "content-type");
   let code = Db_runtime.read runtime (fun db ->
     (Option.get (Db_accounts.Account.first db)).join_code) in
   let form,_ = send runtime `GET ("/join/"^code) in
@@ -188,6 +191,13 @@ let test_session_account_and_join () = with_seed "default" (fun runtime ->
   Db_runtime.read runtime (fun db ->
     check "new user persisted" (Option.is_some
       (Db_accounts.User.find_by_email_address db "fresh@example.com")));
+  let duplicate,_ = send
+    ~body:"user%5Bname%5D=Another+David&user%5Bemail_address%5D=david%4037signals.com&user%5Bpassword%5D=secret123456"
+    runtime `POST ("/join/"^code) in
+  Alcotest.(check int) "duplicate-email join redirects to sign-in" 302 (status duplicate);
+  Alcotest.(check (option string)) "duplicate-email sign-in prefill"
+    (Some "https://chat.example.com/session/new?email_address=david%4037signals.com")
+    (location duplicate);
   let logout,_ = send ~cookie_header:admin_cookie runtime `DELETE "/session" in
   Alcotest.(check int) "logout" 302 (status logout))
 

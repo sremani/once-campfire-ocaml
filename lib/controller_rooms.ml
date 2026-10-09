@@ -801,7 +801,8 @@ let autocomplete c = match user_id c with
             | Some n when n>0 -> min n 1_000_000_000 | _ -> 1 in
           let offset = min count ((page-1)*20) in
           let users = users |> List.filteri (fun i _ -> i>=offset && i<offset+20) in
-          if accepts c Http_format.Json then (
+          (match Http_format.negotiate c.H.format [Http_format.Html; Http_format.Json] with
+          | Some Http_format.Json ->
             H.set_header c "x-total-count" (string_of_int count);
             if page*20 < count then (
               let request_uri = Cohttp.Request.uri c.H.request in
@@ -819,15 +820,15 @@ let autocomplete c = match user_id c with
                 "avatar_url",`String (avatar_url c u);
                 "sgid",`String (Global_id.attachable_sgid
                   ~secret_key_base:c.H.secret_key_base ~gid)]) users in
-            response (H.json ~status:200 (`List values)))
-          else if accepts c Http_format.Html then
+            response (H.json ~status:200 (`List values))
+          | Some Http_format.Html ->
             let mentions=List.map (fun (row:U.t) ->
               let mention=View_presenter.mention_of_user c row in
               {Views.user=View_presenter.user c row;
                 sgid=mention.Rich_text.attachable_sgid}) users in
             response (H.html ~status:200
               (Views.autocomplete_users mentions |> Views.render))
-          else error 406
+          | _ -> error 406)
 
 let endpoint name : H.endpoint option =
   let regular action = Some {H.action;before_action=H.default_before_action} in

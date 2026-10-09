@@ -204,6 +204,17 @@ let check_request_error_logs () =
       (count_sub logs "request failed error=saving the upload: disk full path=\"/session/new\"");
     Alcotest.(check int) "no doubled bad-request prefix" 0
       (count_sub logs "bad request: bad request"))
+let check_browser_layout_vapid_key () =
+  let key = "VAPID_PUBLIC_KEY" in
+  let previous = Sys.getenv_opt key in
+  Unix.putenv key "test-browser-public-key";
+  Fun.protect ~finally:(fun () ->
+    Unix.putenv key (Option.value previous ~default:"")) (fun () ->
+    let platform = U.application_platform
+      (Some "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15") in
+    let body = Views_browser.render ~account:None ~view:(U.to_view platform) () in
+    Alcotest.(check bool) "blocked browser layout retains VAPID key" true
+      (U.contains body "<meta name=\"vapid-public-key\" content=\"test-browser-public-key\">"))
 let () = Alcotest.run "M8 user-agent corpus" [
   "agents",[Alcotest.test_case "385 complete cases" `Quick check_agents];
   "versions",[Alcotest.test_case "44 versions and 352 comparisons" `Quick check_versions];
@@ -211,4 +222,5 @@ let () = Alcotest.run "M8 user-agent corpus" [
   "passwords",[Alcotest.test_case "40 pinned Rails bcrypt checks" `Quick check_password_vectors];
   "HTTP",[Alcotest.test_case "browser before action" `Quick check_http_browser_guard];
   "storage corpus",[Alcotest.test_case "uncovered metadata sections" `Quick check_storage_vector_sections];
-  "logging",[Alcotest.test_case "request rejection and cause" `Quick check_request_error_logs]]
+  "logging",[Alcotest.test_case "request rejection and cause" `Quick check_request_error_logs];
+  "browser layout",[Alcotest.test_case "VAPID meta" `Quick check_browser_layout_vapid_key]]

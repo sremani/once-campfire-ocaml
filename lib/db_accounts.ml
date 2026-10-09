@@ -26,7 +26,10 @@ let query_all db sql values decode =
     loop [])
 
 let run db sql values =
-  with_statement db sql values (fun stmt -> check "execute" (Sqlite3.step stmt))
+  with_statement db sql values (fun stmt ->
+    match Sqlite3.step stmt with
+    | Sqlite3.Rc.CONSTRAINT -> raise (Sqlite3.SqliteError (Sqlite3.errmsg db))
+    | rc -> check "execute" rc)
 
 let count db sql values =
   match query_one db sql values (fun stmt -> Sqlite3.column_int stmt 0) with

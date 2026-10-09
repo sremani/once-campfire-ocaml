@@ -16,6 +16,7 @@ let register_storage service = storage_service := Some service
 let response value = Lwt.return value
 let empty status = H.respond ~status ~content_type:"text/html; charset=utf-8" ""
 let not_found () = response (empty 404)
+let invalid_join_code () = response (H.respond ~status:404 ~content_type:"text/html" "")
 let record_not_found () = response (H.error ~status:404)
 let bad_request c =
   let format=match c.H.format with
@@ -208,7 +209,7 @@ let join_code c = read c A.Account.first >|= function
   | Some _ -> `Invalid
 let join_new c = join_code c >>= function
   | `Missing_account -> response (H.error ~status:500)
-  | `Invalid -> not_found ()
+  | `Invalid -> invalid_join_code ()
   | `Valid ->
       read c (fun db -> Db_runtime.query_one db
         "SELECT name,email_address FROM users WHERE role=1 ORDER BY id ASC LIMIT 1" []
@@ -221,7 +222,7 @@ let join_new c = join_code c >>= function
         ?help_contact ())
 let join_create c = join_code c >>= function
   | `Missing_account -> response (H.error ~status:500)
-  | `Invalid -> not_found ()
+  | `Invalid -> invalid_join_code ()
   | `Valid -> match object_param c "user" with
     | None -> parameter_missing c
     | Some fields -> match field fields "name" with
@@ -242,7 +243,7 @@ let join_create c = join_code c >>= function
               | Sqlite3.SqliteError error when String.starts_with
                   ~prefix:"UNIQUE constraint failed" error ->
                   let path = "/session/new" ^ match email_address with
-                    | None -> "" | Some email -> "?email_address=" ^ Uri.pct_encode email in
+                    | None -> "" | Some email -> "?email_address=" ^ Ruby_compat.cgi_escape email in
                   redirect c path
               | _ -> response (H.error ~status:500))
 
