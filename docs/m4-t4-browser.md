@@ -7,6 +7,9 @@ browser layers on current code source `2a511ac`. The final lean/full matrix
 across five seeds is running against immutable source
 `2a511ac6f74fc3689f72bd039bc11d286e71d1c4` at
 `/tmp/m8-t3-harness-wt/parity/out/m8-t3-2a511ac-final-all/summary.json`.
+M4-T4 also requires the shared Chromium smoke and repeated-edit regression
+on this exact source with separate fresh first-run storage directories after
+the matrix releases resources.
 Earlier differences below are historical checkpoints.
 
 ## Reproduction setup
