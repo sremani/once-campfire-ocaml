@@ -82,7 +82,17 @@ let test_custom_logo_page_context () = with_seed "custom_styles" (fun runtime ->
     let response,body = send ~cookie runtime `GET path in
     Alcotest.(check int) (label ^ " status") 200 (status response);
     check (label ^ " custom logo class")
-      (contains body "account-has-logo")) pages)
+      (contains body "account-has-logo");
+    if label="room show" then (
+      check "room nav uses exact pinned custom-logo markup"
+        (contains body (String.concat "" [
+          "<nav id=\"nav\">\n\n  ";
+          "<figure class=\"account-logo avatar \">";
+          "<img alt=\"Account logo\" ";
+          "src=\"/account/logo?v=20260221160000\" ";
+          "width=\"300\" height=\"300\" /></figure>\n\n  ";
+          "<span class=\"btn btn--reversed btn--faux room--current\">"
+        ])))) pages)
 
 let test_inventory () =
   Alcotest.(check string) "Ruby Unicode search word classes"

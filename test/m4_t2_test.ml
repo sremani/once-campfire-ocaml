@@ -44,6 +44,28 @@ let test_system_settings_desktop_platforms () =
     browser="Firefox";operating_system="Linux"} in
   check_contains "Firefox non-Android phone keeps generic instructions"
     phone_firefox "Ensure notifications are allowed for Firefox"
+let test_firefox_windows_browser_settings () =
+  let base=Views.default_context.platform in
+  let render platform =
+    Views.pwa_browser_settings {Views.default_context with platform}
+    |> Views.render in
+  let windows=render {base with firefox=true;desktop=true;windows=true;
+    browser="Firefox";operating_system="Windows"} in
+  check_contains "Windows Firefox Start and Settings steps"
+    windows "Click <em>Start</em>, then <em>Settings</em>";
+  check_contains "Windows Firefox notification system step"
+    windows "System &gt; Notification";
+  check_contains "Windows Firefox toggle image label"
+    windows "alt=\"the toggle button\"";
+  check_contains "Windows Firefox turns notifications on"
+    windows "<em>ON</em> for Firefox";
+  check_absent "Windows Firefox omits Apple menu"
+    windows "the Apple menu";
+  let mac=render {base with firefox=true;desktop=true;mac=true;
+    browser="Firefox";operating_system="macOS"} in
+  check_contains "Mac Firefox keeps Apple instructions" mac "the Apple menu";
+  check_absent "Mac Firefox omits Windows Start steps"
+    mac "Click <em>Start</em>"
 let fixture_json path =
   Yojson.Safe.from_file (if Sys.file_exists path then path else "test/" ^ path)
 
@@ -1310,7 +1332,9 @@ else Alcotest.run "M4 views" [
     Alcotest.test_case "Askama application shell whitespace" `Quick
       test_application_layout_bytes;
     Alcotest.test_case "system settings desktop platforms" `Quick
-      test_system_settings_desktop_platforms];
+      test_system_settings_desktop_platforms;
+    Alcotest.test_case "Firefox Windows browser settings" `Quick
+      test_firefox_windows_browser_settings];
   "messages", [Alcotest.test_case "golden stream anchors and cache safety"
     `Quick test_message_stream_goldens;
     Alcotest.test_case "message permalink room names from pinned memberships"

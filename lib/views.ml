@@ -3173,14 +3173,21 @@ let notification_parts (context:context) =
               em [text (context.base_url ^ "/")];text "."]];
           cls "h2" "txt-normal txt-medium margin-block-start"
             [text ("Turn on notifications for " ^ platform.browser ^ ".")];
-          elt "ol" [] [
+          (if platform.windows then elt "ol" [] [
+            li [text "Click ";em [text "Start"];
+              text ", then ";em [text "Settings"];text "."];
+            li [text "Go to ";em [text "System > Notification"];text "."];
+            li [text "Click ";em [icon ~size:22 ~alt:"the toggle button"
+              "external/switch.svg"];text " ";em [text "ON"];
+              text (" for " ^ platform.browser ^ ".")]]
+          else elt "ol" [] [
             li [text "Click ";apple_menu;text " in the top left."];
             li [text "Click ";em [text "System Settings…"];text "."];
             li [text "Click ";em [text "Notifications"];text "."];
             li [text "Click ";em [text platform.browser];text "."];
             li [text "Click ";em [icon ~size:22 ~alt:"the switch"
               "external/switch.svg"];text " to ";
-              em [text "Allow notifications"];text "."]]])
+              em [text "Allow notifications"];text "."]])])
     else if platform.chrome && platform.windows && platform.desktop then
       detail "external/web.svg" ("Check your " ^ platform.browser ^ " settings")
         (concat [
@@ -3802,9 +3809,16 @@ let room_involvement_frame ~context ~(room:room) ~involvement =
 </turbo-frame>|}]))
 let room_nav context (room:room) =
   raw (Trusted_html (String.concat "" [
-    {|
+    (if context.has_custom_logo then String.concat "" [
+      {|
+  <figure class="account-logo avatar "><img alt="Account logo" src="|};
+      legacy_attribute context.logo_url;
+      {|" width="300" height="300" /></figure>
 
-  <span class="btn btn--reversed btn--faux room--current">
+  |}] else {|
+
+  |});
+    {|<span class="btn btn--reversed btn--faux room--current">
     <h1 class="room__contents txt-medium overflow-ellipsis">|};
     (if room.kind=Direct then
       {|<span class="for-screen-reader">Ping with</span>|} else "");
