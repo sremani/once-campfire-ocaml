@@ -29,9 +29,12 @@ shutdown passed on both architectures in
 Signed media is 233/233 exact per architecture in
 `/tmp/m8-t5-2a511ac-{amd64,arm64}-signed-media.json`.
 The final all-seed browser matrix is running against the frozen source.
-M8-T5 remains open for that gate and external manifest publication and ONCE
-deployment; no Git remote, registry destination, or target host/CLI is
-configured.
+An uncached repeat-build comparison is prepared at
+`/tmp/m8-t5-2a511ac-reproducibility.py`; its source and inventory preflight
+passes, and the Docker rebuild waits for browser capture to release the
+shared environment. M8-T5 remains open for those gates and external manifest
+publication and ONCE deployment; no Git remote, registry destination, or
+target host/CLI is configured.
 
 ### Earlier involvement-frame source checkpoint: `7352f48`
 
