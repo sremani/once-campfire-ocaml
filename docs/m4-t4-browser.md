@@ -1,6 +1,13 @@
 # M4-T4 browser behavior log
 
-Status: in progress. The shared Chromium smoke and a focused two-tab repeated-edit regression pass. A 40-cell pinned Rails comparison still has view and network differences; M8-T3 owns the later full browser matrix.
+Status: in progress. The shared Chromium smoke and two-tab repeated-edit
+regression pass on the script-free build. Focused attachment-edit,
+involvement-frame, group-name, and avatar-upload comparisons pass all six
+browser layers on current code source `2a511ac`. The final lean/full matrix
+across five seeds is running against immutable source
+`2a511ac6f74fc3689f72bd039bc11d286e71d1c4` at
+`/tmp/m8-t3-harness-wt/parity/out/m8-t3-2a511ac-final-all/summary.json`.
+Earlier differences below are historical checkpoints.
 
 ## Reproduction setup
 

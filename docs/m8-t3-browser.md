@@ -1,8 +1,11 @@
 # M8-T3 browser parity evidence
 
-Status: inventory passed on all five seeds. A 40-cell Chromium diagnostic on
-the packaged `rc-189d1ed` image completed with 24 passes and 16 differences.
-Browser lean/full release matrices remain pending.
+Status: inventory passed on all five seeds. Current code source `2a511ac`
+passes focused recaptures for the earlier attachment-edit, involvement-frame,
+group-name, and avatar-upload differences across all six browser layers.
+The final lean/full five-seed matrix is running against the immutable source
+at `/tmp/m8-t3-harness-wt/parity/out/m8-t3-2a511ac-final-all/summary.json`.
+The earlier diagnostics below are historical checkpoints.
 
 ## Pinned sources and local images
 
