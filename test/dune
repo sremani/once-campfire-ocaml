@@ -1,0 +1,42 @@
+(test
+ (name core_test)
+ (modules core_test)
+ (libraries campfire alcotest sqlite3 yojson)
+ (deps fixtures/routes.json fixtures/rails_compat.json fixtures/schema.sql))
+
+(test
+ (name m1_t1_test)
+ (modules m1_t1_test)
+ (libraries campfire alcotest yojson ptime)
+ (deps fixtures/ruby_core.json))
+
+(test
+ (name m1_t2_test)
+ (modules m1_t2_test)
+ (libraries campfire alcotest yojson)
+ (deps fixtures/rails_compat.json))
+
+(test
+ (name m1_t3_test)
+ (modules m1_t3_test)
+ (libraries campfire alcotest sqlite3 yojson uri)
+ (deps fixtures/campfire_sessions.json fixtures/rails_compat.json))
+
+(test
+ (name m1_t4_test)
+ (modules m1_t4_test)
+ (libraries campfire alcotest yojson ptime)
+ (deps fixtures/rails_compat.json))
+
+(test
+ (name m1_t5_test)
+ (modules m1_t5_test)
+ (libraries campfire alcotest yojson)
+ (deps fixtures/campfire_routes.json))
+
+(test
+ (name m1_t4_http_test)
+ (modules m1_t4_http_test)
+ (libraries campfire alcotest sqlite3 yojson cohttp cohttp-lwt lwt.unix)
+ (deps fixtures/campfire_sessions.json))
+

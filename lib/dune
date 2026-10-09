@@ -1,0 +1,4 @@
+(library
+ (name campfire)
+ (public_name once_campfire_ocaml)
+ (libraries sqlite3 uri yojson base64 cstruct mirage-crypto pbkdf eqaf ptime cohttp cohttp-lwt lwt))
