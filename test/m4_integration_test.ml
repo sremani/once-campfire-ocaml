@@ -84,6 +84,53 @@ let test_profile_back_link () = with_seed (fun runtime _ ->
   check "room referrer is preserved"
     (contains body "href=\"https://chat.example.com/rooms/654632876\""))
 
+let test_profile_avatar_upload () = with_seed (fun runtime service ->
+  let cookie=session runtime in
+  let source=Filename.concat reference "reference/test/fixtures/files/moon.jpg" in
+  let input=open_in_bin source in
+  let image=Fun.protect ~finally:(fun () -> close_in input)
+    (fun () -> really_input_string input (in_channel_length input)) in
+  let boundary="campfire-profile-avatar" in
+  let body=String.concat "" [
+    "--"^boundary^"\r\n";
+    "Content-Disposition: form-data; name=\"_method\"\r\n\r\npatch\r\n";
+    "--"^boundary^"\r\n";
+    "Content-Disposition: form-data; name=\"user[avatar]\"; filename=\"moon.jpg\"\r\n";
+    "Content-Type: image/jpeg\r\n\r\n";image;"\r\n";
+    "--"^boundary^"--\r\n"] in
+  let upload ()=send ~cookie ~content_type:("multipart/form-data; boundary="^boundary)
+    ~body runtime `POST "/users/me/profile" in
+  let uploaded,_=upload () in
+  Alcotest.(check int) "avatar upload redirects" 302 (status uploaded);
+  let get_attachment ()=Db_runtime.read runtime (fun db ->
+    Db_remaining.Attachment.find_for db ~record_type:"User"
+      ~record_id:127326141L ~name:"avatar") in
+  let attachment=Option.get (get_attachment ()) in
+  let blob=Db_runtime.read runtime (fun db ->
+    Db_remaining.Attachment.blob db attachment) in
+  Alcotest.(check (option string)) "uploaded avatar MIME"
+    (Some "image/jpeg") blob.content_type;
+  check "uploaded avatar file retained"
+    (Storage_disk.exists service blob.key);
+  let profile,html=send ~cookie runtime `GET "/users/me/profile" in
+  Alcotest.(check int) "profile after avatar upload" 200 (status profile);
+  check "avatar URL cache version advances"
+    (contains html "/avatar?v=20261008120000");
+  check "avatar can be deleted" (contains html "Delete avatar");
+  let uploaded_again,_=upload () in
+  Alcotest.(check int) "avatar replacement redirects" 302
+    (status uploaded_again);
+  let replacement=Option.get (get_attachment ()) in
+  check "avatar replacement changes blob"
+    (replacement.blob_id<>attachment.blob_id);
+  let count=Db_runtime.read runtime (fun db ->
+    Db_runtime.query_one db
+      "SELECT COUNT(*) FROM active_storage_attachments WHERE record_type='User' AND record_id=? AND name='avatar'"
+      [Sqlite3.Data.INT 127326141L]
+      (fun stmt -> Sqlite3.column_int stmt 0)) in
+  Alcotest.(check (option int)) "one avatar attachment after replacement"
+    (Some 1) count)
+
 let test_rich_text_route () = with_seed (fun runtime _ ->
   let cookie=session runtime in
   let markup="<p>Hi <strong>buddy</strong> <img src=x onerror=alert(1)></p>" in
@@ -290,6 +337,8 @@ let test_pinned_rails_media_headers () = with_seed (fun runtime service ->
 let ()=Alcotest.run "M4 HTTP rendering integration" [
   "routes",[
     Alcotest.test_case "profile back link" `Quick test_profile_back_link;
+    Alcotest.test_case "profile avatar upload and replacement" `Quick
+      test_profile_avatar_upload;
     Alcotest.test_case "rich text, FTS, and safe DOM" `Quick test_rich_text_route;
     Alcotest.test_case "request Host and decoded GID" `Quick
       test_request_host_and_gid_fallback;

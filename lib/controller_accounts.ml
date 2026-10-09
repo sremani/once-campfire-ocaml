@@ -499,7 +499,40 @@ let profile_update c = match object_param c "user" with
           email_address=Option.map (fun value -> Some value) (field fields "email_address");
           password_digest;
           bio=Option.map (fun value -> Some value) (field fields "bio")} in
-        write c (fun tx -> ignore (U.update (Db_runtime.conn tx) ~now:c.H.now user changes))
+        let save tx avatar =
+          let db=Db_runtime.conn tx in
+          ignore (U.update db ~now:c.H.now user changes);
+          match avatar with
+          | None -> ()
+          | Some prepared ->
+              let old=Db_remaining.Attachment.find_for db
+                ~record_type:"User" ~record_id:user.U.id ~name:"avatar" in
+              Option.iter (Db_remaining.Attachment.delete tx) old;
+              let blob=Storage_blob.insert tx ~now:(A.now_time c.H.now) prepared in
+              ignore (Db_remaining.Attachment.create tx
+                ~now:(A.now_time c.H.now) ~record_type:"User"
+                ~record_id:user.U.id ~name:"avatar" ~blob_id:blob.id);
+              ignore (Db_runtime.execute db
+                "UPDATE users SET updated_at=? WHERE id=?"
+                [Sqlite3.Data.TEXT (Db_time.of_rfc3339 c.H.now);
+                 Sqlite3.Data.INT user.U.id]);
+              Option.iter (fun attachment ->
+                Db_runtime.emit_after_commit tx (fun () ->
+                  c.H.event_sink (Db_remaining.Event.PurgeBlob
+                    {blob_id=attachment.Db_remaining.Attachment.blob_id}))) old in
+        let save_with_avatar file = match !storage_service with
+          | None -> Lwt.fail_with "local storage service is not registered"
+          | Some service -> H.track_upload_worker c (Lwt_preemptive.detach (fun () ->
+              Storage_blob.stage_file service ~source:file.Http_params.path
+                ~filename:file.filename ~content_type:file.content_type
+                (fun prepared staged ->
+                  let result=Db_runtime.write c.H.runtime (fun tx ->
+                    save tx (Some prepared)) in
+                  Storage_disk.keep staged;
+                  result)) ()) in
+        (match Http_params.get "avatar" fields with
+        | Some (Http_params.File file) -> save_with_avatar file
+        | _ -> write c (fun tx -> save tx None))
         >>= fun () -> redirect_with_notice c "/users/me/profile"
           (if field_present fields "avatar" then
              "It may take up to 30 minutes to change everywhere." else "✓")
