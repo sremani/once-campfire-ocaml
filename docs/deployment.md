@@ -31,6 +31,8 @@ and the Gumbo dependency notices and provenance record under
 `/usr/share/doc/once-campfire-ocaml/`. The release source and dependency audit,
 including exact package inventories and the remaining final-image checks, is
 in [M8-T5 release audit](m8-t5-release-audit.md).
+The [publication handoff](m8-t5-publication-handoff.md) records how to verify
+the exact GHCR manifest and architecture images before an ONCE deployment.
 
 The image preserves the Rust/Rails ONCE contract:
 

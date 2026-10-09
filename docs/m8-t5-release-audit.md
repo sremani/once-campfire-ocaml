@@ -44,6 +44,8 @@ preflight and waits for that Docker interval. M8-T5 remains open for those
 gates and external manifest
 publication and ONCE deployment; no Git remote, registry destination, or
 target host/CLI is configured, and `gh auth status` reports an invalid token.
+The [publication handoff](m8-t5-publication-handoff.md) records the exact
+source tag, GHCR verification, and ONCE steps once those targets are supplied.
 
 ### Earlier involvement-frame source checkpoint: `7352f48`
 
