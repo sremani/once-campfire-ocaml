@@ -47,17 +47,18 @@ let with_seed f =
     List.iter remove_tree [temporary;temporary^"-wal";temporary^"-shm"])
     (fun () -> f runtime service)
 
-let send ?cookie ?accept ?if_none_match ?(content_type="application/x-www-form-urlencoded")
-    ?(body="") runtime meth path =
+let send ?cookie ?accept ?if_none_match ?referer ?(relative_uri=false)
+    ?(content_type="application/x-www-form-urlencoded") ?(body="")
+    runtime meth path =
   let headers=["host","chat.example.com";
     "origin","https://chat.example.com";"sec-fetch-site","same-origin";
     "content-type",content_type] in
   let add key = function None -> Fun.id | Some value ->
     fun headers -> (key,value)::headers in
   let headers=headers |> add "cookie" cookie |> add "accept" accept
-    |> add "if-none-match" if_none_match in
+    |> add "if-none-match" if_none_match |> add "referer" referer in
   let request=Cohttp.Request.make ~meth ~headers:(Cohttp.Header.of_list headers)
-    (Uri.of_string ("https://chat.example.com"^path)) in
+    (Uri.of_string ((if relative_uri then "" else "https://chat.example.com")^path)) in
   let response,body=Lwt_main.run (Http_app.handle ~runtime
     ~secret_key_base:secret ~now ~ssl:true ~force_ssl:true
     ~dispatch:App_dispatch.endpoint request (Cohttp_lwt.Body.of_string body)) in
@@ -69,6 +70,19 @@ let session runtime =
     ~ip_address:(Some "198.51.100.33")) in
   "session_token=" ^ Authentication.issue_token_cookie
     ~secret_key_base:secret ~now row.token
+
+let test_profile_back_link () = with_seed (fun runtime _ ->
+  let cookie=session runtime in
+  let path="/users/me/profile" in
+  let self="https://chat.example.com"^path in
+  let response,body=send ~cookie ~relative_uri:true ~referer:self
+    runtime `GET path in
+  Alcotest.(check int) "profile status" 200 (status response);
+  check "self referrer returns to root" (contains body "<a class=\"btn\" href=\"/\"");
+  let _,body=send ~cookie ~relative_uri:true
+    ~referer:"https://chat.example.com/rooms/654632876" runtime `GET path in
+  check "room referrer is preserved"
+    (contains body "href=\"https://chat.example.com/rooms/654632876\""))
 
 let test_rich_text_route () = with_seed (fun runtime _ ->
   let cookie=session runtime in
@@ -275,6 +289,7 @@ let test_pinned_rails_media_headers () = with_seed (fun runtime service ->
 
 let ()=Alcotest.run "M4 HTTP rendering integration" [
   "routes",[
+    Alcotest.test_case "profile back link" `Quick test_profile_back_link;
     Alcotest.test_case "rich text, FTS, and safe DOM" `Quick test_rich_text_route;
     Alcotest.test_case "request Host and decoded GID" `Quick
       test_request_host_and_gid_fallback;

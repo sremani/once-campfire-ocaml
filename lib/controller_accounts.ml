@@ -427,7 +427,9 @@ let transfer_id c (user:U.t) =
     ~id:(Int64.to_int user.id) ~purpose:(Some "transfer") ~expires_at
 
 let back_url c =
-  let request_url=Uri.to_string (Cohttp.Request.uri c.H.request) in
+  let request_uri=Cohttp.Request.uri c.H.request in
+  let request_url=Uri.resolve "" (Uri.of_string (H.base_url c ^ "/"))
+    request_uri |> Uri.to_string in
   match H.header c "referer" with
   | Some referer when referer<>request_url -> referer
   | _ -> "/"

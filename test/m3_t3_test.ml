@@ -432,6 +432,34 @@ let test_multipart_attachment () = with_seed "default" (fun runtime ->
       | Some (_,blob) -> blob
       | _ -> failwith "message attachment missing" in
     let admin=mint_session runtime 127326141L in
+    let moon_path=if Sys.file_exists "fixtures/storage_prefix/moon.jpg" then
+      "fixtures/storage_prefix/moon.jpg" else
+      "test/fixtures/storage_prefix/moon.jpg" in
+    let vips_available=try Storage_vips.version ()="8.16.1"
+      with Failure _ -> false in
+    let ic=open_in_bin moon_path in
+    let moon=Fun.protect ~finally:(fun () -> close_in ic)
+      (fun () -> really_input_string ic (in_channel_length ic)) in
+    let moon_created,moon_body=send ~cookie:admin
+      ~accept:"text/vnd.turbo-stream.html" ~content_type
+      ~body:(multipart_upload ~boundary ~name:"message[attachment]"
+        ~filename:"moon.jpg" ~content_type:"image/jpeg" moon)
+      runtime `POST "/rooms/654632876/messages" in
+    Alcotest.(check int) "analyzed image upload" 200 (status moon_created);
+    let moon_blob=Db_runtime.read runtime (fun db ->
+      let message=Option.get (Db_messages.Message.last db) in
+      attachment db message) in
+    let metadata=Yojson.Basic.from_string
+      (Option.value moon_blob.metadata ~default:"{}") in
+    let open Yojson.Basic.Util in
+    if vips_available then (
+      Alcotest.(check int) "uploaded image width" 640
+        (metadata |> member "width" |> to_int);
+      Alcotest.(check int) "uploaded image height" 640
+        (metadata |> member "height" |> to_int);
+      check "first Turbo render includes image dimensions"
+        (contains moon_body "width=\"640\""
+         && contains moon_body "height=\"640\""));
     let created,_=send ~cookie:admin ~accept:"text/vnd.turbo-stream.html"
       ~content_type ~body:(multipart_upload ~boundary
         ~name:"message[attachment]" ~filename:"red.png"

@@ -413,6 +413,19 @@ let with_uploaded_blob c file f = match !storage_service with
         Storage_blob.stage_file service ~source:file.Http_params.path
           ~filename:file.filename ~content_type:file.content_type
           (fun prepared staged ->
+            let prepared = if Storage_image.is_variable
+                (Storage_blob.row prepared) then
+              let dimensions=try Storage_blob.open_verified service
+                (Storage_blob.row prepared) Storage_vips.analyze
+                with _ -> None in
+              (match dimensions with
+              | None -> prepared
+              | Some _ ->
+                  let metadata=Storage_image.analyzed_metadata
+                    (Storage_image.metadata_json (Storage_blob.row prepared))
+                    dimensions in
+                  {prepared with Storage_blob.metadata=metadata})
+              else prepared in
             let result = Db_runtime.write c.H.runtime (fun tx ->
               let blob = Storage_blob.insert tx
                 ~now:(Db_accounts.now_time c.H.now) prepared in
