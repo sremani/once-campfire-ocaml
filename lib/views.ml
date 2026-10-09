@@ -3002,65 +3002,6 @@ let message_index_recorded messages =
   record_message_items ~prefix:"" ~suffix:"" ~before_each:"\n" messages
 let message_show ~context message = page ~context (message_item message)
 let message_edit ~context message =
-  let icon name attributes=void "img" (attributes @ ["src",asset context name]) in
-  let delete_button ?(center=false) () =
-    elt "button" ["name","button";"type","submit";
-      "class",("btn btn--negative" ^ if center then " center margin-block-end" else "");
-      "form",message_dom_id message "delete_form";
-      "data-turbo-confirm","Are you sure you want to delete this message?"] [
-      icon "trash.svg" ["aria-hidden","true"];
-      cls "span" "for-screen-reader" [text "Delete message"]] in
-  let button_row buttons =
-    cls "div" "message__edit-btns flex align-center justify-space-between gap full-width pad-block-start-half" buttons in
-  let editor=elt "lexxy-editor" [
-    "rows","1";"class","input lexxy-content";
-    "aria-multiline","true";"aria-label","Edit message";
-    "autofocus","autofocus";
-    "permitted-attachment-types",
-      "application/vnd.campfire.mention application/vnd.actiontext.opengraph-embed";
-    "data-action","lexxy:change->typing-notifications#start keydown->composer#submitByKeyboard:capture";
-    "data-direct-upload-url",context.base_url ^ "/rails/active_storage/direct_uploads";
-    "data-blob-url-template",context.base_url ^ "/rails/active_storage/blobs/redirect/:signed_id/:filename";
-    "id","message_body";
-    "input","message_body_trix_input_" ^ message_dom_id message "";
-    "name","message[body]";"value",message.editable_body] [
-      elt "lexxy-prompt" ["trigger","@";"name","mention";
-        "src","/autocompletable/users?room_id=" ^ i64 message.room_id;
-        "remote-filtering","true";"empty-results","No matches"] []] in
-  let editable=match message.content with
-    | Media_attachment _ | Attachment _ ->
-        concat [message_presentation message;
-          button_row [delete_button ~center:true ()]]
-    | _ ->
-        cls "div" "composer--edit composer--rich-text" [
-          form ~attrs:["id",message_dom_id message "form";
-            "data-controller","form";
-            "data-action","lexxy:file-accept->form#preventAttachment keydown.esc->form#cancel keydown.ctrl+enter->form#submit:prevent keydown.meta+enter->form#submit:prevent";
-            "accept-charset","UTF-8"] (permalink message) (concat [
-            input ~name:"_method" ~kind:"hidden" ~value:"patch" ();
-            cls "div" "full-width input input--actor min-width fill-white" [editor];
-            elt "a" ["data-form-target","cancel";"hidden","hidden";
-              "href",permalink message] [text "Close editor and discard changes"];
-            button_row [
-              elt "button" ["name","button";"type","submit";
-                "class","btn btn--reversed"] [
-                icon "check.svg" ["aria-hidden","true"];
-                cls "span" "for-screen-reader" [text "Save changes"]];
-              delete_button ()]])] in
-  let frame = elt "turbo-frame" ["id",message_dom_id message "edit"] [
-    elt "div" ["class","message__body position-relative";
-      "data-controller","scroll-into-view"] [
-      cls "div" "message__body-content message__body-content--editing gap"
-        [editable];
-      cls "div" "message__actions flex flex-wrap" [
-        elt "a" ["class","message__action-btn message__edit-close-btn txt-small btn btn--borderless";
-          "href",permalink message] [
-          icon "remove.svg" ["class","colorize--black";"aria-hidden","true"];
-          cls "span" "for-screen-reader" [text "Close editor and discard changes"]]];
-      form ~attrs:["id",message_dom_id message "delete_form";
-        "data-turbo-frame",message_dom_id message "edit";
-        "accept-charset","UTF-8"] (permalink message)
-        (input ~name:"_method" ~kind:"hidden" ~value:"delete" ())]] in
   (* Keep the pinned Askama/ERB wire format, including its no-block delete
      form, so Turbo's edit response has the same bytes and cache validator. *)
   let exact_text_frame () =
@@ -3123,8 +3064,45 @@ let message_edit ~context message =
 </turbo-frame>
 |}]
   in
+  let exact_attachment_frame () =
+    let edit_id=legacy_attribute (message_dom_id message "edit") in
+    let delete_id=legacy_attribute (message_dom_id message "delete_form") in
+    let path=legacy_attribute (permalink message) in
+    String.concat "" [
+      {|<turbo-frame id="|};edit_id;{|">
+  <div class="message__body position-relative" data-controller="scroll-into-view">
+    <div class="message__body-content message__body-content--editing gap">
+        |};render (message_presentation message);
+      {|
+
+        <div class="message__edit-btns flex align-center justify-space-between gap full-width pad-block-start-half">
+          <button name="button" type="submit" class="btn btn--negative center margin-block-end" form="|};
+      delete_id;{|" data-turbo-confirm="Are you sure you want to delete this message?">
+            |};legacy_img context "trash.svg" ["aria-hidden","true"];
+      {|
+            <span class="for-screen-reader">Delete message</span>
+</button>        </div>
+    </div>
+
+    <div class="message__actions flex flex-wrap">
+      <a class="message__action-btn message__edit-close-btn txt-small btn btn--borderless" href="|};
+      path;{|">
+        |};legacy_img context "remove.svg"
+          ["class","colorize--black";"aria-hidden","true"];
+      {|
+        <span class="for-screen-reader">Close editor and discard changes</span>
+</a>    </div>
+
+    <form id="|};delete_id;{|" data-turbo-frame="|};edit_id;
+      {|" action="|};path;
+      {|" accept-charset="UTF-8" method="post"><input type="hidden" name="_method" value="delete" />
+  </div>
+</turbo-frame>
+|}]
+  in
   let frame=match message.content with
-    | Attachment _ | Media_attachment _ -> frame
+    | Attachment _ | Media_attachment _ ->
+        raw (Trusted_html (exact_attachment_frame ()))
     | _ -> raw (Trusted_html (exact_text_frame ())) in
   page ~context frame
 let message_json ?(base_url="") ?(plain_text_body="") message =
