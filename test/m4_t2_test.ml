@@ -77,6 +77,13 @@ let test_install_instructions_platform_gate () =
     "<details class=\"notifications-help pwa__instructions hide-in-pwa\"";
   check_contains "unknown platform uses Rails fallback" opera
     "Some platforms require you to install Campfire as a web app to receive push notifications.";
+  let browser_help=Views.pwa_browser_settings
+    {Views.default_context with platform={base with chrome=false;
+      firefox=false;safari=false;edge=false;desktop=true;
+      browser="Opera";operating_system="Linux"};
+      base_url="http://localhost:3999"} |> Views.render in
+  check_contains "Opera help emphasizes the site URL" browser_help
+    "<em>http://localhost:3999/</em>";
   let chrome_ios=render {base with chrome=true;ios=true;mobile=true;
     desktop=false;browser="Chrome";operating_system="iOS"} in
   Alcotest.(check string) "Chrome on iOS has no install instructions"

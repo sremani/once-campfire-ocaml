@@ -335,6 +335,22 @@ let test_content_pages () = with_seed "default" (fun runtime ->
   check "direct form frame omits application layout"
     (String.starts_with ~prefix:"<html>\n  <head>\n    \n  </head>\n  <body>\n    " direct_body);
   check "direct frame has no stylesheet preload" (header direct "link"=None);
+  let direct_edit,direct_edit_body = send ~cookie:admin runtime `GET
+    "/rooms/directs/186869642/edit" in
+  Alcotest.(check int) "direct room edit" 200 (status direct_edit);
+  check "direct edit names the other member"
+    (contains direct_edit_body "Edit settings for Jason");
+  check "direct edit offers members and delete action"
+    (contains direct_edit_body "directs--edit"
+     && contains direct_edit_body "Delete Ping"
+     && contains direct_edit_body "/rooms/directs/186869642");
+  check "direct edit omits open room fields"
+    (not (contains direct_edit_body "name=\"room[name]\""));
+  let group_edit,group_edit_body = send ~cookie:admin runtime `GET
+    "/rooms/directs/699448329/edit" in
+  Alcotest.(check int) "group direct edit" 200 (status group_edit);
+  check "group direct edit uses Rails sentence title"
+    (contains group_edit_body "Edit settings for Jason, Kevin, and JZ");
   let autocomplete,body = send ~cookie:admin runtime `GET
     "/autocompletable/users" in
   Alcotest.(check int) "autocomplete HTML" 200 (status autocomplete);

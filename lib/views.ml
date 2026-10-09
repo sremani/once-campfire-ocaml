@@ -3292,8 +3292,9 @@ let notification_parts (context:context) =
         li [text "Select ";em [text "Allow"];text "."]])
     else detail "external/web.svg"
       ("Check your " ^ platform.browser ^ " settings")
-      (elt "p" [] [text ("Ensure notifications are enabled for " ^
-        context.base_url ^ "/ in your web browser settings.")]) in
+      (elt "p" [] [text "Ensure notifications are enabled for ";
+        em [text (context.base_url ^ "/")];
+        text " in your web browser settings."]) in
   let system = if platform.firefox && platform.android then
     detail ~class_name:"notifications-help hide-in-browser"
       "external/gear.svg"

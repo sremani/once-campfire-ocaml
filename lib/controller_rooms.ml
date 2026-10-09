@@ -279,7 +279,27 @@ let direct_create c = match user_id c with
         ~room ~memberships ~render:(fun _ -> room_sidebar_html room));
       redirect c (room_path room.R.Room.id)
 let direct_edit c = room_or_root c ~kind:`Direct (fun room ->
-  render_room_form c ~room R.Direct)
+  if not (accepts c Http_format.Html) then error 406 else
+  read c (fun db ->
+    let account=Db_accounts.Account.first db in
+    let context=context_for_account c db account in
+    let all_users=R.Room.users db room in
+    let other_users=List.filter (fun (user:U.t) ->
+      Some user.id <> user_id c) all_users in
+    let shown_users=if List.length all_users > 1 then other_users
+      else all_users in
+    let display_name=Views.room_display_name
+      ?self_name:(Option.map (fun (user:Views.user) -> user.name)
+        context.Views.current_user)
+      ~name:room.R.Room.name ~direct:true
+      ~other_names:(List.map (fun (user:U.t) -> user.name) other_users) () in
+    let last_room_id=Option.bind (user_id c) (last_room_for_user c db) in
+    context,display_name,last_room_id,
+    List.map (View_presenter.user c) shown_users)
+  >>= fun (context,display_name,last_room_id,users) ->
+  response (H.html ~status:200
+    (Views.direct_edit_page ~context ?last_room_id
+      ~room_id:room.R.Room.id ~display_name ~users ())))
 let direct_show c = match number c "id" with
   | None -> head 404 | Some id -> redirect c (room_path id)
 let direct_destroy c = room_or_root c ~kind:`Direct (fun room ->
