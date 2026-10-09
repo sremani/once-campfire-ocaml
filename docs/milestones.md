@@ -85,8 +85,8 @@ the separate positive-write suite passes 30/30 exactly. See [route audit](m3-rou
   caches, invalidation, redirects, and limits; compare headers and bodies against Rust.
   Clean d6600ed HEAD/gzip and public logo miss, hit, signed hit, conditional
   304 and Range-bypass checks match pinned Rust; the five-seed sweep has no
-  independent cache/header mismatch. Libz versus zlib-rs gzip wire bytes and
-  room-script-derived validators remain documented M8 differences.
+  independent cache/header mismatch. Libz versus zlib-rs gzip wire bytes
+  remain a documented M8 difference; current room validators are exact.
 
 ## M4 — Browser assets, views, and rich text
 
@@ -169,11 +169,13 @@ differences are intentional, and deployable release artifacts are verified.
   [vector inventory](m8-t1-vector-inventory.md).
 - [x] **M8-T2 HTTP and state differential.** Compare complete route inventory, persisted
   state, assets, Cable frames, media, and error paths against the pinned Rust app.
-  Clean d6600ed five-seed HTTP/state has 3,170 exact, 16 documented room-script
-  differences and 354 unavailable first-run signed/denied cells. Packaged Cable,
-  signed media 233/233, and shared write contracts pass. Assets are 1,004/1,015
-  exact; ten gzip wire bodies and Caddy's malformed-path 400 versus Rust 404
-  remain explicit library/front-boundary differences. See
+  Current `2a511ac` five-seed HTTP/state is 3,186/3,186 exact among eligible
+  cells, with 354 first-run signed/denied cells unavailable for lack of a
+  session fixture; positive writes are 30/30 exact. Packaged Cable, signed
+  media 233/233 on each final-source architecture, and shared write contracts
+  pass. The earlier static-asset comparison is 1,004/1,015 exact; ten gzip
+  wire bodies and Caddy's malformed-path 400 versus Rust 404 are explicit
+  library/front-boundary differences, pending the final-image asset rerun. See
   [coverage audit](m8-coverage-audit.md).
 - [ ] **M8-T3 Browser parity.** Run screens, interactions, accessibility trees, and visual
   comparisons; resolve or document deliberate differences.
