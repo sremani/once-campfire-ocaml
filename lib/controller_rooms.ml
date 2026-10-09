@@ -73,10 +73,9 @@ let recorded_html ?context (page : Views.recorded_page) =
         "etag" ("W/\"" ^ validator ^ "\"") in
       {reply with headers}, Http_cache.Page_parts.body parts, validator
 let room_sidebar_html (room : R.Room.t) =
-  let name = Option.value room.name ~default:"" |> Ruby_compat.html_escape in
-  let id = Cable_broadcasts.room_dom_id room "list" in
-  Printf.sprintf "<li id=\"%s\"><a href=\"/rooms/%Ld\">%s</a></li>"
-    id room.id name
+  let entry:Views.sidebar_entry =
+    {room=View_presenter.room room;unread=false;members=[]} in
+  Views.render (Views.sidebar_shared_room entry)
 let room_id c = match number c "room_id" with Some id -> Some id | None -> number c "id"
 let room_for_user c ?(kind=`Any) () = match user_id c, room_id c with
   | Some uid, Some id -> read c (fun db ->
@@ -170,8 +169,6 @@ let room_show c = room_or_root c (fun room ->
 let room_destroy c = room_or_root c (fun room ->
   if not (can_admin c room.R.Room.creator_id) then head 403 else
   write c (fun tx ->
-    let ids = R.Room.user_ids (Db_runtime.conn tx) room in
-    Db_remaining.Hooks.revoke_from tx room ids ~sink:c.H.event_sink;
     R.Room.destroy_tx tx room ~destroy_messages:(fun tx ~room_id ->
       Db_remaining.Hooks.destroy_messages_for_room tx
         ~sink:c.H.event_sink ~now:(Db_accounts.now_time c.H.now) ~room_id))
@@ -304,8 +301,6 @@ let direct_show c = match number c "id" with
   | None -> head 404 | Some id -> redirect c (room_path id)
 let direct_destroy c = room_or_root c ~kind:`Direct (fun room ->
   write c (fun tx ->
-    let ids = R.Room.user_ids (Db_runtime.conn tx) room in
-    Db_remaining.Hooks.revoke_from tx room ids ~sink:c.H.event_sink;
     R.Room.destroy_tx tx room ~destroy_messages:(fun tx ~room_id ->
       Db_remaining.Hooks.destroy_messages_for_room tx
         ~sink:c.H.event_sink ~now:(Db_accounts.now_time c.H.now) ~room_id))
