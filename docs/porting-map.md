@@ -1,26 +1,24 @@
 # Porting map
 
 Reference: `basecamp/once-campfire-rust` commit
-`9872c1d9541551c0889a60e3d49a14488bd1e403`. The reference app is a full Campfire server;
-the current OCaml code covers only the modules marked **started** below.
+`9872c1d9541551c0889a60e3d49a14488bd1e403`, including its pinned Rails
+reference. The [milestone tracker](milestones.md) records ticket acceptance and the
+[verification gates](verification-gates.md) distinguish local checks from release checks.
 
-| Rust crate | OCaml approach | Status and acceptance evidence |
+| Rust subsystem | OCaml implementation and reused libraries | Current gate |
 | --- | --- | --- |
-| `ruby`, `rails_compat` | `yojson`, `base64`, `pbkdf`, `mirage-crypto`, `ptime`, `eqaf`; add small compatibility functions only where Rails differs | **M1 verified:** Ruby string/number/URL/range vectors, JSON/Marshal/metadata, signed IDs/GlobalIDs/SGIDs/Turbo, cookie wire formats, and CSRF vectors pass. Password/model integration belongs to M2. |
-| `routes` | Generated route catalog plus native OCaml recognizer | **M1 verified:** all 177 catalog entries, 111 positive/negative recognitions, 73 path helpers, encoded paths, and method override tests pass. The pinned Rails settings-controller resolution exception is modeled explicitly. |
-| `db` | `sqlite3` binding with prepared statements, transactions, and the existing schema; no ORM migration | **M2 verified:** five model tickets cover async reader/writer scheduling, WAL checkpoints, backup snapshots, accounts, rooms, messages, search, storage rows, push, bans, and after-commit event adapters. The Rails mutation scenario matches all 13 affected model/FTS tables. See [seed and differential audit](m2-seed-audit.md). |
-| `kit`, `campfire` | `cohttp-lwt-unix` and `lwt` for HTTP and application concurrency; `cmdliner` for operations | **M1 vertical slice:** a Cohttp request boundary accepts a Rails-issued signed cookie against the pinned SQLite seed, and rejects cross-site writes with HTTP 422/no cookie. Full routing, controllers, response formats, caching, jobs, and front-server behavior remain. |
-| `richtext` | Existing HTML parser/sanitizer libraries after matching the Action Text vector corpus | Pending. |
-| `storage` | OCaml filesystem and crypto libraries; invoke libvips and ffmpeg instead of implementing media codecs | Pending. Active Storage keys, signed IDs, checksums, metadata, and variants need parity tests. |
-| `cable` | Established WebSocket library with an Action Cable protocol layer | Pending. Select the library against the frame and subscription vectors before wiring broadcasts. |
-| `assets`, `views` | Reuse pinned frontend assets; use an OCaml HTML template or typed HTML library for server-rendered pages | Pending. Preserve URLs, DOM, and escaping behavior in browser comparisons. |
+| `ruby`, `rails_compat`, `routes` | `yojson`, `base64`, `pbkdf`, `mirage-crypto`, `ptime`, `eqaf`, plus small Rails compatibility functions and a generated route catalog | **M1 complete:** format, cookie, signed ID, CSRF, route, and authentication vectors pass. |
+| `db` | `sqlite3` with prepared statements, transactions, reader/writer queues, WAL checkpoints, and backups against the existing schema | **M2 complete:** model, search, concurrency, and copied Rails seed checks pass. |
+| `kit`, `campfire` | `cohttp-lwt-unix`, `lwt`, and `cmdliner` for the listener, controllers, background work, and CLI | **M3 complete:** all 177 catalog routes are dispatched; five-seed HTTP and persisted-state checks have no unaccounted controller or state difference. |
+| `richtext` | Gumbo HTML parser binding with existing `yojson` and `tyxml` rendering; compatibility code handles Action Text behavior | **M4-T3 complete:** pinned parsing, sanitization, mention, and rendering corpus passes. |
+| `storage` | OCaml filesystem and crypto libraries with system libvips and ffmpeg for image/video work | **M6 complete:** Active Storage rows, signed delivery, metadata, variants, previews, and live Rails/OCaml media checks pass their local gates. |
+| `cable` | A pinned OCaml WebSocket library with the Action Cable protocol, `lwt` channels, and typed Turbo broadcasts | **M5 complete:** frame, channel, multi-client, and same-listener tests pass locally. |
+| `assets`, `views` | Pinned frontend assets and `tyxml` views with Rails-compatible HTML boundaries | **M4-T1/T2 complete:** 321 packaged assets and the 123-file view corpus are accounted for. **M4-T4 open:** final-image functional smoke and broad browser behavior remain. |
+| operations and deployment | Caddy, Docker, ACME, backup hooks, and `cmdliner` operations | **M7 local gate complete:** copied-install upgrade, restart, backup/restore, rollback, and local TLS/HTTP2/ACME checks pass on both architectures. Actual published manifest and remote ONCE deployment remain release work. |
+| comparative verification | Pinned Rust/Rails vectors and the shared HTTP, browser, Cable, media, and performance harnesses | **M8-T1/T2/T4 complete:** vectors, HTTP/state differential, and performance/resilience are audited with documented differences. **M8-T3/T5 open:** full browser parity and release audit. |
 
-## Next vertical slice
-
-1. Connect the authenticated Cohttp boundary to the full route dispatcher and controllers, using `Db_runtime.read_async` and `write_async` from the Lwt request loop.
-2. Add production Action Text parsing and sanitization through the `Db_messages.rich_text` adapter; the M2 test adapter covers fixture plain text and model relation behavior.
-3. Add corresponding views and write paths with differential HTTP tests.
-
-The Rust and Rails vector fixtures are copied into `test/fixtures/` so tests do not need a Rust or
-Ruby runtime. Update them only from a pinned upstream revision and record the new commit in the
-README.
+The Rust and Rails vector fixtures under `test/fixtures/` are pinned inputs. Update them
+only from a recorded upstream revision; do not alter fixture bytes to make a comparison
+pass. The remaining supported-browser and release gates are tracked in
+[M4 browser evidence](m4-t4-browser.md), [M8 browser evidence](m8-t3-browser.md),
+and the [release audit](m8-t5-release-audit.md).
