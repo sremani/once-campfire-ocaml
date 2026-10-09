@@ -1,0 +1,31 @@
+{
+  "seed": "default",
+  "rust_revision": "9872c1d9541551c0889a60e3d49a14488bd1e403",
+  "cases": [
+    {
+      "case": "row 148 /webmanifest.json",
+      "result": "pass",
+      "rust_status": 200,
+      "ocaml_status": 200,
+      "problems": []
+    },
+    {
+      "case": "row 149 /service-worker.js",
+      "result": "pass",
+      "rust_status": 200,
+      "ocaml_status": 200,
+      "problems": []
+    },
+    {
+      "case": "row 147 signed missing url",
+      "result": "pass",
+      "rust_status": 400,
+      "ocaml_status": 400,
+      "problems": []
+    }
+  ],
+  "counts": {
+    "pass": 3,
+    "fail": 0
+  }
+}

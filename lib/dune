@@ -1,4 +1,7 @@
 (library
  (name campfire)
  (public_name once_campfire_ocaml)
- (libraries sqlite3 uri yojson base64 cstruct mirage-crypto pbkdf eqaf ptime cohttp cohttp-lwt lwt))
+ (libraries sqlite3 uri ipaddr yojson base64 cstruct mirage-crypto mirage-crypto-ec mirage-crypto-rng.unix pbkdf eqaf ptime uutf cohttp cohttp-lwt cohttp-lwt-unix conduit-lwt-unix ssl lwt lwt.unix unix threads tyxml websocket logs)
+ (foreign_stubs (language c) (names bcrypt_stubs gzip_stubs qrencode_stubs rich_text_gumbo_stubs cable_zlib_stubs storage_vips_stubs outbound_curl_stubs webhook_inflate_stubs))
+ (foreign_archives ../vendor/gumbo/campfire_gumbo)
+ (c_library_flags -lcrypt -lz -l:libqrencode.so.4 -ldl -lcurl))

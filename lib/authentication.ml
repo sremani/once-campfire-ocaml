@@ -143,7 +143,12 @@ let needs_refresh ~now session =
       | seconds -> seconds > 3600.
 
 let refresh db ~now ~ip_address ~user_agent session =
+  (* Active Record omits the fractional suffix when a timestamp lands exactly
+     on a second.  The app clock is frozen at whole seconds in parity seeds. *)
   let last_active_at = sql_time (now_time now) in
+  let last_active_at = if String.ends_with ~suffix:".000000" last_active_at then
+    String.sub last_active_at 0 (String.length last_active_at - 7)
+    else last_active_at in
   with_statement db
     "UPDATE sessions SET ip_address=?,last_active_at=?,updated_at=?,user_agent=? WHERE id=?"
     (fun stmt ->

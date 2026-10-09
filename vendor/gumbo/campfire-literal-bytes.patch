@@ -1,0 +1,70 @@
+--- a/utf8.c
++++ b/utf8.c
+@@ -149,21 +149,21 @@
+       }
+       return;
+     } else if (state == UTF8_REJECT) {
+-      // We don't want to consume the invalid continuation byte of a multi-byte
+-      // run, but we do want to skip past an invalid first byte.
+-      iter->_width = c - iter->_start + (c == iter->_start);
+-      iter->_current = kUtf8ReplacementChar;
++      // Keep each invalid literal byte as Go net/html does. Consume only this
++      // byte; subsequent bytes and ASCII syntax are handled by the next step.
++      iter->_width = 1;
++      iter->_current = kUtf8RawByteBase + (unsigned char)*iter->_start;
+       add_error(iter, GUMBO_ERR_UTF8_INVALID);
+       return;
+     }
+   }
+-  // If we got here without exiting early, then we've reached the end of the
+-  // iterator. Add an error for truncated input, set the width to consume the
+-  // rest of the iterator, and emit a replacement character. The next time we
+-  // enter this method, it will detect that there's no input to consume and
+-  // output an EOF.
+-  iter->_width = iter->_end - iter->_start;
+-  iter->_current = kUtf8ReplacementChar;
++  // A truncated UTF-8 prefix also preserves its literal spelling. Consume one
++  // byte and emit a raw-byte token, then handle any remaining bytes on later
++  // steps. Invalid bytes cannot collide with Unicode or entity overflow here.
++  // Once every source byte is consumed, the ordinary end check emits EOF.
++  // This keeps source traversal bounded without an extra input-copy pass.
++  iter->_width = 1;
++  iter->_current = kUtf8RawByteBase + (unsigned char)*iter->_start;
+   add_error(iter, GUMBO_ERR_UTF8_TRUNCATED);
+ }
+ 
+--- a/utf8.h
++++ b/utf8.h
+@@ -33,6 +33,10 @@
+ #define kUtf8ReplacementChar 0xFFFD
+ #define kUtf8BomChar 0xFEFF
+ #define kUtf8MaxChar 0x10FFFF
++/* Internal literal-byte tokens cannot collide with Unicode or numeric entity
++ * overflow (which is replaced before emission). Restore only in string output.
++ * Go net/html keeps invalid literal UTF-8 bytes in text/attribute tokens. */
++#define kUtf8RawByteBase 0x120000
+ 
+ typedef struct GumboInternalUtf8Iterator {
+   // Points at the start of the code point most recently read into 'current'.
+--- a/string_buffer.c
++++ b/string_buffer.c
+@@ -17,6 +17,7 @@
+ #include <string.h>
+ #include "string_buffer.h"
+ #include "util.h"
++#include "utf8.h"
+ 
+ // Size chosen via statistical analysis of ~60K websites.
+ // 99% of text nodes and 98% of attribute names/values fit in this initial size.
+@@ -54,6 +55,11 @@
+   int c,
+   GumboStringBuffer* output
+ ) {
++  if (c >= kUtf8RawByteBase && c <= kUtf8RawByteBase + 255) {
++    maybe_resize_string_buffer(1, output);
++    output->data[output->length++] = (unsigned char)(c - kUtf8RawByteBase);
++    return;
++  }
+   // num_bytes is actually the number of continuation bytes, 1 less than the
+   // total number of bytes. This is done to keep the loop below simple and
+   // should probably change if we unroll it.

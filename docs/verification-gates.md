@@ -13,12 +13,12 @@ apply to the finished port; their current absence is a known incomplete state, n
 | --- | --- | --- |
 | OCaml build and unit/integration tests | Clean `dune build` and `dune runtest`, with every subsystem's malformed-input, permission, and persistence cases included | Foundation passes; full suite pending |
 | Rails/Rust golden vectors | Every relevant suite in Rust `vectors/` plus crate-local golden/corpus fixtures, including rejection cases | Cookie/route subset passes; remainder pending |
-| Existing installation | Start against a copy of Rails storage and secrets; verify users stay signed in and messages, attachments, memberships, and search survive writes/restarts | Default Rails seed built; OCaml checks its required tables (one account). Live Rails baseline for anonymous and signed seed-cookie redirects verified. OCaml upgrade/write/restart checks pending |
+| Existing installation | Start against a copy of Rails storage and secrets; verify users stay signed in and messages, attachments, memberships, and search survive writes/restarts | All five Rails parity seeds built. OCaml checks the default seed's required tables (one account), and M1 authenticates a Rails-issued cookie against a seed copy. Full upgrade/write/restart checks pending |
 | HTTP and persisted-state contracts | Shared `once-campfire-verification` route contracts and acknowledged-write audit against a disposable OCaml server | Pending |
 | Browser flows | Shared `bin/browser` against a fresh disposable server: install, live messages, edit, search, permissions, settings, invitation, session transfer | Pending |
 | Rust local browser parity | `parity/bin/compare` lean matrix during development and full matrix for release; compare HTML, live DOM, accessibility, network, Cable, and pixels | Pending |
-| Cable and media | Crate-local frame, channel, storage, and media golden fixtures plus live multi-client and upload flows | Pending |
-| Deployment | amd64 and arm64 Docker/ONCE upgrade, restart, backup/restore, TLS/HTTP2/ACME, and rollback checks | Pending |
+| Cable and media | Crate-local frame, channel, storage, and media golden fixtures plus live multi-client and upload flows | M6 storage/media complete: strict corpus 3/3 in both pinned Rails and packaged OCaml media images; 256 live Rails/OCaml storage comparisons with zero mismatches, plus streamed multipart and after-commit purge tests. Complete Cable protocol and multi-client verification remains pending |
+| Deployment | amd64 and arm64 Docker/ONCE upgrade, restart, backup/restore, TLS/HTTP2/ACME, and rollback checks | Both local image architectures and copied Rails upgrade/restart/backup/restore/rollback pass; live HTTP/2, long-lived Cable, and ACME initial/second issuance pass. Genuine prior Thruster certificate storage, actual remote ONCE deploy and published manifest remain unverified |
 | Performance and resilience | Shared route benchmark with complete response/write validation, plus memory, concurrency, long-running, and failure-recovery checks | Pending |
 
 The shared harness requires a disposable server for browser flows because it mutates account,

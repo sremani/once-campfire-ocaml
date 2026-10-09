@@ -1,0 +1,30 @@
+#!/bin/bash
+# Keep both server processes in one container and deliver termination to both.
+set -uo pipefail
+cd /rails
+/usr/local/bin/campfire server &
+app_pid=$!
+/usr/local/bin/campfire-front run &
+front_pid=$!
+received_signal=""
+
+signal_children() {
+  kill -s "$1" "$app_pid" "$front_pid" 2>/dev/null || true
+}
+trap 'received_signal=TERM; signal_children TERM' TERM
+trap 'received_signal=INT; signal_children INT' INT
+
+wait -n "$app_pid" "$front_pid"
+status=$?
+signal_children TERM
+wait "$app_pid" 2>/dev/null || true
+wait "$front_pid" 2>/dev/null || true
+if [ -n "$received_signal" ]; then
+  # Docker/ONCE requested this shutdown; both children have finished.
+  exit 0
+fi
+if [ "$status" -eq 0 ]; then
+  # A long-running child exiting cleanly is still an unexpected service stop.
+  status=1
+fi
+exit "$status"

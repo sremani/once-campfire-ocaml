@@ -1,0 +1,38 @@
+--- a/util.c
++++ b/util.c
+@@ -19,29 +19,14 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include "util.h"
++#include "../../src/richtext_gumbo_alloc.h"
+ #include "nokogiri_gumbo.h"
+ 
+-void* gumbo_alloc(size_t size) {
+-  void* ptr = malloc(size);
+-  if (unlikely(ptr == NULL)) {
+-    perror(__func__);
+-    abort();
+-  }
+-  return ptr;
+-}
+-
+-void* gumbo_realloc(void* ptr, size_t size) {
+-  ptr = realloc(ptr, size);
+-  if (unlikely(ptr == NULL)) {
+-    perror(__func__);
+-    abort();
+-  }
+-  return ptr;
+-}
+-
+-void gumbo_free(void* ptr) {
+-  free(ptr);
+-}
++/* Local integration: bounded, thread-local allocation scope replaces abort-on-OOM.
++ * See campfire-allocation.patch and provenance.json for upstream/local hashes. */
++void* gumbo_alloc(size_t size) { return rt_gumbo_alloc(size); }
++void* gumbo_realloc(void* ptr, size_t size) { return rt_gumbo_realloc(ptr, size); }
++void gumbo_free(void* ptr) { rt_gumbo_free(ptr); }
+ 
+ char* gumbo_strdup(const char* str) {
+   const size_t size = strlen(str) + 1;

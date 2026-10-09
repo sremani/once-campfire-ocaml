@@ -1,0 +1,9 @@
+# OCaml Gumbo integration
+
+This directory is copied from the sibling ONCE Campfire C port's pinned Nokogiri Gumbo fork. `provenance.json` records upstream commit `bce9a50af78a9f2ef469761a95b22886a2ab0031` and the sibling port's two source patches. `LICENSE-DEPENDENCIES.md` contains the Apache 2.0 terms for libgumbo and its bundled hashmap source; the original `README.md`, patch files, and provenance record are retained.
+
+The OCaml build adds `dune`, `richtext_gumbo_alloc.[ch]`, and `lib/rich_text_gumbo_stubs.c`. It changes only the include path in `util.c` from the sibling C port's allocator header to the local one. The allocator implementation is specific to this OCaml port: it tracks each Gumbo allocation in a thread-local 64 MiB scope and releases the scope when parse completes or a bounded allocation fails. As a result, the file hashes for the local `util.c` and allocator differ from the preserved source hashes in `provenance.json`; those hashes identify the imported fork and its original patches.
+
+`GumboOptions` parses HTML5 fragments in a `body` context with `max_tree_depth=401` (400 authored open elements after Gumbo's implicit root), a 400 attribute limit, and no recorded parse errors. OCaml rejects bodies over 16 MiB before calling Gumbo. A status or allocation failure is returned as an explicit error to the caller. The C bridge imports only text and HTML/foreign element names, attributes, and children into immutable OCaml nodes; comments are discarded. The OCaml layer owns sanitization and rendering.
+
+The pinned Rust implementation uses html5ever with Gumbo compatible limits. These parsers agree on the common Rails bodies in the focused tests, but malformed DOM serialization can differ. The exploratory Rails corpus scan in `test/m4_t3_test.ml` tracks those differences without claiming complete byte parity.

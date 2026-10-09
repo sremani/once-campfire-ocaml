@@ -1,8 +1,9 @@
 # Campfire in OCaml
 
 An OCaml port of [basecamp/once-campfire-rust](https://github.com/basecamp/once-campfire-rust).
-The compatibility and authenticated-session milestone is complete. This is **not yet a full
-Campfire server**.
+The compatibility, authenticated-session, and database-model milestones are complete.
+Realtime, media, and local deployment checks have passed their milestone gates. Full
+HTTP, browser, differential, and external deployment/release verification is in progress.
 
 The port targets compatibility with existing Campfire installations: the SQLite schema, storage
 layout, and signed and encrypted cookies. The Rust source is pinned at
@@ -13,14 +14,20 @@ The route, Rails compatibility, and schema fixtures under `test/fixtures/` come 
 
 - Dune project and an OCaml library.
 - Environment and storage path parsing based on Rust `crates/campfire/src/config.rs`.
-- Read-only inspection of an existing SQLite database for required Campfire tables.
+- Existing-schema SQLite access with asynchronous reader and writer queues, transactions,
+  WAL checkpoints, and consistent backup snapshots.
+- Typed database models for accounts, users, sessions, rooms, memberships, messages,
+  boosts, search, Active Storage records, push subscriptions, bans, and webhooks.
 - Complete route catalog recognition and path helpers against the pinned route vectors.
 - Rails and Ruby format primitives, signed identifiers, signed/encrypted cookies, CSRF decisions,
   and Rack cookie behavior against the upstream vectors.
 - Session authentication against a copy of the pinned Rails seed, including expiry, revocation,
   user status, IP bans, and activity refresh.
-- An in-process Cohttp request boundary for authenticated access and CSRF rejection. The
-  listening server and application controllers remain in later milestones.
+- A Cohttp/Lwt application listener with the 177-route dispatcher, authenticated controllers,
+  cache handling, streamed multipart uploads, packaged assets, and a same-listener Cable upgrade.
+- Tyxml views, Action Text parsing, signed Active Storage responses, libvips/ffmpeg derivatives,
+  jobs, Web Push, guarded outbound integrations, and a Caddy front configuration. These have
+  focused and seeded tests; the complete cross-implementation and browser gates remain open.
 
 Build and test with OCaml 4.14 or newer, Dune, and the packages in
 [`dune-project`](dune-project):
@@ -32,11 +39,17 @@ dune exec bin/main.exe -- check --database /path/to/storage/db/production.sqlite
 ```
 
 `check` never creates or modifies the database. It checks table presence, not every column or
-index. A complete server still requires database models, controllers, views, Action Cable,
-storage, integrations, and front-server work.
+index. `dune exec bin/main.exe -- serve` starts the application listener after configuration;
+set `SECRET_KEY_BASE` and `CAMPFIRE_STORAGE_PATH` for a disposable installation, or use the
+existing installation's secret and storage paths for compatibility checks. The listener and
+deployment configuration are still under differential verification, so use a copied installation
+for testing.
 See [the porting map](docs/porting-map.md) for each upstream subsystem and its current status.
 The [milestones and tickets](docs/milestones.md) and [verification gates](docs/verification-gates.md)
 track the full port.
+The [agent ledger](docs/agent-ledger.md) records milestone managers and ticket agents as they start.
+The [deployment guide](docs/deployment.md) describes the ONCE image contract, hooks, and
+copied-install upgrade check.
 
 To regenerate the checked-in route catalog after updating the fixture:
 
@@ -48,12 +61,20 @@ python3 tools/generate_route_catalog.py test/fixtures/routes.json lib/route_cata
 
 Use established OCaml libraries for protocol and infrastructure work. SQLite is accessed through
 `sqlite3`; JSON uses `yojson`; CLI parsing uses `cmdliner`. Cryptography uses `mirage-crypto`,
-`pbkdf`, `base64`, and `eqaf`; expiry parsing uses `ptime`. The HTTP boundary uses
-`cohttp-lwt-unix` and `lwt`. Use existing HTML parsing and media bindings where they preserve the
-Rails formats; verify each against the upstream `vectors/` corpus.
+`pbkdf`, `base64`, and `eqaf`; expiry parsing uses `ptime`. HTTP uses `cohttp-lwt-unix` and `lwt`,
+views use `tyxml`, and Cable uses a pinned vendored OCaml WebSocket library. The media path calls
+libvips and ffmpeg; the front server uses Caddy. Each compatibility boundary is checked against
+the pinned upstream vectors and live fixtures.
+
+Rails password digests use bcrypt. The installed OCaml package set has no bcrypt binding, so
+`lib/bcrypt_stubs.c` calls the system `libcrypt` implementation through its reentrant `crypt_r`
+interface. This keeps password handling in process and uses a maintained system crypto library;
+the binding copies OCaml strings before releasing the runtime lock and clears its temporary
+password buffer after each call. The database model tests verify Rails-issued `$2a$` digests.
 
 ## Port sequence
 
-M1 compatibility and sessions is complete. M2 ports the database models and transactions; M3
-builds the listening HTTP application and controllers. Later milestones cover the browser,
-realtime, media, operations, and release gates in [the ticket plan](docs/milestones.md).
+M1 compatibility and sessions, M2 database models and transactions, and the local M5 realtime,
+M6 media, and M7 operations checks are complete. M3 HTTP, M4 browser, and M8 release checks
+remain open; external M7 publication and ONCE deployment have not been run. See the
+[ticket plan](docs/milestones.md) for exact gates and evidence.

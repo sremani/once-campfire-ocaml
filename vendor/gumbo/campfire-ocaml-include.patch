@@ -1,0 +1,11 @@
+--- a/util.c
++++ b/util.c
+@@ -19,7 +19,7 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include "util.h"
+-#include "../../src/richtext_gumbo_alloc.h"
++#include "richtext_gumbo_alloc.h"
+ #include "nokogiri_gumbo.h"
+ 
+ /* Local integration: bounded, thread-local allocation scope replaces abort-on-OOM.

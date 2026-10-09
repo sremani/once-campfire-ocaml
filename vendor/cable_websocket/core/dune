@@ -1,0 +1,5 @@
+(library
+ (name websocket)
+ (public_name once_campfire_ocaml.websocket)
+ (modules sha1 websocket)
+ (libraries astring base64 ocplib-endian conduit cohttp mirage-crypto-rng cstruct))

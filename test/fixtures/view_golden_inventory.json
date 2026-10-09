@@ -1,0 +1,869 @@
+{
+  "pinned_root": "once-campfire-rust/crates/views/tests/golden",
+  "total": 123,
+  "asserted": 60,
+  "uncovered": 63,
+  "cases": [
+    {
+      "case": "a/account_edit_admin.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/account_edit_member.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/account_edit_notice.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/account_edit_paginated.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/account_edit_with_logo.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/account_edit_with_logo_member.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/account_users_page_2.turbo_stream.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/action_text_content.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/autocompletable_users.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/dune:m4_t2 autocomplete DOM rule",
+      "scope": "all elements, attributes, nonempty text"
+    },
+    {
+      "case": "a/autocompletable_users_json.json",
+      "status": "asserted",
+      "level": "exact_render_bytes",
+      "assertion": "test/dune:m4_t2 autocomplete JSON cmp",
+      "scope": null
+    },
+    {
+      "case": "a/autocompletables_template.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/dune:m4_t2 autocomplete template DOM rule",
+      "scope": "all elements, attributes, nonempty text"
+    },
+    {
+      "case": "a/avatar_david.svg",
+      "status": "asserted",
+      "level": "exact_render_bytes",
+      "assertion": "test/m4_t2_test.ml:test_svg_golden",
+      "scope": null
+    },
+    {
+      "case": "a/avatar_three_initials.svg",
+      "status": "asserted",
+      "level": "exact_render_bytes",
+      "assertion": "test/m4_t2_test.ml:test_svg_golden",
+      "scope": null
+    },
+    {
+      "case": "a/ban_button_banned.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/dune:m4_t2 ban-button DOM rule",
+      "scope": "all elements, attributes, nonempty text; CSRF ignored"
+    },
+    {
+      "case": "a/bots_edit.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/bots_edit_with_avatar.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/bots_index.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/bots_new.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/browser_settings_apple_messages.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/view_pwa_compare.py:all 30 partial DOM cases",
+      "scope": "all elements, attributes, and nonempty text"
+    },
+    {
+      "case": "a/browser_settings_chrome_android.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/view_pwa_compare.py:all 30 partial DOM cases",
+      "scope": "all elements, attributes, and nonempty text"
+    },
+    {
+      "case": "a/browser_settings_chrome_mac.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/view_pwa_compare.py:all 30 partial DOM cases",
+      "scope": "all elements, attributes, and nonempty text"
+    },
+    {
+      "case": "a/browser_settings_chrome_windows.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/view_pwa_compare.py:all 30 partial DOM cases",
+      "scope": "all elements, attributes, and nonempty text"
+    },
+    {
+      "case": "a/browser_settings_edge_windows.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/view_pwa_compare.py:all 30 partial DOM cases",
+      "scope": "all elements, attributes, and nonempty text"
+    },
+    {
+      "case": "a/browser_settings_firefox_android.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/view_pwa_compare.py:all 30 partial DOM cases",
+      "scope": "all elements, attributes, and nonempty text"
+    },
+    {
+      "case": "a/browser_settings_firefox_mac.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/view_pwa_compare.py:all 30 partial DOM cases",
+      "scope": "all elements, attributes, and nonempty text"
+    },
+    {
+      "case": "a/browser_settings_old_chrome.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/view_pwa_compare.py:all 30 partial DOM cases",
+      "scope": "all elements, attributes, and nonempty text"
+    },
+    {
+      "case": "a/browser_settings_safari_ios.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/view_pwa_compare.py:all 30 partial DOM cases",
+      "scope": "all elements, attributes, and nonempty text"
+    },
+    {
+      "case": "a/browser_settings_safari_mac.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/view_pwa_compare.py:all 30 partial DOM cases",
+      "scope": "all elements, attributes, and nonempty text"
+    },
+    {
+      "case": "a/custom_styles_edit.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/dune:m4_t2 custom styles DOM rule",
+      "scope": "all elements, attributes, nonempty text; CSRF ignored"
+    },
+    {
+      "case": "a/custom_styles_layout.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/dune:m4_t2 custom styles DOM rule",
+      "scope": "all elements, attributes, nonempty text; CSRF ignored"
+    },
+    {
+      "case": "a/facts.json",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/first_run.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/dune:m4_t2 full-page DOM rule",
+      "scope": "all elements, attributes, and nonempty text; CSRF ignored"
+    },
+    {
+      "case": "a/incompatible_browser.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/dune:m4_t2 incompatible browser DOM rule",
+      "scope": "all elements, attributes, nonempty text; CSRF ignored"
+    },
+    {
+      "case": "a/incompatible_browser_apple_messages.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/dune:m4_t2 incompatible browser DOM rule",
+      "scope": "all elements, attributes, nonempty text; CSRF ignored"
+    },
+    {
+      "case": "a/install_instructions_apple_messages.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/view_pwa_compare.py:all 30 partial DOM cases",
+      "scope": "all elements, attributes, and nonempty text"
+    },
+    {
+      "case": "a/install_instructions_chrome_android.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/view_pwa_compare.py:all 30 partial DOM cases",
+      "scope": "all elements, attributes, and nonempty text"
+    },
+    {
+      "case": "a/install_instructions_chrome_mac.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/view_pwa_compare.py:all 30 partial DOM cases",
+      "scope": "all elements, attributes, and nonempty text"
+    },
+    {
+      "case": "a/install_instructions_chrome_windows.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/view_pwa_compare.py:all 30 partial DOM cases",
+      "scope": "all elements, attributes, and nonempty text"
+    },
+    {
+      "case": "a/install_instructions_edge_windows.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/view_pwa_compare.py:all 30 partial DOM cases",
+      "scope": "all elements, attributes, and nonempty text"
+    },
+    {
+      "case": "a/install_instructions_firefox_android.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/view_pwa_compare.py:all 30 partial DOM cases",
+      "scope": "all elements, attributes, and nonempty text"
+    },
+    {
+      "case": "a/install_instructions_firefox_mac.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/view_pwa_compare.py:all 30 partial DOM cases",
+      "scope": "all elements, attributes, and nonempty text"
+    },
+    {
+      "case": "a/install_instructions_old_chrome.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/view_pwa_compare.py:all 30 partial DOM cases",
+      "scope": "all elements, attributes, and nonempty text"
+    },
+    {
+      "case": "a/install_instructions_safari_ios.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/view_pwa_compare.py:all 30 partial DOM cases",
+      "scope": "all elements, attributes, and nonempty text"
+    },
+    {
+      "case": "a/install_instructions_safari_mac.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/view_pwa_compare.py:all 30 partial DOM cases",
+      "scope": "all elements, attributes, and nonempty text"
+    },
+    {
+      "case": "a/mailer_layout.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/manifest.json",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/mention.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/og_embed.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/og_embed_long_no_href.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/og_embed_twitter.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/og_embeds.json",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/profile_chrome_android.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/profile_chrome_mac.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/profile_chrome_windows.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/profile_edge_windows.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/profile_firefox_android.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/profile_firefox_mac.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/profile_kevin.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/profile_safari_ios.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/profile_safari_mac.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/profile_with_avatar.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/push_subscriptions.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/dune:m4_t2 full-page DOM rule",
+      "scope": "all elements, attributes, and nonempty text; CSRF ignored"
+    },
+    {
+      "case": "a/service_worker.js",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/sessions_new.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/dune:m4_t2 full-page DOM rule",
+      "scope": "all elements, attributes, and nonempty text; CSRF ignored"
+    },
+    {
+      "case": "a/sessions_new_email.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/dune:m4_t2 full-page DOM rule",
+      "scope": "all elements, attributes, and nonempty text; CSRF ignored"
+    },
+    {
+      "case": "a/sessions_new_rejected.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/dune:m4_t2 full-page DOM rule",
+      "scope": "all elements, attributes, and nonempty text; CSRF ignored"
+    },
+    {
+      "case": "a/sessions_new_with_logo.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/dune:m4_t2 full-page DOM rule",
+      "scope": "all elements, attributes, and nonempty text; CSRF ignored"
+    },
+    {
+      "case": "a/sessions_transfer.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/dune:m4_t2 transfer DOM rule",
+      "scope": "all elements, attributes, nonempty text; Rails legacy missing form close normalized"
+    },
+    {
+      "case": "a/shared_room.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/dune:m4_t2 shared-room partial DOM rule",
+      "scope": "all elements, attributes, nonempty text"
+    },
+    {
+      "case": "a/shared_room_unread.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/dune:m4_t2 shared-room partial DOM rule",
+      "scope": "all elements, attributes, nonempty text"
+    },
+    {
+      "case": "a/sidebar_david.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/dune:m4_t2 full sidebar DOM rule",
+      "scope": "all elements, attributes, nonempty text; CSRF ignored"
+    },
+    {
+      "case": "a/sidebar_frame.html",
+      "status": "asserted",
+      "level": "structural_scoped",
+      "assertion": "test/view_dom_compare.py:--sidebar-frame",
+      "scope": "user_sidebar frame (147 tokens)"
+    },
+    {
+      "case": "a/sidebar_kevin.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/dune:m4_t2 full sidebar DOM rule",
+      "scope": "all elements, attributes, nonempty text; CSRF ignored"
+    },
+    {
+      "case": "a/system_settings_apple_messages.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/view_pwa_compare.py:all 30 partial DOM cases",
+      "scope": "all elements, attributes, and nonempty text"
+    },
+    {
+      "case": "a/system_settings_chrome_android.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/view_pwa_compare.py:all 30 partial DOM cases",
+      "scope": "all elements, attributes, and nonempty text"
+    },
+    {
+      "case": "a/system_settings_chrome_mac.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/view_pwa_compare.py:all 30 partial DOM cases",
+      "scope": "all elements, attributes, and nonempty text"
+    },
+    {
+      "case": "a/system_settings_chrome_windows.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/view_pwa_compare.py:all 30 partial DOM cases",
+      "scope": "all elements, attributes, and nonempty text"
+    },
+    {
+      "case": "a/system_settings_edge_windows.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/view_pwa_compare.py:all 30 partial DOM cases",
+      "scope": "all elements, attributes, and nonempty text"
+    },
+    {
+      "case": "a/system_settings_firefox_android.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/view_pwa_compare.py:all 30 partial DOM cases",
+      "scope": "all elements, attributes, and nonempty text"
+    },
+    {
+      "case": "a/system_settings_firefox_mac.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/view_pwa_compare.py:all 30 partial DOM cases",
+      "scope": "all elements, attributes, and nonempty text"
+    },
+    {
+      "case": "a/system_settings_old_chrome.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/view_pwa_compare.py:all 30 partial DOM cases",
+      "scope": "all elements, attributes, and nonempty text"
+    },
+    {
+      "case": "a/system_settings_safari_ios.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/view_pwa_compare.py:all 30 partial DOM cases",
+      "scope": "all elements, attributes, and nonempty text"
+    },
+    {
+      "case": "a/system_settings_safari_mac.html",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/view_pwa_compare.py:all 30 partial DOM cases",
+      "scope": "all elements, attributes, and nonempty text"
+    },
+    {
+      "case": "a/user_json.json",
+      "status": "asserted",
+      "level": "exact_render_bytes",
+      "assertion": "test/m4_t2_test.ml:test_json_golden",
+      "scope": null
+    },
+    {
+      "case": "a/users_new.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/users_show_banned.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/users_show_bot.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/users_show_deactivated.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/users_show_member_as_admin.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/users_show_member_as_member.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/users_show_self.html",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "a/welcome.html",
+      "status": "asserted",
+      "level": "structural_scoped",
+      "assertion": "test/view_dom_compare.py:--html-main",
+      "scope": "main before footer (10 tokens)"
+    },
+    {
+      "case": "b/messages_boosts_by_bots_show.json",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "b/messages_boosts_index.json",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "b/messages_boosts_new.json",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "b/messages_by_bots_index.json",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "b/messages_by_bots_show.json",
+      "status": "asserted",
+      "level": "exact_render_bytes",
+      "assertion": "test/m4_t2_test.ml:test_message_json_golden",
+      "scope": null
+    },
+    {
+      "case": "b/messages_create.json",
+      "status": "asserted",
+      "level": "structural_scoped",
+      "assertion": "test/view_dom_compare.py:default",
+      "scope": "message create stream (184 tokens)"
+    },
+    {
+      "case": "b/messages_destroy.json",
+      "status": "asserted",
+      "level": "exact_render_bytes",
+      "assertion": "test/m4_t2_test.ml:test_message_stream_goldens",
+      "scope": null
+    },
+    {
+      "case": "b/messages_edit_attachment.json",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "b/messages_edit_text.json",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "b/messages_index.json",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "b/messages_room_not_found.json",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "b/messages_show_image.json",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "b/messages_show_text.json",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "b/rooms_closeds_edit.json",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "b/rooms_closeds_edit_member.json",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "b/rooms_closeds_new.json",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "b/rooms_directs_edit.json",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "b/rooms_directs_new.json",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "b/rooms_involvements_show.json",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "b/rooms_involvements_show_direct.json",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "b/rooms_opens_edit.json",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "b/rooms_opens_edit_member.json",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "b/rooms_opens_new.json",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "b/rooms_refreshes_show.json",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "b/rooms_show_at_message.json",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "b/rooms_show_closed.json",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "b/rooms_show_direct.json",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/dune:m4_t2 full room DOM rule",
+      "scope": "all elements, attributes, nonempty text; CSRF ignored"
+    },
+    {
+      "case": "b/rooms_show_member.json",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/dune:m4_t2 full room DOM rule",
+      "scope": "all elements, attributes, nonempty text; CSRF ignored"
+    },
+    {
+      "case": "b/rooms_show_original.json",
+      "status": "asserted",
+      "level": "full_structural_dom",
+      "assertion": "test/dune:m4_t2 full room DOM rule",
+      "scope": "all elements, attributes, nonempty text; CSRF ignored"
+    },
+    {
+      "case": "b/searches_index.json",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    },
+    {
+      "case": "b/searches_index_empty.json",
+      "status": "uncovered",
+      "level": "uncovered",
+      "assertion": null,
+      "scope": null
+    }
+  ]
+}

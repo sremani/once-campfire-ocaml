@@ -12,6 +12,10 @@ type t = {
   storage : storage;
   db_readers : int;
   job_concurrency : int;
+  log_level : string;
+  vapid_public_key : string option;
+  vapid_private_key : string option;
+  vapid_subject : string;
   disable_ssl : bool;
   app_version : string;
   git_revision : string option;
@@ -26,6 +30,12 @@ let dummy_secret () =
   let buffer = Buffer.create 128 in
   String.iter (fun c -> Buffer.add_string buffer (Printf.sprintf "%02x" (Char.code c))) bytes;
   Buffer.contents buffer
+
+let default_vapid_subject domain =
+  match domain |> Option.to_list |> List.concat_map (String.split_on_char ',')
+    |> List.map String.trim |> List.find_opt ((<>) "") with
+  | Some domain -> "https://" ^ domain
+  | None -> "https://github.com/basecamp/once-campfire-rust"
 
 let storage_paths ?database ?files ?backups root environment =
   let default path = Filename.concat root path in
@@ -69,6 +79,11 @@ let from_lookup get =
         | None, None -> "0"
       in
       Ok { secret_key_base; environment; storage; db_readers; job_concurrency;
+           log_level=Option.value (present "RAILS_LOG_LEVEL") ~default:"info";
+           vapid_public_key=present "VAPID_PUBLIC_KEY";
+           vapid_private_key=present "VAPID_PRIVATE_KEY";
+           vapid_subject=Option.value (present "VAPID_SUBJECT")
+             ~default:(default_vapid_subject (present "TLS_DOMAIN"));
            disable_ssl = present "DISABLE_SSL" <> None; app_version; git_revision }
 
 let from_env () = from_lookup Sys.getenv_opt

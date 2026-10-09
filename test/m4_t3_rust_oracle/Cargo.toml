@@ -1,0 +1,9 @@
+[package]
+name = "m4_t3_rust_oracle"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+campfire_richtext = { path = "../../../once-campfire-rust/crates/richtext" }
+serde_json = "=1.0.151"

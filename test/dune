@@ -40,3 +40,429 @@
  (libraries campfire alcotest sqlite3 yojson cohttp cohttp-lwt lwt.unix)
  (deps fixtures/campfire_sessions.json))
 
+(test
+ (name m2_t2_test)
+ (modules m2_t2_test)
+ (libraries campfire alcotest sqlite3))
+
+(test
+ (name m2_t1_test)
+ (modules m2_t1_test)
+ (libraries campfire alcotest sqlite3 threads lwt.unix))
+
+(test
+ (name m2_t4_test)
+ (modules m2_t4_test)
+ (libraries campfire alcotest sqlite3 ptime))
+
+(test
+ (name m2_t3_test)
+ (modules m2_t3_test)
+ (libraries campfire alcotest sqlite3 threads))
+
+(test
+ (name m2_differential_test)
+ (modules m2_differential_test)
+ (libraries campfire alcotest sqlite3 str)
+ (deps fixtures/model_fixtures.sqlite3 fixtures/model_scenario.sqlite3))
+
+(test
+ (name m2_t5_test)
+ (modules m2_t5_test)
+ (libraries campfire alcotest sqlite3 yojson ptime))
+
+(test
+ (name m3_t1_test)
+ (modules m3_t1_test)
+ (libraries campfire alcotest yojson unix lwt.unix cohttp-lwt-unix)
+ (deps fixtures/params_vectors.json))
+
+(test
+ (name m3_t2_test)
+ (modules m3_t2_test)
+ (libraries campfire alcotest sqlite3 cohttp cohttp-lwt lwt.unix uri)
+ (deps fixtures/campfire_sessions.json fixtures/model_fixtures.sqlite3))
+
+(test
+ (name m3_t3_test)
+ (modules m3_t3_test)
+ (libraries campfire alcotest sqlite3 cohttp cohttp-lwt lwt.unix uri))
+
+(test
+ (name m3_t4_test)
+ (modules m3_t4_test)
+ (libraries campfire alcotest sqlite3 cohttp cohttp-lwt lwt.unix uri yojson cstruct mirage-crypto)
+ (deps fixtures/qr_version_boundaries.json))
+
+(test
+ (name m3_t5_test)
+ (modules m3_t5_test)
+ (libraries campfire alcotest cohttp cohttp-lwt lwt.unix uri ptime sqlite3))
+
+(executable
+ (name m4_t2_probe)
+ (modules m4_t2_probe)
+ (libraries campfire cohttp cohttp-lwt lwt.unix uri sqlite3 yojson))
+
+(test
+ (name m4_t2_test)
+ (modules m4_t2_test)
+ (libraries campfire alcotest yojson ptime)
+ (deps fixtures/views_avatar_david.svg fixtures/views_avatar_three_initials.svg
+  fixtures/views_user_json.json fixtures/views_messages_create.json
+  fixtures/views_messages_destroy.json fixtures/views_messages_by_bots_show.json
+  fixtures/views_welcome.html fixtures/views_rooms_show_member.json
+  fixtures/views_sidebar_frame.json fixtures/views_sidebar_frame.html
+  fixtures/views_a_onboarding.json fixtures/views_sessions_new.html
+  fixtures/views_sessions_new_email.html fixtures/views_sessions_new_rejected.html
+  fixtures/views_sessions_new_with_logo.html fixtures/views_first_run.html
+  fixtures/views_push_subscriptions.html fixtures/views_sessions_transfer.html
+  fixtures/views_incompatible_browser.html
+  fixtures/views_incompatible_browser_apple_messages.html
+  fixtures/views_shared_room.html fixtures/views_shared_room_unread.html
+  fixtures/views_sidebar_david.html fixtures/views_sidebar_david.json
+  fixtures/views_sidebar_kevin.html fixtures/views_sidebar_kevin.json
+  fixtures/views_custom_styles_edit.html fixtures/views_custom_styles_layout.html
+  fixtures/views_a_autocomplete.json fixtures/views_autocompletable_users.html
+  fixtures/views_autocompletable_users_json.json
+  fixtures/views_autocompletables_template.html
+  fixtures/views_ban_button_banned.html
+  fixtures/views_rooms_show_original.json fixtures/views_rooms_show_direct.json
+  (source_tree fixtures/views_pwa)))
+
+(rule
+ (alias runtest)
+ (deps view_dom_compare.py fixtures/views_messages_create.json)
+ (action
+  (progn
+   (with-stdout-to m4_t2_message_actual.html
+    (run %{exe:m4_t2_test.exe} --dump-message))
+   (run python3 view_dom_compare.py fixtures/views_messages_create.json
+    m4_t2_message_actual.html))))
+
+(rule
+ (alias runtest)
+ (deps view_dom_compare.py fixtures/views_welcome.html)
+ (action
+  (progn
+   (with-stdout-to m4_t2_welcome_actual.html
+    (run %{exe:m4_t2_test.exe} --dump-welcome))
+   (run python3 view_dom_compare.py fixtures/views_welcome.html
+    m4_t2_welcome_actual.html --html-main))))
+
+(rule
+ (alias runtest)
+ (deps view_dom_compare.py fixtures/views_a_onboarding.json
+  fixtures/views_sessions_new.html fixtures/views_sessions_new_email.html
+  fixtures/views_sessions_new_rejected.html
+  fixtures/views_sessions_new_with_logo.html fixtures/views_first_run.html)
+ (action
+  (progn
+   (with-stdout-to m4_t2_sessions_new_actual.html
+    (run %{exe:m4_t2_test.exe} --dump-a sessions_new))
+   (run python3 view_dom_compare.py fixtures/views_sessions_new.html
+    m4_t2_sessions_new_actual.html --html-full)
+   (with-stdout-to m4_t2_sessions_new_email_actual.html
+    (run %{exe:m4_t2_test.exe} --dump-a sessions_new_email))
+   (run python3 view_dom_compare.py fixtures/views_sessions_new_email.html
+    m4_t2_sessions_new_email_actual.html --html-full)
+   (with-stdout-to m4_t2_sessions_new_rejected_actual.html
+    (run %{exe:m4_t2_test.exe} --dump-a sessions_new_rejected))
+   (run python3 view_dom_compare.py fixtures/views_sessions_new_rejected.html
+    m4_t2_sessions_new_rejected_actual.html --html-full)
+   (with-stdout-to m4_t2_sessions_new_with_logo_actual.html
+    (run %{exe:m4_t2_test.exe} --dump-a sessions_new_with_logo))
+   (run python3 view_dom_compare.py fixtures/views_sessions_new_with_logo.html
+    m4_t2_sessions_new_with_logo_actual.html --html-full)
+   (with-stdout-to m4_t2_first_run_actual.html
+    (run %{exe:m4_t2_test.exe} --dump-a first_run))
+   (run python3 view_dom_compare.py fixtures/views_first_run.html
+    m4_t2_first_run_actual.html --html-full))))
+
+(rule
+ (alias runtest)
+ (deps view_dom_compare.py fixtures/views_a_onboarding.json
+  fixtures/views_push_subscriptions.html)
+ (action
+  (progn
+   (with-stdout-to m4_t2_push_subscriptions_actual.html
+    (run %{exe:m4_t2_test.exe} --dump-a push_subscriptions))
+   (run python3 view_dom_compare.py fixtures/views_push_subscriptions.html
+    m4_t2_push_subscriptions_actual.html --html-full))))
+
+(rule
+ (alias runtest)
+ (deps view_dom_compare.py fixtures/views_a_onboarding.json
+  fixtures/views_sessions_transfer.html)
+ (action
+  (progn
+   (with-stdout-to m4_t2_sessions_transfer_actual.html
+    (run %{exe:m4_t2_test.exe} --dump-a sessions_transfer))
+   (run python3 view_dom_compare.py fixtures/views_sessions_transfer.html
+    m4_t2_sessions_transfer_actual.html --legacy-transfer))))
+
+(rule
+ (alias runtest)
+ (deps view_dom_compare.py fixtures/views_a_onboarding.json
+  fixtures/views_incompatible_browser.html
+  fixtures/views_incompatible_browser_apple_messages.html)
+ (action
+  (progn
+   (with-stdout-to m4_t2_incompatible_browser_actual.html
+    (run %{exe:m4_t2_test.exe} --dump-a incompatible_browser))
+   (run python3 view_dom_compare.py fixtures/views_incompatible_browser.html
+    m4_t2_incompatible_browser_actual.html --html-full)
+   (with-stdout-to m4_t2_incompatible_browser_apple_messages_actual.html
+    (run %{exe:m4_t2_test.exe} --dump-a incompatible_browser_apple_messages))
+   (run python3 view_dom_compare.py
+    fixtures/views_incompatible_browser_apple_messages.html
+    m4_t2_incompatible_browser_apple_messages_actual.html --html-full))))
+
+(rule
+ (alias runtest)
+ (deps view_pwa_compare.py view_dom_compare.py fixtures/views_a_onboarding.json
+  (source_tree fixtures/views_pwa))
+ (action (run python3 view_pwa_compare.py %{exe:m4_t2_test.exe})))
+
+(rule
+ (alias runtest)
+ (deps view_session_bytes.py fixtures/views_sessions_new_rejected.html
+  fixtures/views_a_onboarding.json)
+ (action (run python3 view_session_bytes.py %{exe:m4_t2_test.exe})))
+
+(rule
+ (alias runtest)
+ (deps view_dom_compare.py fixtures/views_sidebar_frame.json
+  fixtures/views_shared_room.html fixtures/views_shared_room_unread.html)
+ (action
+  (progn
+   (with-stdout-to m4_t2_shared_room_actual.html
+    (run %{exe:m4_t2_test.exe} --dump-shared-room shared_room))
+   (run python3 view_dom_compare.py fixtures/views_shared_room.html
+    m4_t2_shared_room_actual.html --html-full)
+   (with-stdout-to m4_t2_shared_room_unread_actual.html
+    (run %{exe:m4_t2_test.exe} --dump-shared-room shared_room_unread))
+   (run python3 view_dom_compare.py fixtures/views_shared_room_unread.html
+    m4_t2_shared_room_unread_actual.html --html-full))))
+
+(rule
+ (alias runtest)
+ (deps view_dom_compare.py fixtures/views_a_onboarding.json
+  fixtures/views_sidebar_david.html fixtures/views_sidebar_david.json
+  fixtures/views_sidebar_kevin.html fixtures/views_sidebar_kevin.json)
+ (action
+  (progn
+   (with-stdout-to m4_t2_sidebar_david_actual.html
+    (run %{exe:m4_t2_test.exe} --dump-sidebar-full sidebar_david))
+   (run python3 view_dom_compare.py fixtures/views_sidebar_david.html
+    m4_t2_sidebar_david_actual.html --html-full)
+   (with-stdout-to m4_t2_sidebar_kevin_actual.html
+    (run %{exe:m4_t2_test.exe} --dump-sidebar-full sidebar_kevin))
+   (run python3 view_dom_compare.py fixtures/views_sidebar_kevin.html
+    m4_t2_sidebar_kevin_actual.html --html-full))))
+
+(rule
+ (alias runtest)
+ (deps view_dom_compare.py fixtures/views_a_onboarding.json
+  fixtures/views_custom_styles_edit.html fixtures/views_custom_styles_layout.html)
+ (action
+  (progn
+   (with-stdout-to m4_t2_custom_styles_edit_actual.html
+    (run %{exe:m4_t2_test.exe} --dump-a custom_styles_edit))
+   (run python3 view_dom_compare.py fixtures/views_custom_styles_edit.html
+    m4_t2_custom_styles_edit_actual.html --html-full)
+   (with-stdout-to m4_t2_custom_styles_layout_actual.html
+    (run %{exe:m4_t2_test.exe} --dump-a custom_styles_layout))
+   (run python3 view_dom_compare.py fixtures/views_custom_styles_layout.html
+    m4_t2_custom_styles_layout_actual.html --html-full))))
+
+(rule
+ (alias runtest)
+ (deps view_dom_compare.py fixtures/views_a_autocomplete.json
+  fixtures/views_autocompletable_users.html
+  fixtures/views_autocompletable_users_json.json)
+ (action
+  (progn
+   (with-stdout-to m4_t2_autocompletable_users_actual.html
+    (run %{exe:m4_t2_test.exe} --dump-autocomplete))
+   (run python3 view_dom_compare.py fixtures/views_autocompletable_users.html
+    m4_t2_autocompletable_users_actual.html --html-full)
+   (with-stdout-to m4_t2_autocompletable_users_json_actual.json
+    (run %{exe:m4_t2_test.exe} --dump-autocomplete-json))
+   (run cmp fixtures/views_autocompletable_users_json.json
+    m4_t2_autocompletable_users_json_actual.json))))
+
+(rule
+ (alias runtest)
+ (deps view_dom_compare.py fixtures/views_a_onboarding.json
+  fixtures/views_autocompletables_template.html)
+ (action
+  (progn
+   (with-stdout-to m4_t2_autocompletables_template_actual.html
+    (run %{exe:m4_t2_test.exe} --dump-autocomplete-template))
+   (run python3 view_dom_compare.py fixtures/views_autocompletables_template.html
+    m4_t2_autocompletables_template_actual.html --html-full))))
+
+(rule
+ (alias runtest)
+ (deps view_dom_compare.py fixtures/views_a_onboarding.json
+  fixtures/views_ban_button_banned.html)
+ (action
+  (progn
+   (with-stdout-to m4_t2_ban_button_banned_actual.html
+    (run %{exe:m4_t2_test.exe} --dump-a ban_button_banned))
+   (run python3 view_dom_compare.py fixtures/views_ban_button_banned.html
+    m4_t2_ban_button_banned_actual.html --html-full))))
+
+(rule
+ (alias runtest)
+ (deps view_dom_compare.py fixtures/views_a_onboarding.json
+  fixtures/views_rooms_show_member.json
+  fixtures/views_rooms_show_original.json fixtures/views_rooms_show_direct.json)
+ (action
+  (progn
+   (with-stdout-to m4_t2_room_actual.html
+    (run %{exe:m4_t2_test.exe} --dump-room))
+   (run python3 view_dom_compare.py fixtures/views_rooms_show_member.json
+    m4_t2_room_actual.html)
+   (with-stdout-to m4_t2_room_original_actual.html
+    (run %{exe:m4_t2_test.exe} --dump-room-case rooms_show_original))
+   (run python3 view_dom_compare.py fixtures/views_rooms_show_original.json
+    m4_t2_room_original_actual.html)
+   (with-stdout-to m4_t2_room_direct_actual.html
+    (run %{exe:m4_t2_test.exe} --dump-room-case rooms_show_direct))
+   (run python3 view_dom_compare.py fixtures/views_rooms_show_direct.json
+    m4_t2_room_direct_actual.html))))
+
+(rule
+ (alias runtest)
+ (deps view_dom_compare.py fixtures/views_sidebar_frame.json
+  fixtures/views_sidebar_frame.html)
+ (action
+  (progn
+   (with-stdout-to m4_t2_sidebar_actual.html
+    (run %{exe:m4_t2_test.exe} --dump-sidebar))
+   (run python3 view_dom_compare.py fixtures/views_sidebar_frame.html
+    m4_t2_sidebar_actual.html --sidebar-frame))))
+
+(test
+ (name m4_t1_test)
+ (modules m4_t1_test)
+ (libraries campfire alcotest yojson cstruct mirage-crypto str)
+ (deps (source_tree ../assets) (source_tree fixtures/assets)))
+
+(test
+ (name m5_t1_test)
+ (modules m5_t1_test)
+ (libraries campfire alcotest cohttp-lwt-unix lwt.unix unix))
+
+(test
+ (name m5_golden_replay_test)
+ (modules m5_golden_replay_test)
+ (libraries campfire alcotest cohttp-lwt-unix lwt.unix unix sqlite3 yojson))
+
+(test
+ (name m5_channels_golden_test)
+ (modules m5_channels_golden_test)
+ (libraries campfire alcotest cohttp-lwt-unix lwt.unix unix sqlite3 yojson))
+
+(test
+ (name m5_ring_test)
+ (modules m5_ring_test)
+ (libraries campfire alcotest))
+
+(test
+ (name m5_t2_test)
+ (modules m5_t2_test)
+ (libraries campfire alcotest sqlite3 cohttp-lwt-unix lwt.unix unix))
+
+(test
+ (name m5_t3_test)
+ (modules m5_t3_test)
+ (libraries campfire alcotest yojson cstruct mirage-crypto mirage-crypto-ec threads unix)
+ (deps fixtures/web_push_expected.json))
+
+(test
+ (name m5_t3_integration_test)
+ (modules m5_t3_integration_test)
+ (libraries campfire alcotest sqlite3 cohttp-lwt-unix lwt.unix unix yojson base64
+  cstruct mirage-crypto mirage-crypto-ec)
+ (deps support_push_tls.py))
+
+
+(test
+ (name m4_t3_test)
+ (modules m4_t3_test)
+ (libraries campfire alcotest yojson)
+ (deps fixtures/rich_text_expected.json))
+
+(test
+ (name m6_t1_test)
+ (modules m6_t1_test)
+ (libraries campfire alcotest yojson unix sqlite3 cohttp-lwt lwt.unix)
+ (deps fixtures/storage.json fixtures/rails_compat.json
+  (source_tree fixtures/storage_prefix)))
+
+(test
+ (name m6_t2_test)
+ (modules m6_t2_test)
+ (libraries campfire alcotest yojson unix sqlite3 threads)
+ (deps fixtures/storage.json))
+
+(test
+ (name m6_t3_test)
+ (modules m6_t3_test)
+ (libraries campfire alcotest yojson unix sqlite3 threads)
+ (deps fixtures/storage.json fixtures/rails_compat.json))
+
+(test
+ (name m6_t4_test)
+ (modules m6_t4_test)
+ (libraries campfire alcotest yojson unix sqlite3 threads cohttp-lwt lwt.unix uri)
+ (deps fixtures/storage.json fixtures/rails_compat.json))
+
+(test
+ (name m5_t4_test)
+ (modules m5_t4_test)
+ (libraries campfire alcotest yojson unix threads lwt.unix base64)
+ (deps fixtures/opengraph_cases.json fixtures/opengraph_expected.json
+  fixtures/webhook_cases.json fixtures/webhook_expected.json
+  (source_tree fixtures/integrations_tls)))
+
+(test
+ (name m5_t4_route_test)
+ (modules m5_t4_route_test)
+ (libraries campfire alcotest yojson sqlite3 unix lwt.unix base64 cohttp-lwt uri)
+ (deps fixtures/opengraph_cases.json fixtures/opengraph_expected.json))
+
+(test
+ (name m5_t4_attachment_test)
+ (modules m5_t4_attachment_test)
+ (libraries campfire alcotest))
+
+(test
+ (name m5_t4_integration_test)
+ (modules m5_t4_integration_test)
+ (libraries campfire alcotest sqlite3 unix threads lwt.unix cohttp-lwt uri))
+
+(test
+ (name m7_t1_test)
+ (modules m7_t1_test)
+ (libraries campfire alcotest cohttp str lwt.unix unix))
+
+(test
+ (name m7_t2_test)
+ (modules m7_t2_test)
+ (libraries campfire alcotest sqlite3 threads unix lwt.unix cohttp uri))
+
+(test
+ (name m4_integration_test)
+ (modules m4_integration_test)
+ (libraries campfire alcotest sqlite3 threads unix lwt.unix cohttp uri yojson)
+ (deps fixtures/campfire_sessions.json fixtures/rails_compat.json))
+
+(test
+ (name m8_t1_user_agent_test)
+ (modules m8_t1_user_agent_test)
+ (libraries campfire alcotest yojson cohttp cohttp-lwt lwt.unix unix)
+ (deps fixtures/campfire_user_agents.json fixtures/rails_compat.json fixtures/storage.json))

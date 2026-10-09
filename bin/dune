@@ -1,3 +1,9 @@
 (executable
  (name main)
- (libraries campfire cmdliner yojson))
+ (modules main)
+ (libraries campfire cmdliner yojson lwt.unix logs.fmt))
+
+(executable
+ (name front)
+ (modules front)
+ (libraries campfire unix))

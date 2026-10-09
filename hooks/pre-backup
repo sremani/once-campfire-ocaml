@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+cd /rails
+exec /usr/local/bin/campfire backup

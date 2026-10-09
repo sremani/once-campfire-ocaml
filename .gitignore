@@ -1,2 +1,5 @@
 _build/
+_build_*/
 *.install
+__pycache__/
+*.pyc

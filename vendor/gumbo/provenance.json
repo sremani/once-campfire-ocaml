@@ -1,0 +1,90 @@
+{
+  "upstream": "https://github.com/sparklemotion/nokogiri",
+  "commit": "bce9a50af78a9f2ef469761a95b22886a2ab0031",
+  "directory": "gumbo-parser/src",
+  "archive_sha256": "362d888e868240977e7c01932c8f2e106487c8d16984f82532d07023e2f1eb12",
+  "files": {
+    "LICENSE-DEPENDENCIES.md": "d1e493c109029ebf0ffc5f8df218d6c0ae56fcb7b77508205ec7f16cfbdab13b",
+    "Makefile": "4719754a3b9293baa60ad87601585a5e48d26a96407debce08d64b3efa03a05b",
+    "README.md": "888186c40f9369a87f91a7c75e157df67809a916cb2b7a580eb5214b38f1eb44",
+    "ascii.c": "d775aacdc7d819ba5703519c71709497e558de1d78e66073795e605e96b134f9",
+    "ascii.h": "8c1ff663bb31ce6e4560dda4928d8dbd2ed46af9937143e381250d1245d031bd",
+    "attribute.c": "8b614191a0a735847826a4860180c20cc2eef59658ccb4d7f676de588f5da80e",
+    "attribute.h": "314f4b4b4bd0e4acebf60886ce03e4c01aa08ef4b067ff6fc55dcf2c7ea1ab27",
+    "char_ref.c": "97d1d8924d92e37286b3980e1a69757654edb858d2002c1c2fa1d79b2b6337af",
+    "char_ref.h": "38a6e87b800cd9014cd27c1bf574423c6b506da3f2c8d4aed71bcf1d2d744aeb",
+    "char_ref.rl": "8922e44d02bc8acd8ccc34875d8108611731100a2b53bd6251116ca57fab0f32",
+    "error.c": "84cd53535ecee4f7bd77daeb6a4ab1864fe40f7efde00ecdc8f82e313fa58d25",
+    "error.h": "53c9ae66df6ec419846778eb9a3cf368bd743ce1d96593563730ee6ea5f61a72",
+    "foreign_attrs.c": "326f5e8399bf3b9000de6d5ce6ef7b7073ab0a235956c539a3ff88da10b035b6",
+    "foreign_attrs.gperf": "78ed8c0148fe25f1cefc15184f1f55bcefaaa0a71f8a823b9988e802f8bd1bc5",
+    "hashmap.c": "64cabddbc0b93a2d8f0b2564cb8d3507335b3ead098039f8cec588d202d999e5",
+    "hashmap.h": "c8f8bb695bf991ad26257b4414dab1ed7970c38c63f93f7f4aa01f54ac424e71",
+    "insertion_mode.h": "42628a0088f261e8793624ef8ccf51a9df3bc27f3f21c92f16a7681a34912fd8",
+    "macros.h": "18bbfa9157486d34ef04e6f70afa4b4f635dd67ffea6eea8d437c9973141d620",
+    "nokogiri_gumbo.h": "6d3f9f0ca4926a75334bf8b9609aa60e53e9af923deefbef5b4271b02b6d49b4",
+    "parser.c": "89dce938e38fa976cdc5506e45fc86c4ceb5bc63064a43ad63205fe77fbea49d",
+    "parser.h": "6f690e4734ea4a2786eb183f017d42dff742ca98a02c4487df0ef6b4ddf01d4f",
+    "replacement.h": "97f3f4c1b8b375fe1c0ba7d09feb15cbde1b872c0e2e0faa8d2da32b430df634",
+    "string_buffer.c": "77a9969232d6a6cdb6817b7501c5b4aad5777a816fa37c3d15025f610226b9ae",
+    "string_buffer.h": "8c4eec1eff3ac18bcb516bf806243c8571feb0303bf222df261764e494964a0e",
+    "string_piece.c": "3a0b45506c21fde2801858d9561b0f2c6ed7fb21d077fbfc18e96fa52f54064b",
+    "string_set.c": "1434e282840540639c3fee20a39880f746bbfba7467c23677707360adf090786",
+    "string_set.h": "866e955fd8eafc16f37c9ad1c72b91cd6146d28581c0138aefa1370f40ef0f64",
+    "svg_attrs.c": "53ccc5437d4e6a36c6b5902af8b0a9c4e77ab3e96834a847bd0ea9e8a3881e8f",
+    "svg_attrs.gperf": "d4467060d41bb86eadb547272146a09a5f36aa31c6204d50b6f344c45e06f978",
+    "svg_tags.c": "6d46c4ecd6ec2352ddace76c41945c46ffc3f1981f77f1085133a46d867db2b1",
+    "svg_tags.gperf": "c258032ae842a5c831a32b97ae652c8858d2bf3c943cf788eba8f2588e64a977",
+    "tag.c": "c2bf5d2de149b049a6d129d98e4e319a2d59fd08385723ffe681179e9ae34e12",
+    "tag_lookup.c": "6d632ef7e9886fbe95233cfee63ca21b8fc56a5de78a56f5c73fc0f4fc1c97e9",
+    "tag_lookup.gperf": "2b6c6dfb07ed728eb8fc83ec616c58d1cfd6856c64a4c5f80a9db1cfd8176f09",
+    "tag_lookup.h": "f6f89b4ef5c7ae179e33eee8f3456b798963d07872ffcfe74da5e074d4d96fe1",
+    "token_buffer.c": "ed5b2f2e2babf7a8734273cb4cb9847f116aa7132f84a689393bab1da16ca0ba",
+    "token_buffer.h": "299daea10619cb98821060a85cb150923d76b77e720caafe1e785a440041325c",
+    "token_type.h": "bc9559f99c1e2aa5b8852614a63ac54f87cb8cdef485376281ff4adfb91d0d79",
+    "tokenizer.c": "9c49d3cb2e4da67826da74a2dad106df8a4f2140460178cd35c4ae4639236d1b",
+    "tokenizer.h": "f2a2a7da65ea3ad6668a33726c34b896a635b43ee79bef002426476fc90f770a",
+    "tokenizer_states.h": "09b970e21509afdce49197179c5c85f94f990c071b3c90e637362bb05d4d71f4",
+    "utf8.c": "af1ce21ecb83a70a1e59c7d3e630865665b65d501dacf129709766a54d94e30b",
+    "utf8.h": "e8522b14f3547a073e5ff628db2e1afeff65d7a6091a5cabaf00263e1260dfb8",
+    "util.c": "c07ed1a96cd5b2e319f4ba9a20cf613dedaf2b9267a43dcbbb88123ebf24c411",
+    "util.h": "026c711d9585da380a2818a5c1c5ad474deaeb778d1a354b4ae8575891f2968e",
+    "vector.c": "2dcda1ecdf318b910c198fe8e4424c6f6f94474dc70872ce2d8cc37b14336065",
+    "vector.h": "bc89b8d66c0049fe0c3bd2dfa65a5039e232cacbac089bcc7b60c971b47a9c93"
+  },
+  "local_patches": {
+    "util.c": {
+      "patch": "campfire-allocation.patch",
+      "upstream_sha256": "c07ed1a96cd5b2e319f4ba9a20cf613dedaf2b9267a43dcbbb88123ebf24c411",
+      "local_sha256": "cdc636b38710abbdb5637364238e4cc093a28b18fc4d42abefc456f2ad5cd76f",
+      "patch_sha256": "943bed6db791ab1d428b2dcc6f64b785e5fd4ae7e3a40cafc3ea24fd43569f82"
+    },
+    "utf8.c": {
+      "patch": "campfire-literal-bytes.patch",
+      "upstream_sha256": "af1ce21ecb83a70a1e59c7d3e630865665b65d501dacf129709766a54d94e30b",
+      "local_sha256": "baf9fc8c292e607e2e3849a57b75f2ed0d7daed89411352df31eae4bffecd4c7",
+      "patch_sha256": "a3c65bf3ac861f9c64f2d016584a90846c7824c734c12ab710f4ca48b64c8989"
+    },
+    "utf8.h": {
+      "patch": "campfire-literal-bytes.patch",
+      "upstream_sha256": "e8522b14f3547a073e5ff628db2e1afeff65d7a6091a5cabaf00263e1260dfb8",
+      "local_sha256": "5af16b3dbf1374cf888db885f174c912184ad11d613fc55dac8547b51b32c973",
+      "patch_sha256": "a3c65bf3ac861f9c64f2d016584a90846c7824c734c12ab710f4ca48b64c8989"
+    },
+    "string_buffer.c": {
+      "patch": "campfire-literal-bytes.patch",
+      "upstream_sha256": "77a9969232d6a6cdb6817b7501c5b4aad5777a816fa37c3d15025f610226b9ae",
+      "local_sha256": "bb2a6dda5d6bea1bd09cfc103827f2feb4f0f1d48fb0acacd54f1b14c0fe7990",
+      "patch_sha256": "a3c65bf3ac861f9c64f2d016584a90846c7824c734c12ab710f4ca48b64c8989"
+    }
+  },
+  "literal_byte_scope": "Go net/html literal invalid-UTF8 byte preservation; numeric entities retain Unicode replacement rules. Local three-file patch; native allocator unchanged.",
+  "ocaml_integration": {
+    "util.c": {
+      "patch": "campfire-ocaml-include.patch",
+      "input_sha256": "cdc636b38710abbdb5637364238e4cc093a28b18fc4d42abefc456f2ad5cd76f",
+      "local_sha256": "b656af1cfe709bfba2f1669dc403414fcb69bedb9d32ba0ab781ede6ac3ad6c0",
+      "patch_sha256": "bbb3750fcbd5e766cc2a9b146da7db2b9f8943964005faf52537a585fd9de0eb"
+    }
+  }
+}

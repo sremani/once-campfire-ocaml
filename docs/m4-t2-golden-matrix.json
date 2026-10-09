@@ -1,0 +1,869 @@
+{
+  "pinned_root": "/home/srikanth/projects/once-campfire-rust/crates/views/tests/golden",
+  "total": 123,
+  "counts": {
+    "pass": 121,
+    "fail": 0,
+    "unsupported": 0,
+    "input_metadata": 2
+  },
+  "cases": [
+    {
+      "case": "a/account_edit_admin.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 558 structural DOM tokens match"
+    },
+    {
+      "case": "a/account_edit_member.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 328 structural DOM tokens match"
+    },
+    {
+      "case": "a/account_edit_notice.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 567 structural DOM tokens match"
+    },
+    {
+      "case": "a/account_edit_paginated.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 18284 structural DOM tokens match"
+    },
+    {
+      "case": "a/account_edit_with_logo.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 605 structural DOM tokens match"
+    },
+    {
+      "case": "a/account_edit_with_logo_member.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 346 structural DOM tokens match"
+    },
+    {
+      "case": "a/account_users_page_2.turbo_stream.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 389 structural DOM tokens match"
+    },
+    {
+      "case": "a/action_text_content.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 8 structural DOM tokens match"
+    },
+    {
+      "case": "a/autocompletable_users.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 120 structural DOM tokens match"
+    },
+    {
+      "case": "a/autocompletable_users_json.json",
+      "status": "pass",
+      "level": "exact_bytes",
+      "comparator": "exact",
+      "detail": "byte-exact"
+    },
+    {
+      "case": "a/autocompletables_template.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 15 structural DOM tokens match"
+    },
+    {
+      "case": "a/avatar_david.svg",
+      "status": "pass",
+      "level": "exact_bytes",
+      "comparator": "exact",
+      "detail": "byte-exact"
+    },
+    {
+      "case": "a/avatar_three_initials.svg",
+      "status": "pass",
+      "level": "exact_bytes",
+      "comparator": "exact",
+      "detail": "byte-exact"
+    },
+    {
+      "case": "a/ban_button_banned.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 9 structural DOM tokens match"
+    },
+    {
+      "case": "a/bots_edit.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 357 structural DOM tokens match"
+    },
+    {
+      "case": "a/bots_edit_with_avatar.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 360 structural DOM tokens match"
+    },
+    {
+      "case": "a/bots_index.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 327 structural DOM tokens match"
+    },
+    {
+      "case": "a/bots_new.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 339 structural DOM tokens match"
+    },
+    {
+      "case": "a/browser_settings_apple_messages.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 53 structural DOM tokens match"
+    },
+    {
+      "case": "a/browser_settings_chrome_android.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 65 structural DOM tokens match"
+    },
+    {
+      "case": "a/browser_settings_chrome_mac.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 79 structural DOM tokens match"
+    },
+    {
+      "case": "a/browser_settings_chrome_windows.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 68 structural DOM tokens match"
+    },
+    {
+      "case": "a/browser_settings_edge_windows.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 68 structural DOM tokens match"
+    },
+    {
+      "case": "a/browser_settings_firefox_android.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 29 structural DOM tokens match"
+    },
+    {
+      "case": "a/browser_settings_firefox_mac.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 108 structural DOM tokens match"
+    },
+    {
+      "case": "a/browser_settings_old_chrome.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 79 structural DOM tokens match"
+    },
+    {
+      "case": "a/browser_settings_safari_ios.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 0 structural DOM tokens match"
+    },
+    {
+      "case": "a/browser_settings_safari_mac.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 53 structural DOM tokens match"
+    },
+    {
+      "case": "a/custom_styles_edit.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 279 structural DOM tokens match"
+    },
+    {
+      "case": "a/custom_styles_layout.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 283 structural DOM tokens match"
+    },
+    {
+      "case": "a/facts.json",
+      "status": "input_metadata",
+      "detail": "Account, manifest, and asset inputs match fixtures whose pages pass"
+    },
+    {
+      "case": "a/first_run.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 401 structural DOM tokens match"
+    },
+    {
+      "case": "a/incompatible_browser.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 296 structural DOM tokens match"
+    },
+    {
+      "case": "a/incompatible_browser_apple_messages.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 296 structural DOM tokens match"
+    },
+    {
+      "case": "a/install_instructions_apple_messages.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 32 structural DOM tokens match"
+    },
+    {
+      "case": "a/install_instructions_chrome_android.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 0 structural DOM tokens match"
+    },
+    {
+      "case": "a/install_instructions_chrome_mac.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 0 structural DOM tokens match"
+    },
+    {
+      "case": "a/install_instructions_chrome_windows.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 0 structural DOM tokens match"
+    },
+    {
+      "case": "a/install_instructions_edge_windows.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 0 structural DOM tokens match"
+    },
+    {
+      "case": "a/install_instructions_firefox_android.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 32 structural DOM tokens match"
+    },
+    {
+      "case": "a/install_instructions_firefox_mac.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 0 structural DOM tokens match"
+    },
+    {
+      "case": "a/install_instructions_old_chrome.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 0 structural DOM tokens match"
+    },
+    {
+      "case": "a/install_instructions_safari_ios.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 34 structural DOM tokens match"
+    },
+    {
+      "case": "a/install_instructions_safari_mac.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 32 structural DOM tokens match"
+    },
+    {
+      "case": "a/mailer_layout.html",
+      "status": "pass",
+      "level": "exact_bytes",
+      "comparator": "exact",
+      "detail": "byte-exact"
+    },
+    {
+      "case": "a/manifest.json",
+      "status": "pass",
+      "level": "exact_bytes",
+      "comparator": "exact-manifest",
+      "detail": "byte-exact after Rails entity decoding"
+    },
+    {
+      "case": "a/mention.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 6 structural DOM tokens match"
+    },
+    {
+      "case": "a/og_embed.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 19 structural DOM tokens match"
+    },
+    {
+      "case": "a/og_embed_long_no_href.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 14 structural DOM tokens match"
+    },
+    {
+      "case": "a/og_embed_twitter.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 18 structural DOM tokens match"
+    },
+    {
+      "case": "a/og_embeds.json",
+      "status": "input_metadata",
+      "detail": "All three pinned OG inputs feed passing fragment assertions"
+    },
+    {
+      "case": "a/profile_chrome_android.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 646 structural DOM tokens match"
+    },
+    {
+      "case": "a/profile_chrome_mac.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 646 structural DOM tokens match"
+    },
+    {
+      "case": "a/profile_chrome_windows.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 646 structural DOM tokens match"
+    },
+    {
+      "case": "a/profile_edge_windows.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 646 structural DOM tokens match"
+    },
+    {
+      "case": "a/profile_firefox_android.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 678 structural DOM tokens match"
+    },
+    {
+      "case": "a/profile_firefox_mac.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 646 structural DOM tokens match"
+    },
+    {
+      "case": "a/profile_kevin.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 605 structural DOM tokens match"
+    },
+    {
+      "case": "a/profile_safari_ios.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 680 structural DOM tokens match"
+    },
+    {
+      "case": "a/profile_safari_mac.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 678 structural DOM tokens match"
+    },
+    {
+      "case": "a/profile_with_avatar.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 617 structural DOM tokens match"
+    },
+    {
+      "case": "a/push_subscriptions.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 235 structural DOM tokens match"
+    },
+    {
+      "case": "a/service_worker.js",
+      "status": "pass",
+      "level": "exact_bytes",
+      "comparator": "exact",
+      "detail": "byte-exact"
+    },
+    {
+      "case": "a/sessions_new.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 341 structural DOM tokens match"
+    },
+    {
+      "case": "a/sessions_new_email.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 341 structural DOM tokens match"
+    },
+    {
+      "case": "a/sessions_new_rejected.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 350 structural DOM tokens match"
+    },
+    {
+      "case": "a/sessions_new_with_logo.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 344 structural DOM tokens match"
+    },
+    {
+      "case": "a/sessions_transfer.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--legacy-transfer",
+      "detail": "Rails golden: 186 structural DOM tokens match"
+    },
+    {
+      "case": "a/shared_room.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 5 structural DOM tokens match"
+    },
+    {
+      "case": "a/shared_room_unread.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 5 structural DOM tokens match"
+    },
+    {
+      "case": "a/sidebar_david.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 333 structural DOM tokens match"
+    },
+    {
+      "case": "a/sidebar_frame.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--sidebar-frame",
+      "detail": "Rails golden: 147 structural DOM tokens match"
+    },
+    {
+      "case": "a/sidebar_kevin.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 323 structural DOM tokens match"
+    },
+    {
+      "case": "a/system_settings_apple_messages.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 50 structural DOM tokens match"
+    },
+    {
+      "case": "a/system_settings_chrome_android.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 50 structural DOM tokens match"
+    },
+    {
+      "case": "a/system_settings_chrome_mac.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 50 structural DOM tokens match"
+    },
+    {
+      "case": "a/system_settings_chrome_windows.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 39 structural DOM tokens match"
+    },
+    {
+      "case": "a/system_settings_edge_windows.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 39 structural DOM tokens match"
+    },
+    {
+      "case": "a/system_settings_firefox_android.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 43 structural DOM tokens match"
+    },
+    {
+      "case": "a/system_settings_firefox_mac.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 50 structural DOM tokens match"
+    },
+    {
+      "case": "a/system_settings_old_chrome.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 50 structural DOM tokens match"
+    },
+    {
+      "case": "a/system_settings_safari_ios.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 43 structural DOM tokens match"
+    },
+    {
+      "case": "a/system_settings_safari_mac.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 50 structural DOM tokens match"
+    },
+    {
+      "case": "a/user_json.json",
+      "status": "pass",
+      "level": "exact_bytes",
+      "comparator": "exact",
+      "detail": "byte-exact"
+    },
+    {
+      "case": "a/users_new.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 426 structural DOM tokens match"
+    },
+    {
+      "case": "a/users_show_banned.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 226 structural DOM tokens match"
+    },
+    {
+      "case": "a/users_show_bot.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 210 structural DOM tokens match"
+    },
+    {
+      "case": "a/users_show_deactivated.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 211 structural DOM tokens match"
+    },
+    {
+      "case": "a/users_show_member_as_admin.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 270 structural DOM tokens match"
+    },
+    {
+      "case": "a/users_show_member_as_member.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 218 structural DOM tokens match"
+    },
+    {
+      "case": "a/users_show_self.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-full",
+      "detail": "Rails golden: 262 structural DOM tokens match"
+    },
+    {
+      "case": "a/welcome.html",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-main",
+      "detail": "Rails golden: 10 structural DOM tokens match"
+    },
+    {
+      "case": "b/messages_boosts_by_bots_show.json",
+      "status": "pass",
+      "level": "exact_bytes",
+      "comparator": "exact-wrapped-json",
+      "detail": "byte-exact"
+    },
+    {
+      "case": "b/messages_boosts_index.json",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--body-fragment",
+      "detail": "Rails golden: 60 structural DOM tokens match"
+    },
+    {
+      "case": "b/messages_boosts_new.json",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--content-fragment",
+      "detail": "Rails golden: 29 structural DOM tokens match"
+    },
+    {
+      "case": "b/messages_by_bots_index.json",
+      "status": "pass",
+      "level": "exact_bytes",
+      "comparator": "exact-wrapped-json",
+      "detail": "byte-exact"
+    },
+    {
+      "case": "b/messages_by_bots_show.json",
+      "status": "pass",
+      "level": "exact_bytes",
+      "comparator": "exact-wrapped-json",
+      "detail": "byte-exact"
+    },
+    {
+      "case": "b/messages_create.json",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "structural-json",
+      "detail": "Rails golden: 184 structural DOM tokens match"
+    },
+    {
+      "case": "b/messages_destroy.json",
+      "status": "pass",
+      "level": "exact_bytes",
+      "comparator": "exact-wrapped-stream",
+      "detail": "byte-exact"
+    },
+    {
+      "case": "b/messages_edit_attachment.json",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-main",
+      "detail": "Rails golden: 30 structural DOM tokens match"
+    },
+    {
+      "case": "b/messages_edit_text.json",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--html-main",
+      "detail": "Rails golden: 45 structural DOM tokens match"
+    },
+    {
+      "case": "b/messages_index.json",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "structural-json",
+      "detail": "Rails golden: 2213 structural DOM tokens match"
+    },
+    {
+      "case": "b/messages_room_not_found.json",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--content-fragment",
+      "detail": "Rails golden: 7 structural DOM tokens match"
+    },
+    {
+      "case": "b/messages_show_image.json",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--content-fragment",
+      "detail": "Rails golden: 180 structural DOM tokens match"
+    },
+    {
+      "case": "b/messages_show_text.json",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--content-fragment",
+      "detail": "Rails golden: 190 structural DOM tokens match"
+    },
+    {
+      "case": "b/rooms_closeds_edit.json",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "structural-json",
+      "detail": "Rails golden: 428 structural DOM tokens match"
+    },
+    {
+      "case": "b/rooms_closeds_edit_member.json",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "structural-json",
+      "detail": "Rails golden: 287 structural DOM tokens match"
+    },
+    {
+      "case": "b/rooms_closeds_new.json",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "structural-json",
+      "detail": "Rails golden: 409 structural DOM tokens match"
+    },
+    {
+      "case": "b/rooms_directs_edit.json",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "structural-json",
+      "detail": "Rails golden: 215 structural DOM tokens match"
+    },
+    {
+      "case": "b/rooms_directs_new.json",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "structural-json",
+      "detail": "Rails golden: 229 structural DOM tokens match"
+    },
+    {
+      "case": "b/rooms_involvements_show.json",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--content-fragment",
+      "detail": "Rails golden: 11 structural DOM tokens match"
+    },
+    {
+      "case": "b/rooms_involvements_show_direct.json",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "--content-fragment",
+      "detail": "Rails golden: 11 structural DOM tokens match"
+    },
+    {
+      "case": "b/rooms_opens_edit.json",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "structural-json",
+      "detail": "Rails golden: 392 structural DOM tokens match"
+    },
+    {
+      "case": "b/rooms_opens_edit_member.json",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "structural-json",
+      "detail": "Rails golden: 303 structural DOM tokens match"
+    },
+    {
+      "case": "b/rooms_opens_new.json",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "structural-json",
+      "detail": "Rails golden: 380 structural DOM tokens match"
+    },
+    {
+      "case": "b/rooms_refreshes_show.json",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "structural-json",
+      "detail": "Rails golden: 2419 structural DOM tokens match"
+    },
+    {
+      "case": "b/rooms_show_at_message.json",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "structural-json",
+      "detail": "Rails golden: 2839 structural DOM tokens match"
+    },
+    {
+      "case": "b/rooms_show_closed.json",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "structural-json",
+      "detail": "Rails golden: 2839 structural DOM tokens match"
+    },
+    {
+      "case": "b/rooms_show_direct.json",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "structural-json",
+      "detail": "Rails golden: 439 structural DOM tokens match"
+    },
+    {
+      "case": "b/rooms_show_member.json",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "structural-json",
+      "detail": "Rails golden: 611 structural DOM tokens match"
+    },
+    {
+      "case": "b/rooms_show_original.json",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "structural-json",
+      "detail": "Rails golden: 549 structural DOM tokens match"
+    },
+    {
+      "case": "b/searches_index.json",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "structural-json",
+      "detail": "Rails golden: 470 structural DOM tokens match"
+    },
+    {
+      "case": "b/searches_index_empty.json",
+      "status": "pass",
+      "level": "structural_dom",
+      "comparator": "structural-json",
+      "detail": "Rails golden: 263 structural DOM tokens match"
+    }
+  ]
+}
