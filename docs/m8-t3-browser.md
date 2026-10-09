@@ -10,8 +10,13 @@ comparison layers, with zero errors or retries (default 874, crowd 25,
 custom styles 33, first run 16, restricted 8). The first four default-seed
 full batches also pass 1,801/1,801 exact (416, 496, 432, and 457 cells),
 with zero flaky cases, retries, or errors; their reports are under the same
-run directory at `default-full-shared-{01,02,03,04}/report.json`. The rest
-of the full matrix is running.
+run directory at `default-full-shared-{01,02,03,04}/report.json`. The fifth
+full batch passes 344/344 exact with zero final flaky cases, failures, or
+errors, bringing completed full coverage to 2,145/2,145. Its Rust-side
+WebKit capture retried once after `page.evaluate: Target crashed` during a
+notification-help readiness wait; OCaml had no retry. A fresh one-cell
+recapture is required after the broad run to clear that operational retry.
+The rest of the full matrix is running.
 The earlier diagnostics below are historical checkpoints.
 
 ## Pinned sources and local images
