@@ -72,8 +72,8 @@ for row in (95, 100):
     ).stdout
     start = body.index(shim_start)
     end = body.index(b"</script>", start) + len(b"</script>")
-    if end - start != 557:
-        raise SystemExit(f"row {row}: unexpected Lexxy shim length {end-start}")
+    if body.count(shim_start) != 1:
+        raise SystemExit(f"row {row}: expected one Lexxy mount shim")
     source_aligned = body[:start] + body[end:]
     actual = hashlib.sha256(source_aligned).hexdigest()
     if len(source_aligned) != 416349 or actual != room_expected:

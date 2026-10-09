@@ -57,7 +57,8 @@ let lexxy_ready_head = elt "script" [] [raw (Trusted_html {|
     const revealWhenMounted = () => {
       if (!editor.isConnected || !editor.hasAttribute("data-wait-for-mount")) return;
       if (editor.editor?.getRootElement()) {
-        editor.style.visibility = "";
+        editor.style.removeProperty("visibility");
+        if (!editor.getAttribute("style")) editor.removeAttribute("style");
         editor.removeAttribute("data-wait-for-mount");
       } else {
         requestAnimationFrame(revealWhenMounted);

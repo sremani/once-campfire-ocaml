@@ -356,7 +356,7 @@ let message_index c = scope_or_404 c (fun _ room ->
   read_paged c (fun db -> paginate c db room) >>= function
   | Error () -> public_error c 404
   | Ok messages ->
-  if messages=[] then head 204 else
+  if messages=[] then action_head c 204 else
   if not (accepts c Http_format.Html) then error 406 else
   match H.private_lookup c with
   | Some cached -> response cached
@@ -531,8 +531,12 @@ let boost_index c = reachable_message c >>= function
         let room=R.Room.find db message.M.Message.room_id in
         View_presenter.message c db room message) >>= fun view ->
       View_presenter.load_context c >>= fun context ->
+      let content=Views.message_boosts view in
+      let page=match H.header c "turbo-frame" with
+        | Some value when String.trim value<>"" -> Views.frame_page content
+        | _ -> Views.page ~context content in
       response (H.html ~status:200
-        (Views.page ~context (Views.message_boosts view)))
+        page)
 let boost_new c = reachable_message c >>= function
   | None -> public_error c 404
   | Some message ->
@@ -543,8 +547,12 @@ let boost_new c = reachable_message c >>= function
       View_presenter.load_context c >>= fun context ->
       (match context.Views.current_user with
        | None -> error 500
-       | Some user -> response (H.html ~status:200
-           (Views.page ~context (Views.message_new_boost ~context ~message:view ~user))))
+       | Some user ->
+           let content=Views.message_new_boost ~context ~message:view ~user in
+           let page=match H.header c "turbo-frame" with
+             | Some value when String.trim value<>"" -> Views.frame_page content
+             | _ -> Views.page ~context content in
+           response (H.html ~status:200 page))
 let boost_create c = reachable_message c >>= function
   | None -> public_error c 404
   | Some message -> (match object_param c "boost",user_id c with

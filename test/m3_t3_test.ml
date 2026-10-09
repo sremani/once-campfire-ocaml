@@ -29,12 +29,14 @@ let with_seed variant f =
       [temporary;temporary^"-wal";temporary^"-shm"])
     (fun () -> f runtime)
 
-let send ?cookie ?accept ?(content_type="application/x-www-form-urlencoded")
+let send ?cookie ?accept ?turbo_frame ?(content_type="application/x-www-form-urlencoded")
     ?(body="") runtime meth path =
   let headers = ["host","chat.example.com";"origin","https://chat.example.com";
     "sec-fetch-site","same-origin";"content-type",content_type] in
   let headers = match cookie with None -> headers | Some value -> ("cookie",value)::headers in
   let headers = match accept with None -> headers | Some value -> ("accept",value)::headers in
+  let headers = match turbo_frame with None -> headers
+    | Some value -> ("turbo-frame",value)::headers in
   let request = Cohttp.Request.make ~meth ~headers:(Cohttp.Header.of_list headers)
     (Uri.of_string ("https://chat.example.com"^path)) in
   let response,body = Lwt_main.run (Http_app.handle ~runtime ~secret_key_base:secret
@@ -346,6 +348,19 @@ let test_content_pages () = with_seed "default" (fun runtime ->
   check "new boost form"
     (contains body "name=\"boost[content]\""
      && contains body "action=\"/messages/309456473/boosts\"");
+  let frame,frame_body = send ~cookie:admin ~turbo_frame:"new_boost_message_309456473"
+    runtime `GET "/messages/309456473/boosts/new" in
+  Alcotest.(check int) "new boost frame" 200 (status frame);
+  check "boost frame omits application layout"
+    (String.starts_with ~prefix:"<html>\n  <head>\n    \n  </head>\n  <body>\n    " frame_body
+     && not (contains frame_body "rel=\"stylesheet\""));
+  check "boost frame has no stylesheet preload" (header frame "link"=None);
+  let tail,tail_body = send ~cookie:admin runtime `GET
+    "/rooms/654632876/messages?after=607264868" in
+  Alcotest.(check int) "empty message poll" 204 (status tail);
+  Alcotest.(check (option string)) "empty poll omits content type" None
+    (header tail "content-type");
+  Alcotest.(check string) "empty poll body" "" tail_body;
   let missing_room,body = send ~cookie:admin runtime `POST "/messages" in
   Alcotest.(check int) "missing room composition page" 200 (status missing_room);
   check "deleted room explanation"
