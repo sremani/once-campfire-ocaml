@@ -57,6 +57,7 @@ COPY --chmod=644 vendor/gumbo/LICENSE-DEPENDENCIES.md /usr/share/doc/once-campfi
 COPY --chmod=644 vendor/gumbo/provenance.json /usr/share/doc/once-campfire-ocaml/GUMBO-PROVENANCE.json
 COPY --from=build --chmod=644 /out/build-packages.tsv /usr/share/doc/once-campfire-ocaml/build-packages.tsv
 COPY --from=build --chmod=644 /out/build-copyrights/ /usr/share/doc/once-campfire-ocaml/build-copyrights/
+RUN chmod 755 /usr/share/doc/once-campfire-ocaml /usr/share/doc/once-campfire-ocaml/build-copyrights
 COPY --chmod=755 deploy/boot /rails/bin/boot
 COPY --chmod=755 hooks/pre-backup /hooks/pre-backup
 COPY --chmod=755 hooks/post-restore /hooks/post-restore
