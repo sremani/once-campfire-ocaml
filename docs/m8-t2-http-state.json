@@ -3,10 +3,10 @@
   "scenario": "ordinary",
   "rust_revision": "9872c1d9541551c0889a60e3d49a14488bd1e403",
   "verification_revision": "6f71d70b5e1f17507404ad06cac134aa453a04a6",
-  "ocaml_binary_sha256": "90b091071bdb9e6d39913273b772fd876f2ff7d0aa334ca608a18c360dae5c78",
+  "ocaml_binary_sha256": "e4917ea03168aa25ac42afcad711de14c8ee58c4a15c26c8e2642692b59a3fe8",
   "counts": {
-    "pass": 661,
-    "fail": 47
+    "pass": 674,
+    "fail": 34
   },
   "cases": [
     {
@@ -394,8 +394,8 @@
         "table": "sessions",
         "column": "token",
         "row_id": 481019662,
-        "rust_sha256": "154bc6842a19ffa8201beaf789f3d70abd36905d1df20eaef3d57e8e4f0ca01f",
-        "ocaml_sha256": "14a4b478e5fc3f6e1cda2e75e0204c9bb3d8ad6eeb5b5c47e8a01f2554f01d9d",
+        "rust_sha256": "31be5dc4d33c0c2e1160deb62cfab4163887f45c1005507002ac11d424bb5f13",
+        "ocaml_sha256": "229a46f0a20db7be2750f9ec8114806dad130984484ac9d7fa482ab2f3700836",
         "generator": "base58(24)"
       }
     },
@@ -416,8 +416,8 @@
         "table": "sessions",
         "column": "token",
         "row_id": 481019662,
-        "rust_sha256": "499fab889ddf36bb332c6df035fea52af7fbd3cb58247cb0f6bd4cacbeeed894",
-        "ocaml_sha256": "50068a31d3a32ddd8412509df20160422da7981cea70795266851aeab468bf83",
+        "rust_sha256": "e8707f37d153af2b7a61b2dcbbc70b26fdd348bd247e6cfebf0181aa6824b247",
+        "ocaml_sha256": "1c6fa1d9bcaebb3d66858d0b328ec6f7991a24d31e28fe77ecdf444beb1c8033",
         "generator": "base58(24)"
       }
     },
@@ -448,8 +448,8 @@
         "table": "sessions",
         "column": "token",
         "row_id": 481019662,
-        "rust_sha256": "c64d28d0569e25b0f0e082515cc821972bc79bf8897a6ddf48e6dd6a28e4d8b2",
-        "ocaml_sha256": "97f2dfb240f9be8b507d646f9d52be20b2824975ffe56181d409bd5056314046",
+        "rust_sha256": "2f796b8b34d66bf60e501b4c7b463a360e96a206c1e8331013db58afb63eb9af",
+        "ocaml_sha256": "a52d640326d41716e36b1736fa101dcfb0999d9449d344b34a7857760e375fa0",
         "generator": "base58(24)"
       }
     },
@@ -470,8 +470,8 @@
         "table": "sessions",
         "column": "token",
         "row_id": 481019662,
-        "rust_sha256": "276938dc8c62b92a0addc47aca86698848b8f5969b01a8db60d76b53e9556543",
-        "ocaml_sha256": "9e8e13b6f0dd3693882f74830da819267308a5c4dbcb42184f01f86e5630c5b1",
+        "rust_sha256": "6372bc09dc604c8a417628a9a17bd647a12fa8dde18a03ecdd2bd2184584eeda",
+        "ocaml_sha256": "9c6c59556d9d2ec06ce993a135a2518477528f5bf97e0ccc9307868c34142ca5",
         "generator": "base58(24)"
       }
     },
@@ -492,8 +492,8 @@
         "table": "sessions",
         "column": "token",
         "row_id": 481019662,
-        "rust_sha256": "dc8d44a7d71a07ce5d1154bf54e3163c366c5eb18146682b0603ebd39e4dbec2",
-        "ocaml_sha256": "2bab3c5f15e80e4dd7a2a1561b640290e239d572abd21cf66fd282f0d4aa7022",
+        "rust_sha256": "7d9f166373625f70e558f2db5afbf3c17d28218f2ce93e2190d5a8f1f5a61540",
+        "ocaml_sha256": "952a5c05398e595a13645cddfe9b908e1b507b233f49793b4e47363fdbd78e9f",
         "generator": "base58(24)"
       }
     },
@@ -524,8 +524,8 @@
         "table": "sessions",
         "column": "token",
         "row_id": 481019662,
-        "rust_sha256": "ade6607cbc10137d5e91312f68e47e090ca269f9fc7c6bdcfe12d86b7d0e7de1",
-        "ocaml_sha256": "a595108769e3c6f732e9490fa39cdc7ae2906dad73eb122709e4895cb76d11e1",
+        "rust_sha256": "b8596c061f3297548b212c8709006a92c8c52a2cec8838f5bf2de4e9e855570d",
+        "ocaml_sha256": "cafeca21ee281fcfc41f611c684b4b419fecb453fdaf319c8ce5707ee34f4301",
         "generator": "base58(24)"
       }
     },
@@ -1144,8 +1144,8 @@
         "table": "users",
         "column": "email_address",
         "row_id": 127326141,
-        "rust_sha256": "2ae776db3523885b9617760c8d6b01b79ecda7eb554e8244dacb76ea4607a2e0",
-        "ocaml_sha256": "3cf43979ddfd742b30e584b09143602def13d58011de5785b2e8f0661aceb120",
+        "rust_sha256": "12f27b02704705473d46649e1e78a0d247b4cee72b10e7c4e6f2ae7dba251ba3",
+        "ocaml_sha256": "5e7fd444f59ae3f85e4475cead8c1ff1d289e5e1600241dce7e28875c2d8ba5e",
         "generator": "UUIDv4 deactivated email"
       }
     },
@@ -1270,7 +1270,7 @@
     {
       "route": 28,
       "role": "signed",
-      "status": "fail",
+      "status": "pass",
       "rust_status": 200,
       "ocaml_status": 200,
       "rust_changed": [
@@ -1279,16 +1279,12 @@
       "ocaml_changed": [
         "sessions"
       ],
-      "problems": [
-        "headers content-length,etag",
-        "body len=38500/36661 sha256=de84c7c2585d/26cb1137a2ad"
-      ],
-      "table_hashes": {}
+      "problems": []
     },
     {
       "route": 28,
       "role": "denied",
-      "status": "fail",
+      "status": "pass",
       "rust_status": 200,
       "ocaml_status": 200,
       "rust_changed": [
@@ -1297,11 +1293,7 @@
       "ocaml_changed": [
         "sessions"
       ],
-      "problems": [
-        "headers content-length,etag",
-        "body len=38500/36661 sha256=de84c7c2585d/26cb1137a2ad"
-      ],
-      "table_hashes": {}
+      "problems": []
     },
     {
       "route": 28,
@@ -1674,8 +1666,8 @@
         "table": "accounts",
         "column": "join_code",
         "row_id": 873240054,
-        "rust_sha256": "b3f9d97a21bbf56adef742975f9ca8b027fff15de603944ddfefb241a77b4d8f",
-        "ocaml_sha256": "363fe02e7ba5b5204d3477b27b98d3546c08ea76336564244bc63db2fcdfc26a",
+        "rust_sha256": "dd0bb7e3848b2d85fb5a5cccd2ce3301c637992b62131c90afa15f92f0ac7f19",
+        "ocaml_sha256": "bd4725cf0275ad3fdd264469aaf6622b6a36bfe47d9bd8b1d63dbd27eb6ead32",
         "generator": "alphanumeric(12) grouped 4-4-4"
       }
     },
@@ -2234,16 +2226,12 @@
     {
       "route": 49,
       "role": "anonymous",
-      "status": "fail",
+      "status": "pass",
       "rust_status": 200,
       "ocaml_status": 200,
       "rust_changed": [],
       "ocaml_changed": [],
-      "problems": [
-        "headers content-length,etag",
-        "body len=27281/26766 sha256=af5286598d43/c9e09f563e19"
-      ],
-      "table_hashes": {}
+      "problems": []
     },
     {
       "route": 49,
@@ -2276,16 +2264,12 @@
     {
       "route": 49,
       "role": "bot",
-      "status": "fail",
+      "status": "pass",
       "rust_status": 200,
       "ocaml_status": 200,
       "rust_changed": [],
       "ocaml_changed": [],
-      "problems": [
-        "headers content-length,etag",
-        "body len=27281/26766 sha256=af5286598d43/c9e09f563e19"
-      ],
-      "table_hashes": {}
+      "problems": []
     },
     {
       "route": 50,
@@ -3370,7 +3354,7 @@
     {
       "route": 74,
       "role": "signed",
-      "status": "fail",
+      "status": "pass",
       "rust_status": 200,
       "ocaml_status": 200,
       "rust_changed": [
@@ -3379,16 +3363,12 @@
       "ocaml_changed": [
         "sessions"
       ],
-      "problems": [
-        "headers content-length,etag",
-        "body len=8846/8523 sha256=4a07478af756/9e9a2b34219c"
-      ],
-      "table_hashes": {}
+      "problems": []
     },
     {
       "route": 74,
       "role": "denied",
-      "status": "fail",
+      "status": "pass",
       "rust_status": 200,
       "ocaml_status": 200,
       "rust_changed": [
@@ -3397,11 +3377,7 @@
       "ocaml_changed": [
         "sessions"
       ],
-      "problems": [
-        "headers content-length,etag",
-        "body len=8846/8523 sha256=4a07478af756/9e9a2b34219c"
-      ],
-      "table_hashes": {}
+      "problems": []
     },
     {
       "route": 74,
@@ -3437,7 +3413,7 @@
       ],
       "problems": [
         "headers content-length,etag",
-        "body len=382814/340112 sha256=63968eae7b96/5c82a1b49cc8"
+        "body len=382814/343174 sha256=63968eae7b96/dc1f70b5dea8"
       ],
       "table_hashes": {}
     },
@@ -3455,7 +3431,7 @@
       ],
       "problems": [
         "headers content-length,etag",
-        "body len=382814/340112 sha256=63968eae7b96/5c82a1b49cc8"
+        "body len=382814/343174 sha256=63968eae7b96/dc1f70b5dea8"
       ],
       "table_hashes": {}
     },
@@ -4194,7 +4170,7 @@
     {
       "route": 92,
       "role": "signed",
-      "status": "fail",
+      "status": "pass",
       "rust_status": 200,
       "ocaml_status": 200,
       "rust_changed": [
@@ -4203,16 +4179,12 @@
       "ocaml_changed": [
         "sessions"
       ],
-      "problems": [
-        "headers content-length,etag",
-        "body len=21144/21138 sha256=743677e586da/377cadcf1e36"
-      ],
-      "table_hashes": {}
+      "problems": []
     },
     {
       "route": 92,
       "role": "denied",
-      "status": "fail",
+      "status": "pass",
       "rust_status": 200,
       "ocaml_status": 200,
       "rust_changed": [
@@ -4221,11 +4193,7 @@
       "ocaml_changed": [
         "sessions"
       ],
-      "problems": [
-        "headers content-length,etag",
-        "body len=21144/21138 sha256=743677e586da/377cadcf1e36"
-      ],
-      "table_hashes": {}
+      "problems": []
     },
     {
       "route": 92,
@@ -4353,7 +4321,7 @@
       ],
       "problems": [
         "headers content-length,etag",
-        "body len=416349/371687 sha256=aaa9305357de/f857a54d3d8a"
+        "body len=416349/374749 sha256=aaa9305357de/cc018e329353"
       ],
       "table_hashes": {}
     },
@@ -4371,7 +4339,7 @@
       ],
       "problems": [
         "headers content-length,etag",
-        "body len=416349/371687 sha256=aaa9305357de/f857a54d3d8a"
+        "body len=416349/374749 sha256=aaa9305357de/cc018e329353"
       ],
       "table_hashes": {}
     },
@@ -4577,7 +4545,7 @@
       ],
       "problems": [
         "headers content-length,etag",
-        "body len=416349/371687 sha256=aaa9305357de/f857a54d3d8a"
+        "body len=416349/374749 sha256=aaa9305357de/cc018e329353"
       ],
       "table_hashes": {}
     },
@@ -4595,7 +4563,7 @@
       ],
       "problems": [
         "headers content-length,etag",
-        "body len=416349/371687 sha256=aaa9305357de/f857a54d3d8a"
+        "body len=416349/374749 sha256=aaa9305357de/cc018e329353"
       ],
       "table_hashes": {}
     },
@@ -5906,7 +5874,7 @@
     {
       "route": 128,
       "role": "signed",
-      "status": "fail",
+      "status": "pass",
       "rust_status": 200,
       "ocaml_status": 200,
       "rust_changed": [
@@ -5915,16 +5883,12 @@
       "ocaml_changed": [
         "sessions"
       ],
-      "problems": [
-        "headers content-length,etag",
-        "body len=22691/22548 sha256=1d6947af92e3/e2adfbff4004"
-      ],
-      "table_hashes": {}
+      "problems": []
     },
     {
       "route": 128,
       "role": "denied",
-      "status": "fail",
+      "status": "pass",
       "rust_status": 200,
       "ocaml_status": 200,
       "rust_changed": [
@@ -5933,11 +5897,7 @@
       "ocaml_changed": [
         "sessions"
       ],
-      "problems": [
-        "headers content-length,etag",
-        "body len=22691/22548 sha256=1d6947af92e3/e2adfbff4004"
-      ],
-      "table_hashes": {}
+      "problems": []
     },
     {
       "route": 128,
@@ -6006,7 +5966,7 @@
     {
       "route": 130,
       "role": "signed",
-      "status": "fail",
+      "status": "pass",
       "rust_status": 200,
       "ocaml_status": 200,
       "rust_changed": [
@@ -6015,16 +5975,12 @@
       "ocaml_changed": [
         "sessions"
       ],
-      "problems": [
-        "headers content-length,etag",
-        "body len=22146/22014 sha256=e63eab618b97/20fe2e912300"
-      ],
-      "table_hashes": {}
+      "problems": []
     },
     {
       "route": 130,
       "role": "denied",
-      "status": "fail",
+      "status": "pass",
       "rust_status": 200,
       "ocaml_status": 200,
       "rust_changed": [
@@ -6033,11 +5989,7 @@
       "ocaml_changed": [
         "sessions"
       ],
-      "problems": [
-        "headers content-length,etag",
-        "body len=22146/22014 sha256=e63eab618b97/20fe2e912300"
-      ],
-      "table_hashes": {}
+      "problems": []
     },
     {
       "route": 130,
@@ -6324,7 +6276,7 @@
     {
       "route": 137,
       "role": "signed",
-      "status": "fail",
+      "status": "pass",
       "rust_status": 200,
       "ocaml_status": 200,
       "rust_changed": [
@@ -6333,11 +6285,7 @@
       "ocaml_changed": [
         "sessions"
       ],
-      "problems": [
-        "headers content-length,etag",
-        "body len=20647/20633 sha256=79f1ae993504/5e632b8b3894"
-      ],
-      "table_hashes": {}
+      "problems": []
     },
     {
       "route": 137,

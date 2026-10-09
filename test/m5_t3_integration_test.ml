@@ -357,6 +357,37 @@ let test_seeded_push_job () = with_seed (fun runtime storage ->
          "https://fcm.googleapis.com/fcm/send/567"]
         (List.map (fun request -> request.Web_push.endpoint) !requests)))
 
+let test_seeded_firefox_subscription_retained () = with_seed (fun runtime _ ->
+  let id=782661004L in
+  let subscription=Db_runtime.read runtime (fun db ->
+    Db_remaining.Push_subscription.find db id) in
+  let vapid=Web_push_vapid.create ~subject:"mailto:support@37signals.com"
+    ~public_key:fixture_public ~private_key:fixture_private
+    |> Result.get_ok in
+  let outbound_called=ref false and invalidated=ref false in
+  let pool=Web_push.create_pool ~max_active:1 ~max_queue:1
+    ~resolve:(fun _ -> Some "142.250.185.206")
+    ~outbound:(fun _ -> outbound_called:=true;
+      Ok {Web_push.status=201;reason="Created"}) ~vapid
+    ~invalidate:(fun id ->
+      invalidated:=true;
+      Db_runtime.write runtime (fun tx ->
+        let subscription=Db_remaining.Push_subscription.find
+          (Db_runtime.conn tx) id in
+        Db_remaining.Push_subscription.destroy tx subscription)) () in
+  Alcotest.(check bool) "seeded Firefox queued" true
+    (Web_push.enqueue pool {Web_push.title="Designers";body="bot message";
+      path="/rooms/654632876";badge=0L;subscription});
+  Alcotest.(check bool) "seeded Firefox delivery drains" true
+    (Web_push.shutdown pool ~deadline:(Unix.gettimeofday ()+.5.));
+  Alcotest.(check bool) "noncanonical key never reaches network" false
+    !outbound_called;
+  Alcotest.(check bool) "argument error does not invalidate" false
+    !invalidated;
+  let retained=Db_runtime.read runtime (fun db ->
+    Db_remaining.Push_subscription.find db id) in
+  Alcotest.(check int64) "Firefox subscription retained" id retained.id)
+
 let test_live_job_webhook_wire () = with_seed (fun runtime storage ->
   let listener=Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
   Unix.bind listener (Unix.ADDR_INET (Unix.inet_addr_loopback,0));
@@ -661,7 +692,9 @@ let () = Alcotest.run "M5-T3 integrated jobs" ([
   "storage",[Alcotest.test_case "PurgeBlob after commit" `Quick test_purge_after_commit];
   "bans",[Alcotest.test_case "remove content job" `Quick test_remove_banned_content];
   "push",[Alcotest.test_case "scoped test-notification route" `Quick test_notification_route;
-    Alcotest.test_case "seeded message push" `Quick test_seeded_push_job];
+    Alcotest.test_case "seeded message push" `Quick test_seeded_push_job;
+    Alcotest.test_case "seeded Firefox key retained" `Quick
+      test_seeded_firefox_subscription_retained];
   "webhook",[Alcotest.test_case "HTTP message to bot reply" `Quick test_http_webhook_reply;
     Alcotest.test_case "HTTP message to bot attachment" `Quick test_http_attachment_reply;
     Alcotest.test_case "bad reply fails safely" `Quick test_webhook_canonicalization_failure]] @

@@ -78,7 +78,7 @@ let add_vary headers =
   then headers
   else Cohttp.Header.replace headers "vary" (String.concat "," (values @ ["Accept-Encoding"]))
 
-let apply request (response, body) =
+let apply ?parts request (response, body) =
   if not (should_deflate response) then Lwt.return (response, body)
   else if Cohttp.Request.meth request = `HEAD then
     (* The pinned front selects no encoding for HEAD, but still varies the
@@ -101,10 +101,22 @@ let apply request (response, body) =
         Lwt.return (Cohttp.Response.make ~status:`Not_acceptable ~headers (),
           Cohttp_lwt.Body.of_string message)
     | Gzip ->
-        Cohttp_lwt.Body.to_string body >|= fun plain ->
-          let encoded = compress plain in
+        let wrap encoded =
           let headers = headers
             |> fun h -> Cohttp.Header.replace h "content-encoding" "gzip"
             |> fun h -> Cohttp.Header.remove h "content-length" in
           Cohttp.Response.make ~status:(Cohttp.Response.status response)
-            ~headers (), Cohttp_lwt.Body.of_string encoded
+            ~headers (), Cohttp_lwt.Body.of_string encoded in
+        (match parts,body with
+         | Some parts, `Strings chunks when
+             List.fold_left (fun size chunk -> size + String.length chunk) 0 chunks =
+               Http_cache.Page_parts.length parts ->
+             let mtime=Option.bind
+               (Cohttp.Header.get headers "last-modified")
+               Http_cache.parse_httpdate
+               |> Option.map (fun time ->
+                 Ptime.to_float_s time |> Int64.of_float |> Int64.to_int)
+               |> Option.value ~default:0 in
+             Lwt.return (wrap (Http_cache.Page_parts.gzip ~mtime parts))
+         | _ -> Cohttp_lwt.Body.to_string body >|= fun plain ->
+             wrap (compress plain))

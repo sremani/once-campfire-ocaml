@@ -54,9 +54,13 @@ are the useful evidence. The two architecture images have different transitive p
 
 This is **not yet a reproducible rebuild guarantee**: `apt-get update` resolves transitive
 packages against mutable Ubuntu/Debian repositories, and `dune-project`/opam constraints do
-not lock every OCaml package version. Capture complete builder and runtime `dpkg-query`
-inventories on the final images; retain immutable final image digests for deployment and
-rollback. The old M7 images also had an empty OCI source label in local builds because
+not lock every OCaml package version. The Dockerfile now saves its complete builder
+`dpkg-query` inventory and copyright notices inside the runtime image;
+`release_image_inventory.py` checks their coverage and records hashes alongside the runtime
+package set for each final image. With `--revision`, it also requires a clean checkout at
+that exact image revision. Retain immutable final
+image digests for deployment and rollback. The old M7 images also had an empty OCI source
+label in local builds because
 `OCI_SOURCE` was unset; the publish workflow supplies it.
 
 ## Release command log and outstanding checks
@@ -69,7 +73,7 @@ rollback. The old M7 images also had an empty OCI source label in local builds b
 | HTTP/state and shared harness | `python3 scripts/m8_t2_http_state.py --seed default --rust-port RUST_PORT --ocaml-port OCAML_PORT --rust-db RUST_DB --ocaml-db OCAML_DB --ocaml-seed-dir OCAML_SEED_DIR --output /tmp/campfire-final-http.json --isolate`; `../once-campfire-verification/bin/check` | Final 177-route/role matrix and shared gates pending. Substitute disposable ports/seed copies, then repeat the required scenarios/seeds. |
 | Browser | `../once-campfire-rust/parity/bin/check-inventory`, then `parity/bin/compare --matrix lean` and `--matrix full` against pinned Rust and final OCaml image; separately run shared `bin/browser`. | M8-T3 active; final all-engine/full matrix pending. |
 | Performance/resilience | `../once-campfire-verification/bin/benchmark --apps rust,ocaml` on immutable pinned images and fixture | M8-T4 active; validated throughput and resilience evidence pending. |
-| Runtime contracts | Read image metadata, `dpkg-query`, `ldd`, packaged licenses/assets; run M7 HTTP/2, ACME renewal, media, Cable and shutdown checks on both final architectures | Historical M7 evidence only; final images pending. |
+| Runtime contracts | `python3 scripts/release_image_inventory.py --image IMAGE --revision REV --output /tmp/IMAGE-inventory.json`; run M7 HTTP/2, ACME renewal, media, Cable and shutdown checks on both final architectures | Historical M7 evidence only; final images pending. The inventory command compares packaged licenses, hooks and all asset bytes against the checkout; records image metadata, complete builder/runtime package versions, builder notices and linked-library hashes; and fails for missing package copyright files or unresolved links. |
 | Published manifest and ONCE | `.github/workflows/publish-image.yml`, `docker buildx imagetools inspect`, then `once deploy IMAGE --host HOST` | No Git remote, ONCE CLI, target host or registry publication evidence in this workspace. |
 
 For an immutable local candidate, first record a clean `git rev-parse HEAD` and source
@@ -89,6 +93,10 @@ python3 scripts/m7_image_lifecycle.py --image "campfire-ocaml:rc-${release_rev}-
   --old-image campfire-reference:app
 python3 scripts/m7_image_lifecycle.py --image "campfire-ocaml:rc-${release_rev}-arm64" \
   --old-image campfire-reference:app
+python3 scripts/release_image_inventory.py --image "campfire-ocaml:rc-${release_rev}-amd64" \
+  --revision "${release_rev}" --output "/tmp/campfire-rc-${release_rev}-amd64-inventory.json"
+python3 scripts/release_image_inventory.py --image "campfire-ocaml:rc-${release_rev}-arm64" \
+  --revision "${release_rev}" --output "/tmp/campfire-rc-${release_rev}-arm64-inventory.json"
 ```
 
 The pinned GitHub workflow builds native architecture tags and assembles/signs the manifest

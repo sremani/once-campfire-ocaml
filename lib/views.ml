@@ -541,41 +541,60 @@ type push_subscription = {
   id:int64; endpoint:string; browser:string; version:string; platform:string
 }
 let push_subscriptions_index ~context ?last_room_id ~push_subscriptions () =
-  let icon name = void "img" ["aria-hidden","true";
-    "src",asset context (name ^ ".svg");"width","20";"height","20"] in
   let back_path = match last_room_id with
     | Some id -> relative_room id | None -> "/" in
-  let nav = cls "div" "flex-item-justify-start" [
-    elt "a" ["class","btn";"href",back_path] [icon "arrow-left";
-      cls "span" "for-screen-reader" [text "Go Back"]]] in
+  let nav = raw (Trusted_html (String.concat "" [
+    {|  <div class="flex-item-justify-start">
+    <a class="btn" href="|};legacy_attribute back_path;{|">|};
+    legacy_img ~size:(Some 20) context "arrow-left.svg"
+      ["aria-hidden","true"];
+    {|<span class="for-screen-reader">Go Back</span></a>
+  </div>
+|}])) in
   let push_subscription_item subscription =
     let path=Route_helpers.user_push_subscription (i64 subscription.id) in
-    let action_button ?(delete=false) action class_name icon_name label =
-      form ~attrs:["class","button_to"] action (concat [
-        (if delete then input ~name:"_method" ~kind:"hidden"
-          ~value:"delete" () else concat []);
-        elt "button" ["class",class_name;"type","submit"] [
-          icon icon_name;cls "span" "for-screen-reader" [text label]]]) in
-    elt "li" ["class","flex flex-column margin-none membership-item"] [
-      cls "span" "overflow-ellipsis txt-primary txt-undecorated" [
-        elt "strong" [] [text (subscription.browser ^ " " ^
-          subscription.version ^ " on " ^ subscription.platform)];
-        void "br" []];
-      cls "span" "flex align-start gap txt-small" [
-        elt "span" [] [text subscription.endpoint];
-        cls "span" "flex align-center gap" [
-          action_button (Route_helpers.user_push_subscription_test_notifications
-            (i64 subscription.id)) "btn btn--reversed"
-            "notification-bell-everything" "Send test notification";
-          action_button ~delete:true path "btn btn--negative"
-            "minus" "Delete subscription"]]] in
-  let content = cls "section" "panel panel--wide flex flex-column gap" [
-    cls "h1" "txt-align-center txt-large margin-none" [
-      text "Push Notification Subscriptions"];
-    elt "div" ["class","pad-inline fill-shade border-radius";
-      "id","push_subscriptions"] [
-      cls "menu" "pad flex flex-column gap"
-        (List.map push_subscription_item push_subscriptions)]] in
+    String.concat "" [
+      {|<li class="flex flex-column margin-none membership-item">
+  <span class="overflow-ellipsis txt-primary txt-undecorated">
+    <strong>|};legacy_text subscription.browser;" ";
+      legacy_text subscription.version;" on ";
+      legacy_text subscription.platform;{|</strong><br>
+  </span>
+
+  <span class="flex align-start gap txt-small">
+    <span>|};legacy_text subscription.endpoint;{|</span>
+
+    <span class="flex align-center gap">
+      <form class="button_to" method="post" action="|};
+      legacy_attribute (Route_helpers.user_push_subscription_test_notifications
+        (i64 subscription.id));
+      {|"><button class="btn btn--reversed" type="submit">
+        |};legacy_img ~size:(Some 20) context
+        "notification-bell-everything.svg" ["aria-hidden","true"];
+      {|
+        <span class="for-screen-reader">Send test notification</span>
+</button></form>
+      <form class="button_to" method="post" action="|};
+      legacy_attribute path;
+      {|"><input type="hidden" name="_method" value="delete" /><button class="btn btn--negative" type="submit">
+        |};legacy_img ~size:(Some 20) context "minus.svg"
+        ["aria-hidden","true"];
+      {|
+        <span class="for-screen-reader">Delete subscription</span>
+</button></form>    </span>
+  </span>
+</li>
+|}] in
+  let content = raw (Trusted_html (String.concat "" [
+    {|<section class="panel panel--wide flex flex-column gap">
+  <h1 class="txt-align-center txt-large margin-none">Push Notification Subscriptions</h1>
+  <div class="pad-inline fill-shade border-radius" id="push_subscriptions">
+    <menu class="pad flex flex-column gap">
+      |};String.concat "" (List.map push_subscription_item push_subscriptions);
+    {|    </menu>
+  </div>
+</section>
+|}])) in
   page ~title:"Push notification subscriptions" ~context ~nav content
 
 let user_row (user:user) = elt "li" ["id","user_"^i64 user.id] [
@@ -600,56 +619,81 @@ let account_edit ~context ~join_code ~restrict_room_creation ~users =
 type account_member = { user:user; status:string }
 
 let account_user_item ~context ({user;status}:account_member) =
-  let icon name = void "img" ["aria-hidden","true";
-    "src",asset context (name ^ ".svg");"width","20";"height","20"] in
   let current=match context.current_user with
     | Some viewer -> viewer.id=user.id | None -> false in
   let admin=match context.current_user with
     | Some viewer -> viewer.role="administrator" | None -> false in
   let active=status="active" in
   let action="/account/users/" ^ i64 user.id in
-  elt "li" ["class","flex align-center gap margin-none " ^
-    (if status="banned" then "banned" else "")] [
-    elt "figure" ["class","avatar flex-item-no-shrink";
-      "style","--avatar-size: 3.75ch;"] [
-      elt "a" ["title",user.title;"class","btn avatar";
-        "data-turbo-frame","_top";"href",relative_user user.id] [
-        void "img" ["aria-hidden","true";"loading","lazy";
-          "src",user.avatar_url;"width","48";"height","48"]]];
-    cls "div" "min-width" [cls "div" "overflow-ellipsis fill-shade" [
-      elt "strong" [] [text user.name]]];
-    void "hr" ["class","separator";"aria-hidden","true"];
-    (if admin && active && user.role<>"bot" then
-      elt "form" ["data-controller","form";"action",action;
-        "accept-charset","UTF-8";"method","post"] [
-        input ~name:"_method" ~kind:"hidden" ~value:"patch" ();
-        elt "label" ["class","btn txt-small flex-item-no-shrink";
-          "for","role_user_" ^ i64 user.id] [
-          cls "span" "for-screen-reader" [text
-            ("Role: " ^ (if user.role="administrator" then "Administrator" else "Member"))];
-          icon "crown";
-          void "input" (["name","user[role]";"type","hidden";
-            "value","member"] @ if current then ["disabled","disabled"] else []);
-          void "input" (["data-action","form#submit";
-            "hidden","hidden";"id","role_user_" ^ i64 user.id;
-            "type","checkbox";"value","administrator";
-            "name","user[role]"] @
-            (if current then ["disabled","disabled"] else []) @
-            (if user.role="administrator" then ["checked","checked"] else []))]]
-     else concat []);
-    (if admin && active && not current then
-      elt "form" ["class","button_to";"method","post";
-        "action",action] [
-        input ~name:"_method" ~kind:"hidden" ~value:"delete" ();
-        elt "button" ["class","btn txt-small flex-item-no-shrink btn--negative";
-          "data-turbo-confirm","Are you sure you want to permanently remove this person from the account? This can’t be undone.";
-          "type","submit"] [icon "minus";
-          cls "span" "for-screen-reader" [text ("Delete " ^ user.name)]]]
-     else concat []);
-    (if current then elt "a" ["class","btn txt-small flex-item-no-shrink";
-      "target","_top";"href","/users/me/profile"] [
-        icon "pencil";cls "span" "for-screen-reader" [text "My settings"]]
-     else concat [])]
+  let escaped_action=legacy_attribute action in
+  let escaped_name=legacy_text user.name in
+  let icon name=legacy_img ~size:(Some 20) context (name ^ ".svg")
+    ["aria-hidden","true"] in
+  raw (Trusted_html (String.concat "" [
+    {|<li class="flex align-center gap margin-none |};
+    (if status="banned" then "banned" else "");
+    {|">
+  <figure class="avatar flex-item-no-shrink" style="--avatar-size: 3.75ch;">
+    <a title="|};legacy_attribute user.title;
+    {|" class="btn avatar" data-turbo-frame="_top" href="|};
+    legacy_attribute (relative_user user.id);
+    {|"><img aria-hidden="true" loading="lazy" src="|};
+    legacy_attribute user.avatar_url;
+    {|" width="48" height="48" />|};
+    {|</a>
+  </figure>
+
+  <div class="min-width">
+    <div class="overflow-ellipsis fill-shade"><strong>|};escaped_name;
+    {|</strong></div>
+  </div>
+
+  <hr class="separator" aria-hidden="true">
+
+|};
+    (if admin && active && user.role<>"bot" then String.concat "" [
+      {|      <form data-controller="form" action="|};escaped_action;
+      {|" accept-charset="UTF-8" method="post"><input type="hidden" name="_method" value="patch" />
+        <label class="btn txt-small flex-item-no-shrink" for="role_user_|};
+      i64 user.id;
+      {|">
+          <span class="for-screen-reader">Role: |};
+      (if user.role="administrator" then "Administrator" else "Member");
+      {|</span>
+          |};icon "crown";
+      {|
+          <input name="user[role]"|};
+      (if current then {| disabled="disabled"|} else "");
+      {| type="hidden" value="member" /><input data-action="form#submit" hidden="hidden" id="role_user_|};
+      i64 user.id;
+      {|"|};(if current then {| disabled="disabled"|} else "");
+      {| type="checkbox" value="administrator"|};
+      (if user.role="administrator" then {| checked="checked"|} else "");
+      {| name="user[role]" />
+        </label>
+</form>|}]
+    else "");
+    (if admin && active && not current then String.concat "" [
+      {|
+      <form class="button_to" method="post" action="|};escaped_action;
+      {|"><input type="hidden" name="_method" value="delete" /><button class="btn txt-small flex-item-no-shrink btn--negative" data-turbo-confirm="Are you sure you want to permanently remove this person from the account? This can’t be undone." type="submit">
+        |};icon "minus";
+      {|
+        <span class="for-screen-reader">Delete |};escaped_name;
+      {|</span>
+</button></form>|}]
+    else "");
+    (if current then String.concat "" [
+      {|
+    <a class="btn txt-small flex-item-no-shrink" target="_top" href="/users/me/profile">
+      |};icon "pencil";
+      {|
+      <span class="for-screen-reader">My settings</span>
+</a>|}]
+    else "");
+    {|</li>
+
+|}]))
 
 let account_next_page page =
   elt "turbo-frame" ["id","next_page_container";"loading","lazy";
@@ -707,8 +751,118 @@ let account_edit_page ~context ?last_room_id ~account_id ~join_code
       cls "span" "for-screen-reader" [text "Upload logo"]] in
   let can_admin=match context.current_user with
     | Some user -> user.role="administrator" | None -> false in
+  let nav=if not can_admin then nav else raw (Trusted_html (String.concat "" [
+    {|  <div class="flex-item-justify-start">
+    <a class="btn" href="|};legacy_attribute back;{|">|};
+    legacy_img ~size:(Some 20) context "arrow-left.svg"
+      ["aria-hidden","true"];
+    {|<span class="for-screen-reader">Go Back</span></a>
+  </div>
+
+    <div class="flex align-center gap flex-item-justify-end">
+      <a class="btn" style="view-transition-name: chat-bots" href="/account/bots">
+        |};legacy_img ~size:(Some 20) context "bot.svg"
+      ["aria-hidden","true"];
+    {|
+        <span class="for-screen-reader">Set up chat bots</span>
+</a>
+      <a class="btn" style="view-transition-name: custom-styles" href="/account/custom_styles/edit">
+        |};legacy_img ~size:(Some 20) context "art.svg"
+      ["aria-hidden","true"];
+    {|
+        <span class="for-screen-reader">Custom styles</span>
+</a>    </div>
+|}])) in
+  let admin_logo=raw (Trusted_html (String.concat "" [
+    {|    <div class="align-center center avatar__form gap" data-controller="upload-preview">
+      <form class="txt--medium" data-controller="form" enctype="multipart/form-data" action="|};
+    legacy_attribute action;
+    {|" accept-charset="UTF-8" method="post"><input type="hidden" name="_method" value="patch" />
+        <label class="btn input--file">
+          |};legacy_img ~size:(Some 20) context "camera.svg"
+      ["aria-hidden","true"];
+    {|
+          <input class="input" accept="image/*" data-action="upload-preview#previewImage change-&gt;form#submit" type="file" name="account[logo]" id="account_logo" />
+          <span class="for-screen-reader">Upload logo</span>
+        </label>
+</form>
+      <form data-controller="form" enctype="multipart/form-data" action="|};
+    legacy_attribute action;
+    {|" accept-charset="UTF-8" method="post"><input type="hidden" name="_method" value="patch" />
+        <label class="btn avatar input--file account-logo txt-xx-large">
+          <img role="presentation" data-upload-preview-target="image" src="|};
+    legacy_attribute context.logo_url;
+    {|" width="48" height="48" />
+          <input class="input" accept="image/*" data-action="upload-preview#previewImage change-&gt;form#submit" type="file" name="account[logo]" id="account_logo" />
+          <span class="for-screen-reader">Upload logo</span>
+        </label>
+</form>
+|};
+    (if context.has_custom_logo then String.concat "" [
+      {|        <form class="button_to" method="post" action="|};
+      legacy_attribute context.logo_url;
+      {|"><input type="hidden" name="_method" value="delete" /><button class="btn btn--negative txt-small avatar__delete-btn" type="submit">
+          |};legacy_img ~size:(Some 20) context "minus.svg"
+      ["aria-hidden","true"];
+      {|
+          <span class="for-screen-reader">Delete logo</span>
+</button></form>|}] else "");
+    {|    </div>
+
+|}])) in
+  let admin_name=raw (Trusted_html (String.concat "" [
+    {|    <form class="flex flex-column gap" data-controller="form" action="|};
+    legacy_attribute action;
+    {|" accept-charset="UTF-8" method="post"><input type="hidden" name="_method" value="patch" />
+      <div class="flex align-center gap">
+        |};legacy_translation_button context "account_name";
+    {|
+
+        <label class="flex align-center gap flex-item-grow">
+          <input class="input txt-large" autocomplete="off" placeholder="Name this account" autofocus="autofocus" data-action="|};
+    legacy_attribute "keydown.enter->form#submit";
+    {|" type="text" value="|};legacy_attribute context.account_name;
+    {|" name="account[name]" id="account_name" />
+        </label>
+
+        <button name="button" type="submit" class="btn btn--reversed center">
+          |};legacy_img ~size:(Some 20) context "check.svg"
+      ["aria-hidden","true"];
+    {|
+          <span class="for-screen-reader">Save changes</span>
+</button>      </div>
+</form>
+|}])) in
+  let admin_room_creation=raw (Trusted_html (String.concat "" [
+    {|    <div class="margin-block-start pad-block pad-inline-double fill-shade border-radius">
+      <form class="flex align-center gap center" data-controller="form" action="|};
+    legacy_attribute action;
+    {|" accept-charset="UTF-8" method="post"><input type="hidden" name="_method" value="put" />
+        <div class="flex-item-grow flex align-center gap txt-align-start">
+          |};legacy_img ~size:(Some 18) context "crown.svg"
+      ["class","colorize--black";"aria-hidden","true"];
+    {| Must be admin to create new rooms
+        </div>
+          <input value="|};
+    string_of_bool (not restrict_room_creation);
+    {|" type="hidden" name="account[settings][restrict_room_creation_to_administrators]" id="account_settings_restrict_room_creation_to_administrators" />
+
+        <label class="switch">
+          <input type="checkbox"
+                class="switch__input"
+                |};(if restrict_room_creation then "checked" else "");
+    {|
+                data-action="change->form#submit">
+          <span class="switch__btn round"></span>
+          <span class="for-screen-reader">
+            Must be admin to create new rooms
+          </span>
+        </label>
+
+</form>    </div>
+|}])) in
   let admin_settings=concat [
-    elt "div" ["class","align-center center avatar__form gap";
+    (if can_admin then admin_logo else elt "div" ["class","align-center center avatar__form gap";
       "data-controller","upload-preview"] [
       account_form ~attrs:["class","txt--medium"] ~multipart:true
         "patch" (logo_field "btn input--file");
@@ -721,8 +875,8 @@ let account_edit_page ~context ?last_room_id ~account_id ~join_code
           elt "button" ["class","btn btn--negative txt-small avatar__delete-btn";
             "type","submit"] [icon ~attrs:["aria-hidden","true"] "minus";
             cls "span" "for-screen-reader" [text "Delete logo"]]]
-      else concat [])];
-    account_form ~attrs:["class","flex flex-column gap"] "patch" (
+      else concat [])]);
+    (if can_admin then admin_name else account_form ~attrs:["class","flex flex-column gap"] "patch" (
       cls "div" "flex align-center gap" [
         translation_button context "account_name";
         cls "label" "flex align-center gap flex-item-grow" [
@@ -734,8 +888,8 @@ let account_edit_page ~context ?last_room_id ~account_id ~join_code
         elt "button" ["name","button";"type","submit";
           "class","btn btn--reversed center"] [
           icon ~attrs:["aria-hidden","true"] "check";
-          cls "span" "for-screen-reader" [text "Save changes"]]]);
-    cls "div" "margin-block-start pad-block pad-inline-double fill-shade border-radius" [
+          cls "span" "for-screen-reader" [text "Save changes"]]]));
+    (if can_admin then admin_room_creation else cls "div" "margin-block-start pad-block pad-inline-double fill-shade border-radius" [
       account_form ~attrs:["class","flex align-center gap center"] "put" (
         concat [
           cls "div" "flex-item-grow flex align-center gap txt-align-start" [
@@ -752,7 +906,7 @@ let account_edit_page ~context ?last_room_id ~account_id ~join_code
               if restrict_room_creation then ["checked","checked"] else []);
             cls "span" "switch__btn round" [];
             cls "span" "for-screen-reader" [
-              text "Must be admin to create new rooms"]]])]] in
+              text "Must be admin to create new rooms"]]])])] in
   let visible_users=concat [
     concat (List.map (account_user_item ~context) administrators);
     (if administrators<>[] && members<>[] then
@@ -761,6 +915,61 @@ let account_edit_page ~context ?last_room_id ~account_id ~join_code
     concat (List.map (account_user_item ~context) members);
     (match next_page with None -> concat [] | Some page ->
       account_next_page page)] in
+  let admin_invite=raw (Trusted_html (let url=context.base_url ^
+    Route_helpers.join join_code in
+    let qr_path=Route_helpers.qr_code
+      (Rails_format.urlsafe_encode ~pad:true url) in
+    String.concat "" [
+      {|<div class="flex flex-column align-center gap">
+
+  <label class="flex flex-column gap full-width" style="--row-gap: 0.5em">
+    <strong id="invite_label" class="invite-label">Share to invite more people</strong>
+    <span class="flex align-center gap input input--actor fill-white">
+      |};legacy_img ~size:(Some 20) context "person-add.svg"
+      ["aria-hidden","true";"class","colorize--black"];
+      {|
+      <input type="text" class="input" id="invite_url" value="|};
+      legacy_attribute url;
+      {|" aria-labelledby="invite_label" readonly>
+    </span>
+  </label>
+
+  <div class="flex align-center gap">
+    <a class="btn" data-lightbox-target="image" data-action="lightbox#open" data-lightbox-url-value="|};
+      legacy_attribute qr_path;{|" href="|};legacy_attribute qr_path;
+      {|">
+      <span class="for-screen-reader">Show join link QR code</span>
+      |};legacy_img ~size:(Some 20) context "qr-code.svg"
+      ["aria-hidden","true";"class","colorize--black"];
+      {|
+</a>
+    <button class="btn" data-controller="copy-to-clipboard" data-action="copy-to-clipboard#copy" data-copy-to-clipboard-success-class="btn--success" data-copy-to-clipboard-content-value="|};
+      legacy_attribute url;
+      {|">
+      <span class="for-screen-reader">Copy join link</span>
+      |};legacy_img ~size:(Some 20) context "copy-paste.svg"
+      ["aria-hidden","true";"class","colorize--black"];
+      {|
+</button>
+    <button class="btn" hidden="hidden" data-controller="web-share" data-action="web-share#share" data-web-share-url-value="|};
+      legacy_attribute url;
+      {|" data-web-share-text-value="Hit this link to join me in Campfire and start chatting." data-web-share-title-value="Link to join Campfire">
+      <span class="for-screen-reader">Share join link</span>
+      |};legacy_img ~size:(Some 20) context "share.svg"
+      ["aria-hidden","true";"class","colorize--black"];
+      {|
+</button>
+      <form class="button_to" method="post" action="|};
+      legacy_attribute (Route_helpers.account_join_code ());
+      {|"><button class="btn btn--regenerate" type="submit">
+        |};legacy_img ~size:(Some 20) context "refresh.svg"
+      ["aria-hidden","true";"class","colorize--black"];
+      {|
+        <span class="for-screen-reader">Regenerate join link</span>
+</button></form>  </div>
+</div>
+
+|};"\n    "])) in
   let content=elt "section" ["class","panel txt-align-center flex flex-column gap";
     "style","view-transition-name: account-settings"] [
     (if can_admin then admin_settings else concat [
@@ -768,14 +977,50 @@ let account_edit_page ~context ?last_room_id ~account_id ~join_code
         image ~alt:"Account logo" ~width:300 ~height:300 context.logo_url];
       cls "h1" "flex-item-grow txt-x-large" [text context.account_name]]);
     cls "div" "margin-block pad-inline pad-block-start fill-shade border-radius" [
-      invite_fragment context join_code;
+      (if can_admin then admin_invite else invite_fragment context join_code);
       void "hr" ["class","margin-block separator full-width";
         "style","--border-style: solid"];
       cls "menu" "flex flex-column gap margin-none pad" [
         id "turbo-frame" "account_users" [visible_users]]]] in
+  let content=if not can_admin then content else
+    let user_item member =
+      let html=render (account_user_item ~context member) in
+      if String.ends_with ~suffix:"\n\n" html then
+        String.sub html 0 (String.length html - 1) else html in
+    raw (Trusted_html (String.concat "" [
+      {|<section class="panel txt-align-center flex flex-column gap" style="view-transition-name: account-settings">
+|};render admin_settings;
+      {|
+  <div class="margin-block pad-inline pad-block-start fill-shade border-radius">
+    |};render admin_invite;
+      {|<hr class="margin-block separator full-width" style="--border-style: solid">
+
+    <menu class="flex flex-column gap margin-none pad">
+      <turbo-frame id="account_users">
+        |};String.concat "" (List.map user_item administrators);
+      (if administrators<>[] && members<>[] then
+        {|
+          <hr class="separator full-width" style="--border-style: solid">
+
+        |} else "");
+      String.concat "" (List.map user_item members);
+      (match next_page with None -> "" | Some page ->
+        render (account_next_page page));
+      "        \n      ";
+      {|</turbo-frame>
+    </menu>
+  </div>
+</section>
+|}])) in
   let footer=cls "div" "txt-align-center center margin-block-double txt-subtle" [
     text "Campfire™ version ";
     cls "span" "version-badge" [text context.app_version]] in
+  let footer=if not can_admin then footer else raw (Trusted_html
+    (String.concat "" [
+      {|  <div class="txt-align-center center margin-block-double txt-subtle">Campfire&trade; version <span class="version-badge">|};
+      legacy_text context.app_version;
+      {|</span></div>
+|}])) in
   page ~title:"Account settings" ~context ~nav ~footer content
 let join_new_with ~context ~join_code ?help_contact () =
   let nav=raw (Trusted_html (String.concat "" [
@@ -996,136 +1241,202 @@ let bots_index ~context ~bots =
   page ~title:"Chat bots" ~context ~nav (raw (Trusted_html content))
 let bot_form_page ~context ?bot_id ?name ?webhook_url
     ?avatar_attachment_url () =
-  let icon ?(size=None) ?(attributes=[]) name =
-    void "img" (attributes @ ["src",asset context name] @
-      match size with None -> [] | Some size ->
-        ["width",string_of_int size;"height",string_of_int size]) in
-  let nav=cls "div" "flex-item-justify-start" [
-    elt "a" ["class","btn";"href","/account/bots"] [
-      icon "arrow-left.svg" ~size:(Some 20)
-        ~attributes:["aria-hidden","true"];
-      cls "span" "for-screen-reader" [text "Go Back"]]] in
+  let replace_literal source needle replacement =
+    let output=Buffer.create (String.length source) in
+    let needle_length=String.length needle in
+    let rec loop offset =
+      if offset>=String.length source then Buffer.contents output
+      else if offset+needle_length<=String.length source &&
+          String.sub source offset needle_length=needle then (
+        Buffer.add_string output replacement;
+        loop (offset+needle_length))
+      else (Buffer.add_char output source.[offset]; loop (offset+1)) in
+    loop 0 in
+  let nav=raw (Trusted_html (String.concat "" [
+    {|  <div class="flex-item-justify-start">
+    <a class="btn" href="/account/bots">|};
+    legacy_img ~size:(Some 20) context "arrow-left.svg"
+      ["aria-hidden","true"];
+    {|<span class="for-screen-reader">Go Back</span></a>
+  </div>
+|}])) in
+  let icon ?(size=20) name attributes =
+    legacy_img ~size:(Some size) context name attributes in
+  let avatar_name=Option.value avatar_attachment_url
+    ~default:"default-bot-avatar.svg" in
+  let field_value value = match value with None -> "" | Some value ->
+    " value=\"" ^ legacy_attribute value ^ "\"" in
+  let form_source={mbotform|<h1 class="for-screen-reader">Chat Bot Setup</h1>
+<label class="align-center center avatar__form gap" data-controller="upload-preview">
+  <div class="btn input--file">
+    {{ h::image_tag(ctx, "camera.svg", h::attrs().aria_hidden().size(20)) }}
+    {{ form.file_field("avatar", h::attrs().class("input").accept("image/*").data("upload_preview_target", "input").data("action", "upload-preview#previewImage")) }}
+    <span class="for-screen-reader">Upload bot avatar</span>
+  </div>
+
+  <div class="avatar input--file txt-xx-large" style="--avatar-size: var(--btn-size);">
+    {{ h::image_tag(ctx, bot.avatar_attachment_url.as_deref().unwrap_or("default-bot-avatar.svg"), h::attrs().alt("Bot avatar").size(48).data("upload_preview_target", "image")) }}
+  </div>
+</label>
+
+<div class="flex align-center gap">
+  {{ h::translation_button(ctx, "bot_name") }}
+  <label class="flex align-center gap flex-item-grow txt-large input input--actor">
+    {{ form.text_field("name", bot.name.as_deref(), h::attrs().class("input").autocomplete("name").placeholder("Name the bot").autofocus().required(true).data("1p-ignore", true)) }}
+    {{ h::image_tag(ctx, "bot.svg", h::attrs().aria_hidden().size(24).class("colorize--black")) }}
+  </label>
+</div>
+
+<div class="flex align-center gap">
+  {{ h::translation_button(ctx, "webhook_url") }}
+  <label class="flex align-center gap flex-item-grow txt-large input input--actor">
+    {{ form.url_field("webhook_url", bot.webhook_url.as_deref(), h::attrs().class("input").placeholder("Webhook URL")) }}
+    {{ h::image_tag(ctx, "web.svg", h::attrs().aria_hidden().size(24).class("colorize--black")) }}
+  </label>
+</div>
+
+{{ h::profile_form_submit_button(ctx) }}
+
+|mbotform} in
+  let substitutions=[
+    "{{ h::image_tag(ctx, \"camera.svg\", h::attrs().aria_hidden().size(20)) }}",
+      icon "camera.svg" ["aria-hidden","true"];
+    "{{ form.file_field(\"avatar\", h::attrs().class(\"input\").accept(\"image/*\").data(\"upload_preview_target\", \"input\").data(\"action\", \"upload-preview#previewImage\")) }}",
+      {|<input class="input" accept="image/*" data-upload-preview-target="input" data-action="upload-preview#previewImage" type="file" name="user[avatar]" id="user_avatar" />|};
+    "{{ h::image_tag(ctx, bot.avatar_attachment_url.as_deref().unwrap_or(\"default-bot-avatar.svg\"), h::attrs().alt(\"Bot avatar\").size(48).data(\"upload_preview_target\", \"image\")) }}",
+      icon ~size:48 avatar_name
+        ["alt","Bot avatar";"data-upload-preview-target","image"];
+    "{{ h::translation_button(ctx, \"bot_name\") }}",
+      legacy_translation_button context "bot_name";
+    "{{ form.text_field(\"name\", bot.name.as_deref(), h::attrs().class(\"input\").autocomplete(\"name\").placeholder(\"Name the bot\").autofocus().required(true).data(\"1p-ignore\", true)) }}",
+      {|<input class="input" autocomplete="name" placeholder="Name the bot" autofocus="autofocus" required="required" data-1p-ignore="true" type="text"|} ^
+      field_value name ^ {| name="user[name]" id="user_name" />|};
+    "{{ h::image_tag(ctx, \"bot.svg\", h::attrs().aria_hidden().size(24).class(\"colorize--black\")) }}",
+      icon ~size:24 "bot.svg"
+        ["aria-hidden","true";"class","colorize--black"];
+    "{{ h::translation_button(ctx, \"webhook_url\") }}",
+      legacy_translation_button context "webhook_url";
+    "{{ form.url_field(\"webhook_url\", bot.webhook_url.as_deref(), h::attrs().class(\"input\").placeholder(\"Webhook URL\")) }}",
+      {|<input class="input" placeholder="Webhook URL" type="url"|} ^
+      field_value webhook_url ^
+      {| name="user[webhook_url]" id="user_webhook_url" />|};
+    "{{ h::image_tag(ctx, \"web.svg\", h::attrs().aria_hidden().size(24).class(\"colorize--black\")) }}",
+      icon ~size:24 "web.svg"
+        ["aria-hidden","true";"class","colorize--black"];
+    "{{ h::profile_form_submit_button(ctx) }}",
+      {|<button class="btn btn--reversed center txt-large" type="submit">|} ^
+      icon "check.svg" ["aria-hidden","true"] ^
+      {|<span class="for-screen-reader">Save changes</span></button>|}]
+  in
+  let form_body=List.fold_left (fun html (needle,value) ->
+    replace_literal html needle value) form_source substitutions in
   let action=match bot_id with None -> "/account/bots" | Some id ->
     "/account/bots/" ^ i64 id in
-  let field ?translation key kind placeholder attrs icon_name =
-    cls "div" "flex align-center gap" [
-      translation_button context (Option.value translation ~default:key);
-      cls "label" "flex align-center gap flex-item-grow txt-large input input--actor" [
-        void "input" (["name","user[" ^ key ^ "]";
-          "id","user_" ^ key;"class","input";
-          "type",kind;"placeholder",placeholder] @ attrs);
-        icon icon_name ~size:(Some 24)
-          ~attributes:["aria-hidden","true";"class","colorize--black"]]] in
-  let inner=concat [
-    (match bot_id with None -> concat [] | Some _ ->
-      input ~name:"_method" ~kind:"hidden" ~value:"patch" ());
-    cls "h1" "for-screen-reader" [text "Chat Bot Setup"];
-    elt "label" ["class","align-center center avatar__form gap";
-      "data-controller","upload-preview"] [
-      cls "div" "btn input--file" [
-        icon "camera.svg" ~size:(Some 20)
-          ~attributes:["aria-hidden","true"];
-        void "input" ["name","user[avatar]";"id","user_avatar";
-          "class","input";"type","file";"accept","image/*";
-          "data-upload-preview-target","input";
-          "data-action","upload-preview#previewImage"];
-        cls "span" "for-screen-reader" [text "Upload bot avatar"]];
-      elt "div" ["class","avatar input--file txt-xx-large";
-        "style","--avatar-size: var(--btn-size);"] [
-        icon (Option.value avatar_attachment_url
-          ~default:"default-bot-avatar.svg")
-          ~size:(Some 48)
-          ~attributes:["alt","Bot avatar";
-            "data-upload-preview-target","image"]]];
-    field ~translation:"bot_name" "name" "text" "Name the bot"
-      (["autocomplete","name";"autofocus","autofocus";
-        "required","required";"data-1p-ignore","true"] @
-       match name with None -> [] | Some value -> ["value",value])
-      "bot.svg";
-    field "webhook_url" "url" "Webhook URL"
-      (match webhook_url with None -> [] | Some value -> ["value",value])
-      "web.svg";
-    elt "button" ["class","btn btn--reversed center txt-large";
-      "type","submit"] [
-      icon "check.svg" ~size:(Some 20)
-        ~attributes:["aria-hidden","true"];
-      cls "span" "for-screen-reader" [text "Save changes"]]] in
-  let bot_form=form ~attrs:["class","flex flex-column gap";
-    "enctype","multipart/form-data";"accept-charset","UTF-8"]
-    action inner in
-  let destructive=match bot_id with None -> concat [] | Some id ->
-    let action="/account/bots/" ^ i64 id in
-    let destructive_button ~path ~method_ ~class_name ~aria_label
-        ~confirm icons =
-      form ~attrs:["class","button_to"] path (concat [
-        input ~name:"_method" ~kind:"hidden" ~value:method_ ();
-        elt "button" ["class",class_name;"aria-label",aria_label;
-          "data-turbo-confirm",confirm;"type","submit"]
-          (List.map (fun name ->
-            icon name ~size:(Some 20)
-              ~attributes:["aria-hidden","true"]) icons)]) in
-    concat [
-      void "hr" ["class","separator full-width margin-block-double"];
-      cls "div" "flex align-center gap justify-space-between" [
-        destructive_button ~path:action ~method_:"delete"
-          ~class_name:"btn txt--small btn--negative"
-          ~aria_label:"Delete this chat bot"
-          ~confirm:"Are you sure you want to permanently remove this bot from the account? This can’t be undone."
-          ["trash.svg";"bot.svg"];
-        destructive_button ~path:(action ^ "/key") ~method_:"put"
-          ~class_name:"btn full-width txt--small btn--negative"
-          ~aria_label:"Generate a new key"
-          ~confirm:"Are you sure you want to change the bot key? All usage of this bot must be updated."
-          ["refresh.svg";"key.svg"]]] in
-  let content=elt "section" (["class","panel"] @
-    match bot_id with None -> [] | Some id ->
-      ["style","view-transition-name: chat-bot-" ^ i64 id])
-    [bot_form;destructive] in
+  let destructive_button ~action ~method_ ~class_name ~aria_label
+      ~confirmation icons = String.concat "" [
+    {|<form class="button_to" method="post" action="|};
+    legacy_attribute action;
+    {|"><input type="hidden" name="_method" value="|};method_;
+    {|" /><button class="|};class_name;
+    {|" aria-label="|};legacy_attribute aria_label;
+    {|" data-turbo-confirm="|};legacy_attribute confirmation;
+    {|" type="submit">
+      |};
+    String.concat "\n      " (List.map (fun name ->
+      icon name ["aria-hidden","true"]) icons);
+    {|
+</button></form>|}] in
+  let destructive=match bot_id with None -> "" | Some _ ->
+    String.concat "" [
+      {|
+  <hr class="separator full-width margin-block-double">
+
+  <div class="flex align-center gap justify-space-between">
+    |};
+      destructive_button ~action ~method_:"delete"
+        ~class_name:"btn txt--small btn--negative"
+        ~aria_label:"Delete this chat bot"
+        ~confirmation:"Are you sure you want to permanently remove this bot from the account? This can’t be undone."
+        ["trash.svg";"bot.svg"];
+      {|
+    |};
+      destructive_button ~action:(action ^ "/key") ~method_:"put"
+        ~class_name:"btn full-width txt--small btn--negative"
+        ~aria_label:"Generate a new key"
+        ~confirmation:"Are you sure you want to change the bot key? All usage of this bot must be updated."
+        ["refresh.svg";"key.svg"];
+      {|  </div>
+|}] in
+  let content=raw (Trusted_html (String.concat "" [
+    {|<section class="panel"|};
+    (match bot_id with None -> "" | Some id ->
+      {| style="view-transition-name: chat-bot-|} ^ i64 id ^ {|"|});
+    {|>
+  <form class="flex flex-column gap" enctype="multipart/form-data" action="|};
+    legacy_attribute action;
+    {|" accept-charset="UTF-8" method="post">|};
+    (match bot_id with None -> "" | Some _ ->
+      {|<input type="hidden" name="_method" value="patch" />|});
+    {|
+    |};form_body;{|</form>|};destructive;{|</section>
+|}])) in
   page ~title:(if Option.is_some bot_id then "Edit bot" else "New chat bot")
     ~context ~nav content
+
 let bot_form ~context ?bot ?webhook_url () =
   bot_form_page ~context
     ?bot_id:(Option.map (fun (user:user) -> user.id) bot)
     ?name:(Option.map (fun (user:user) -> user.name) bot)
     ?webhook_url ()
 let custom_styles_edit ~context ~styles =
-  let icon ?(size=20) name = void "img" ["aria-hidden","true";
-    "src",asset context (name ^ ".svg");
-    "width",string_of_int size;"height",string_of_int size] in
-  let nav = cls "div" "flex-item-justify-start" [
-    elt "a" ["class","btn";"href",Route_helpers.edit_account ()] [
-      icon "arrow-left";
-      cls "span" "for-screen-reader" [text "Go Back"]]] in
-  let form_content=concat [
-    input ~name:"_method" ~kind:"hidden" ~value:"patch" ();
-    cls "div" "panel__button" [translation_button context "custom_styles"];
-    cls "div" "pad-inline-double margin-inline" [
-      cls "h1" "margin-none" [text "Custom CSS"];
-      elt "p" ["class","flex flex-wrap align-center justify-center gap margin-none-block-start";
-        "style","--column-gap: 0.5ch; --row-gap: 0"] [
-        elt "span" [] [text "Add custom CSS styles."];
-        void "img" ["class","flex-inline colorize--black";
-          "aria-hidden","true";"src",asset context "alert.svg";
-          "width","16";"height","16"];
-        elt "span" [] [text "Use Caution: you could break things."]]];
-    cls "label" "flex align-start gap flex-item-grow" [
-      elt "textarea" ["class","input input--code txt--small";
-        "placeholder","Add CSS styles…";"autocomplete","off";
-        "spellcheck","false";"autocorrect","off";
-        "autocapitalize","off";"rows","16";
-        "name","account[custom_styles]";"id","account_custom_styles"] [text styles]];
-    elt "button" ["name","button";"type","submit";
-      "class","btn btn--reversed center txt-large"] [
-      icon "check";cls "span" "for-screen-reader" [text "Save changes"]]] in
-  let content=elt "section" [
-    "class","panel panel--wide txt-align-center flex flex-column position-relative";
-    "style","view-transition-name: custom-styles"] [
-    form ~attrs:["class","flex flex-column gap";
-      "data-controller","form";
-      "data-action","keydown.ctrl+enter->form#submit keydown.meta+enter->form#submit";
-      "accept-charset","UTF-8"]
-      (context.base_url ^ Route_helpers.account_custom_styles ()) form_content] in
+  let nav=raw (Trusted_html (String.concat "" [
+    {|  <div class="flex-item-justify-start">
+    <a class="btn" href="|};
+    legacy_attribute (Route_helpers.edit_account ());
+    {|">|};legacy_img ~size:(Some 20) context "arrow-left.svg"
+      ["aria-hidden","true"];
+    {|<span class="for-screen-reader">Go Back</span></a>
+  </div>
+|}])) in
+  let content=raw (Trusted_html (String.concat "" [
+    {|<section class="panel panel--wide txt-align-center flex flex-column position-relative" style="view-transition-name: custom-styles">
+  <form class="flex flex-column gap" data-controller="form" data-action="keydown.ctrl+enter-&gt;form#submit keydown.meta+enter-&gt;form#submit" action="|};
+    legacy_attribute (context.base_url ^ Route_helpers.account_custom_styles ());
+    {|" accept-charset="UTF-8" method="post"><input type="hidden" name="_method" value="patch" />
+    <div class="panel__button">
+      |};
+    legacy_translation_button context "custom_styles";
+    {|
+    </div>
+
+    <div class="pad-inline-double margin-inline">
+      <h1 class="margin-none">Custom CSS</h1>
+      <p class="flex flex-wrap align-center justify-center gap margin-none-block-start" style="--column-gap: 0.5ch; --row-gap: 0">
+        <span>Add custom CSS styles.</span>
+        |};
+    legacy_img ~size:(Some 16) context "alert.svg"
+      ["class","flex-inline colorize--black";"aria-hidden","true"];
+    {|
+        <span>Use Caution: you could break things.</span>
+      </p>
+    </div>
+
+    <label class="flex align-start gap flex-item-grow">
+      <textarea class="input input--code txt--small" placeholder="Add CSS styles…" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off" rows="16" name="account[custom_styles]" id="account_custom_styles">
+|};
+    legacy_text styles;
+    {|</textarea>
+    </label>
+
+    <button name="button" type="submit" class="btn btn--reversed center txt-large">
+      |};
+    legacy_img ~size:(Some 20) context "check.svg" ["aria-hidden","true"];
+    {|
+      <span class="for-screen-reader">Save changes</span>
+</button></form></section>
+|}])) in
   page ~title:"Custom styles" ~context ~nav content
+
 let user_show ~context ~user ~bio =
   page ~title:user.name ~context (cls "section" "profile" [
     image ~width:96 ~height:96 user.avatar_url;
@@ -1143,6 +1454,54 @@ let profile_transfer_fragment ~context ~(user:user) ~transfer_id =
     void "img" (["aria-hidden","true"] @ attrs @
       ["src",asset context (name ^ ".svg");
        "width",string_of_int size;"height",string_of_int size]) in
+  if current then raw (Trusted_html (String.concat "" [
+    {|<fieldset>
+  <legend class="gap">
+    |};legacy_img ~size:(Some 36) context "laptop.svg"
+      ["aria-hidden","true";"class","colorize--black"];
+    {|
+    |};legacy_img ~size:(Some 36) context "transfer.svg"
+      ["aria-hidden","true";"class","colorize--black"];
+    {|
+    |};legacy_img ~size:(Some 36) context "mobile-phone.svg"
+      ["aria-hidden","true";"class","colorize--black"];
+    {|
+  </legend>
+
+
+  <div class="flex flex-column gap">
+      <label for="session_transfer_url" class="for-screen-reader">Use this link to login automatically on another device</label>
+
+    <input type="text" class="input" value="|};legacy_attribute url;
+    {|" id="session_transfer_url" readonly>
+
+    <div class="flex align-center center gap">
+      <a class="btn" data-lightbox-target="image" data-action="lightbox#open" data-lightbox-url-value="|};
+    legacy_attribute qr_path;{|" href="|};legacy_attribute qr_path;
+    {|">
+        <span class="for-screen-reader">Show auto-login QR code</span>
+        |};legacy_img ~size:(Some 20) context "qr-code.svg"
+      ["aria-hidden","true";"class","colorize--black"];
+    {|
+</a>
+      <button class="btn" data-controller="copy-to-clipboard" data-action="copy-to-clipboard#copy" data-copy-to-clipboard-success-class="btn--success" data-copy-to-clipboard-content-value="|};
+    legacy_attribute url;{|">
+        <span class="for-screen-reader">Copy auto-login link</span>
+        |};legacy_img ~size:(Some 20) context "copy-paste.svg"
+      ["aria-hidden","true";"class","flex-item-no-shrink colorize--black"];
+    {|
+</button>
+      <button class="btn" hidden="hidden" data-controller="web-share" data-action="web-share#share" data-web-share-url-value="|};
+    legacy_attribute url;
+    {|" data-web-share-text-value="This is your own private sign-in URL, DO NOT SHARE IT. Use it to sign-in on another device or if you get locked out." data-web-share-title-value="Your sign-in link">
+        <span class="for-screen-reader">Share auto-login link</span>
+        |};legacy_img ~size:(Some 20) context "share.svg"
+      ["aria-hidden","true";"class","flex-item-no-shrink colorize--black"];
+    {|
+</button>    </div>
+  </div>
+</fieldset>|}]))
+  else
   elt "fieldset" [] [
     cls "legend" "gap" [
       icon ~size:36 ~attrs:["class","colorize--black"] "laptop";
@@ -1186,6 +1545,66 @@ let user_show_page ~context ?(back_url="/") ~(user:user) ~email_address
   let current=match context.current_user with
     | Some viewer -> viewer.id=user.id | None -> false in
   let active=status="active" in
+  if current && admin && active && user.role<>"bot" then (
+    let nav=raw (Trusted_html (String.concat "" [
+      {|  <div class="flex-item-justify-start">
+    <a class="btn" href="|};
+      legacy_attribute back_url;
+      {|">|};legacy_img ~size:(Some 20) context "arrow-left.svg"
+        ["aria-hidden","true"];
+      {|<span class="for-screen-reader">Go Back</span></a>
+  </div>
+
+  <div class="flex align-center gap flex-item-justify-end">
+      <a class="btn" href="/users/me/profile">
+        |};
+      legacy_img context "pencil.svg" ["aria-hidden","true"];
+      {|
+        <span class="for-screen-reader">Edit my profile</span>
+</a>  </div>
+|}])) in
+    let content=raw (Trusted_html (String.concat "" [
+      {|<section class="panel txt-align-center">
+  <div class="flex flex-column gap ">
+    <div class="avatar txt-xx-large center" style="background: white">
+      <img alt="Profile avatar" class="avatar" src="|};
+      legacy_attribute user.avatar_url;
+      {|" />
+    </div>
+
+        <div class="flex flex-column gap" style="--row-gap: calc(var(--block-space) / 3)">
+          <h1 class="txt-x-large txt-tight-lines margin-none">|};
+      legacy_text user.name;
+      {|</h1>
+            <div><a href="mailto:|};
+      legacy_attribute email_address;{|">|};legacy_text email_address;
+      {|</a></div>
+          <div>|};legacy_text (Option.value bio ~default:"");
+      {|</div>
+        </div>
+
+          <div class="pad-inline-double margin-inline margin-block-start">
+            <form class="button_to" method="post" action="/rooms/directs?user_ids%5B%5D=|};
+      i64 user.id;
+      {|"><button class="btn btn--reversed full-width txt-large" type="submit">
+              |};
+      legacy_img context "messages.svg"
+        ["aria-hidden","true";"aria-label","Ping " ^ user.name];
+      {|
+</button></form>          </div>
+
+            <hr class="margin-block-start borderless">
+
+|};"            \n";
+      render (profile_transfer_fragment ~context ~user ~transfer_id);
+      {|
+
+
+  </div>
+</section>
+|}])) in
+    page ~title:user.name ~context ~nav content)
+  else
   let icon name=void "img" ["aria-hidden","true";
     "src",asset context (name ^ ".svg");"width","20";"height","20"] in
   let nav=concat [
@@ -1465,31 +1884,35 @@ type room = { id:int64; kind:room_kind; name:string; updated_at_ms:int64 }
 type sidebar_entry = { room:room; unread:bool; members:user list }
 let room_kind_name = function Open -> "rooms_open" | Closed -> "rooms_closed" | Direct -> "rooms_direct"
 let room_dom_id room prefix = prefix ^ "_" ^ room_kind_name room.kind ^ "_" ^ i64 room.id
-let sidebar_shared_room (entry:sidebar_entry) = elt "a" [
-  "id",room_dom_id entry.room "list";
-  "data-rooms-list-target","room";
-  "data-room-id",i64 entry.room.id;
-  "data-badge-dot-target","unread";
-  "data-sorted-list-target","item";
-  "data-sorted-list-name",entry.room.name;
-  "style","--column-gap: 0.5em";
-  "class",("align-center gap room btn txt-nowrap" ^
-    if entry.unread then " unread" else "");
-  "href",relative_room entry.room.id] [
-    cls "span" "overflow-ellipsis" [text entry.room.name]]
+let sidebar_shared_room (entry:sidebar_entry) =
+  raw (Trusted_html (String.concat "" [
+    {|<a id="|}; legacy_attribute (room_dom_id entry.room "list");
+    {|" data-rooms-list-target="room" data-room-id="|};i64 entry.room.id;
+    {|" data-badge-dot-target="unread" data-sorted-list-target="item" data-sorted-list-name="|};
+    legacy_attribute entry.room.name;
+    {|" style="--column-gap: 0.5em" class="|};
+    (if entry.unread then "align-center gap room btn txt-nowrap unread"
+      else "align-center gap room btn txt-nowrap");
+    {|" href="|};legacy_attribute (relative_room entry.room.id);
+    {|">
+  <span class="overflow-ellipsis">|};legacy_text entry.room.name;
+    {|</span>
+</a>|}]))
 let sidebar_frame ~context ~rooms ?entries ?(placeholders=[]) ?(can_create_rooms=true)
     ~rooms_stream_name ~user_rooms_stream_name () =
   let entries = Option.value entries ~default:(List.map (fun room ->
     {room;unread=false;members=[]}) rooms) in
-  let stream name = elt "turbo-cable-stream-source"
-    ["channel","Turbo::StreamsChannel";"signed-stream-name",name] [] in
-  let icon ?(size=20) ?(class_name="") ?(style="") name =
+  let icon ?size ?(class_name="") ?(style="") name =
     let src = if String.starts_with ~prefix:"/" name then name
       else asset context name in
-    void "img" (["src",src;"width",string_of_int size;
-      "height",string_of_int size;"aria-hidden","true"] @
+    let attributes=["aria-hidden","true"] @
       (if class_name="" then [] else ["class",class_name]) @
-      if style="" then [] else ["style",style]) in
+      (if style="" then [] else ["style",style]) in
+    let attributes=attributes @ ["src",src] @
+      (match size with None -> [] | Some size ->
+        ["width",string_of_int size;"height",string_of_int size]) in
+    "<img " ^ String.concat " " (List.map (fun (key,value) ->
+      key ^ "=\"" ^ legacy_attribute value ^ "\"") attributes) ^ " />" in
   let first_name (user:user) = match String.split_on_char ' ' user.name with
     | first::_ -> first | [] -> user.name in
   let member_initials members =
@@ -1504,86 +1927,141 @@ let sidebar_frame ~context ~rooms ?entries ?(placeholders=[]) ?(can_create_rooms
     | [last;first] -> first ^ "+" ^ last
     | last::rest -> String.concat ", " (List.rev rest) ^ ", and " ^ last in
   let direct_link (entry:sidebar_entry) =
-    let members = entry.members in
-    let single = match members with [one] -> Some one | _ -> None in
-    elt "a" ["id",room_dom_id entry.room "list";
-      "class",(if entry.unread then "direct unread" else "direct");
-      "data-rooms-list-target","room";
-      "data-room-id",i64 entry.room.id;
-      "data-badge-dot-target","unread";
-      "data-sorted-list-target","item";
-      "data-sorted-list-number",i64 entry.room.updated_at_ms;
-      "href",relative_room entry.room.id] [
-      (match single with
-       | Some member -> cls "span" "avatar" [
-           icon ~size:48 member.avatar_url]
-       | None -> cls "div" "avatar__group"
-           (members |> List.filteri (fun i _ -> i < 4) |> List.map (fun member ->
-             cls "span" "avatar" [icon member.avatar_url])));
-      cls "span" "direct__author flex align-center gap max-width min-width border-radius txt-small" [
-        cls "span" "txt-nowrap overflow-ellipsis" [
-          cls "span" "for-screen-reader" [text "Ping with"];
-          text (match single with Some member -> first_name member
-            | None -> member_initials members)]]] in
-  let placeholder (user:user) =
-    form ~attrs:["class","button_to"]
-      (Route_helpers.rooms_directs () ^ "?user_ids%5B%5D=" ^ i64 user.id)
-      (elt "button" ["type","submit";
-        "class","direct borderless fill-transparent unpad"] [
-        cls "span" "avatar" [void "img" ["src",user.avatar_url;
-          "aria-hidden","true"]];
-        cls "span" "direct__author flex align-center gap max-width min-width border-radius txt-small" [
-          cls "span" "txt-nowrap overflow-ellipsis" [
-            cls "span" "for-screen-reader" [text "Start a ping with"];
-            text (first_name user)]]]) in
+    let members=entry.members in
+    let avatars=match members with
+      | [member] -> String.concat "" [
+          {|      <span class="avatar">
+        |};icon ~size:48 member.avatar_url;{|
+      </span>
+|}]
+      | _ -> String.concat "" [
+          {|      <div class="avatar__group">
+|};
+          String.concat "" (members |> List.filteri (fun i _ -> i < 4)
+            |> List.map (fun member -> String.concat "" [
+              {|          <span class="avatar">
+            |};icon ~size:20 member.avatar_url;{|
+          </span>
+|}]));
+          {|      </div>
+|}] in
+    String.concat "" [
+      {|  <a class="|};(if entry.unread then "direct unread" else "direct");
+      {|" id="|};legacy_attribute (room_dom_id entry.room "list");
+      {|" data-rooms-list-target="room" data-room-id="|};i64 entry.room.id;
+      {|" data-badge-dot-target="unread" data-sorted-list-target="item" data-sorted-list-number="|};
+      i64 entry.room.updated_at_ms;{|" href="|};
+      legacy_attribute (relative_room entry.room.id);{|">
+|};avatars;{|
+|};
+      {|    <span class="direct__author flex align-center gap max-width min-width border-radius txt-small">
+      <span class="txt-nowrap overflow-ellipsis">
+        <span class="for-screen-reader">Ping with</span>
+          |};
+      legacy_text (match members with [member] -> first_name member
+        | _ -> member_initials members);
+      {|
+      </span>
+    </span>
+</a>|}] in
+  let placeholder (user:user) = String.concat "" [
+    {|<form class="button_to" method="post" action="|};
+    legacy_attribute (Route_helpers.rooms_directs () ^ "?user_ids%5B%5D=" ^ i64 user.id);
+    {|"><button class="direct borderless fill-transparent unpad" type="submit">
+  <span class="avatar">
+    |};icon user.avatar_url;
+    {|
+  </span>
+
+  <span class="direct__author flex align-center gap max-width min-width border-radius txt-small">
+    <span class="txt-nowrap overflow-ellipsis">
+      <span class="for-screen-reader">Start a ping with</span>
+      |};legacy_text (first_name user);
+    {|
+    </span>
+  </span>
+</button></form>|}] in
   let directs,shared = List.partition (fun entry -> entry.room.kind=Direct) entries in
-  elt "turbo-frame" ["id","user_sidebar";"target","_top";
-    "data-turbo-permanent","true";
-    "data-controller","rooms-list read-rooms turbo-frame";
-    "data-rooms-list-unread-class","unread";
-    "data-action","presence:present@window->rooms-list#read read-rooms:read->rooms-list#read turbo:frame-load->rooms-list#loaded refresh-room:visible@window->turbo-frame#reload"] [
-    stream rooms_stream_name;stream user_rooms_stream_name;
-    elt "div" ["class","sidebar__container overflow-y overflow-hide-scrollbar";
-      "data-controller","badge-dot";"data-badge-dot-unread-class","unread";
-      "data-action","rooms-list:unread@window->badge-dot#update rooms-list:read@window->badge-dot#update turbo:submit-start->turbo-frame#unpermanize"] [
-      elt "turbo-frame" ["id","direct_rooms_control";"target","_top"] [
-        elt "div" ["class","directs gap overflow-x overflow-hide-scrollbar"] [
-          elt "a" ["href",Route_helpers.new_rooms_direct ();
-            "data-turbo-frame","_self";"class","direct direct__new"] [
-            cls "span" "avatar avatar--icon" [
-              icon ~class_name:"colorize--black" "messages-add.svg"];
-            cls "span" "direct__author flex max-width min-width border-radius pad-inline-half" [
-              cls "span" "for-screen-reader" [text "New"];
-              cls "span" "txt-small overflow-clip" [text "Ping"]]];
-          elt "div" ["id","direct_rooms";"contents","";
-            "data-controller","sorted-list";
-            "data-action","rooms-list:unread@window->sorted-list#updateItem"]
-            (List.map direct_link directs);
-          elt "div" ["contents",""] (List.map placeholder placeholders)]];
-      cls "div" "rooms position-relative flex flex-column gap" [
-        elt "div" ["id","shared_rooms";"contents","";
-          "data-controller","sorted-list"] (List.map sidebar_shared_room shared);
-        (if can_create_rooms then
-          elt "a" ["href",Route_helpers.new_rooms_open ();
-            "class","rooms__new-btn btn room align-center gap txt-reversed";
-            "aria-label","New Chat Room"] [
-            icon ~style:"view-transition-name: new-room" "add.svg"]
-         else concat [])];
-      elt "button" ["class","btn sidebar__toggle";
-        "data-action","toggle-class#toggle"] [
-        icon "menu.svg";
-        cls "span" "for-screen-reader" [text "Open menu"]]];
-    cls "div" "flex align-end sidebar__tools gap justify-end" [
-      elt "a" ["href",Route_helpers.user_profile ();
-        "class","btn avatar flex-item-no-shrink sidebar__tool"] [
-        (match context.current_user with Some user ->
-          icon ~size:48 ~style:("view-transition-name: avatar-" ^ i64 user.id)
-            user.avatar_url | None -> concat []);
-        cls "span" "for-screen-reader" [text "My Settings"]];
-      elt "a" ["href",Route_helpers.edit_account ();
-        "class","btn align-center gap txt-reversed sidebar__tool"] [
-        icon ~style:"view-transition-name: account-settings" "settings.svg";
-        cls "span" "for-screen-reader" [text "Account Settings"]]]]
+  let stream name = String.concat "" [
+    {|<turbo-cable-stream-source channel="Turbo::StreamsChannel" signed-stream-name="|};
+    legacy_attribute name;{|"></turbo-cable-stream-source>|}] in
+  raw (Trusted_html (String.concat "" [
+    {|<turbo-frame data-turbo-permanent="true" data-controller="rooms-list read-rooms turbo-frame" data-rooms-list-unread-class="unread" data-action="presence:present@window->rooms-list#read read-rooms:read->rooms-list#read turbo:frame-load->rooms-list#loaded refresh-room:visible@window->turbo-frame#reload" id="user_sidebar" target="_top">
+  |};stream rooms_stream_name;{|
+  |};stream user_rooms_stream_name;{|
+
+  <div class="sidebar__container overflow-y overflow-hide-scrollbar"
+      data-controller="badge-dot"
+      data-badge-dot-unread-class="unread"
+      data-action="rooms-list:unread@window->badge-dot#update rooms-list:read@window->badge-dot#update turbo:submit-start->turbo-frame#unpermanize">
+    <turbo-frame id="direct_rooms_control" target="_top">
+      <div class="directs gap overflow-x overflow-hide-scrollbar">
+        <a class="direct direct__new" data-turbo-frame="_self" href="|};
+    legacy_attribute (Route_helpers.new_rooms_direct ());
+    {|">
+          <span class="avatar avatar--icon">
+            |};icon ~size:20 ~class_name:"colorize--black" "messages-add.svg";
+    {|
+          </span>
+
+          <span class="direct__author flex max-width min-width border-radius pad-inline-half">
+            <span class="for-screen-reader">New</span>
+            <span class="txt-small overflow-clip">Ping</span>
+          </span>
+</a>
+        <div id="direct_rooms" contents data-controller="sorted-list" data-action="rooms-list:unread@window->sorted-list#updateItem">
+          |};
+    String.concat "\n" (List.mapi (fun index entry ->
+      (if index=0 then "\n" else "") ^ direct_link entry) directs);
+    {|        </div>
+
+        <div contents>
+          |};
+    String.concat "" (List.map placeholder placeholders);
+    {|        </div>
+      </div>
+    </turbo-frame>
+
+    <div class="rooms position-relative flex flex-column gap">
+      <div id="shared_rooms" contents data-controller="sorted-list">
+|};
+    String.concat "" (List.map (fun entry ->
+      "          " ^ render (sidebar_shared_room entry)) shared);
+    {|      </div>
+
+|};
+    (if can_create_rooms then String.concat "" [
+      {|        <a class="rooms__new-btn btn room align-center gap txt-reversed" aria-label="New Chat Room" href="|};
+      legacy_attribute (Route_helpers.new_rooms_open ());{|">
+          |};icon ~size:20 ~style:"view-transition-name: new-room" "add.svg";
+      {|
+</a>|}] else "");
+    {|    </div>
+
+    <button class="btn sidebar__toggle" data-action="toggle-class#toggle">
+      |};icon ~size:20 "menu.svg";
+    {|
+      <span class="for-screen-reader">Open menu</span>
+    </button>
+  </div>
+
+  <div class="flex align-end sidebar__tools gap justify-end">
+    <a class="btn avatar flex-item-no-shrink sidebar__tool" href="|};
+    legacy_attribute (Route_helpers.user_profile ());{|">
+      |};
+    (match context.current_user with None -> "" | Some user ->
+      icon ~size:48 ~style:("view-transition-name: avatar-" ^ i64 user.id)
+        user.avatar_url);
+    {|
+      <span class="for-screen-reader">My Settings</span>
+</a>
+    <a class="btn align-center gap txt-reversed sidebar__tool" href="|};
+    legacy_attribute (Route_helpers.edit_account ());{|">
+      |};icon ~size:20 ~style:"view-transition-name: account-settings" "settings.svg";
+    {|
+      <span class="for-screen-reader">Account Settings</span>
+</a>  </div>
+</turbo-frame>|}]))
 let sidebar_page ~context ~rooms ?entries ?(placeholders=[]) ?(can_create_rooms=true)
     ~rooms_stream_name ~user_rooms_stream_name () =
   let frame=sidebar_frame ~context ~rooms ?entries ~placeholders
@@ -1790,43 +2268,72 @@ let autocomplete_picker_template context =
         cls "span" "for-screen-reader" [text "Remove ";
           elt "span" ["data-content","screenReaderLabel"] []]]]]
 let direct_new ~context =
-  let picker_template = autocomplete_picker_template context in
-  let frame = elt "turbo-frame" ["id","direct_rooms_control";"target","_top"] [
-    cls "div" "directs directs--new flex flex-column gap" [
-      form ~attrs:["class","flex gap flex-item-grow";
-        "data-controller","form";"data-action","keydown.esc->form#cancel";
-        "accept-charset","UTF-8"]
-        "/rooms/directs" (concat [
-          elt "a" ["href",Route_helpers.user_sidebar ();
-            "class","btn flex-item-no-shrink";
-            "data-turbo-frame","user_sidebar";
-            "data-form-target","cancel"] [
-            void "img" ["aria-hidden","true";"src",asset context "arrow-left.svg"];
-            cls "span" "for-screen-reader" [text "Cancel changes"]];
-          cls "section" "autocomplete__container unpad input input--actor" [
-            elt "div" ["class","autocomplete__input input flex flex-wrap position-relative flex-item-grow";
-              "data-controller","autocomplete";
-              "data-autocomplete-url-value","/autocompletable/users"] [
-              elt "select" ["name","user_ids[]";
-                "data-autocomplete-target","select";
-                "data-template-id","autocompletable-user";
-                "multiple","true";"hidden","";
-                "required",""] [];
-              picker_template;
-              void "input" ["autocomplete","off";"autocorrect","off";
-                "data-1p-ignore","true";
-                "class","autocomplete__input input flex flex-wrap position-relative";
-                "data-autocomplete-target","input";
-                "data-action","input->autocomplete#search keydown->autocomplete#didPressKey";
-                "type","text";"name","rooms_direct[user_ids_input]";
-                "id","rooms_direct_user_ids_input"]]];
-          elt "button" ["name","button";"type","submit";
-            "class","btn btn--reversed flex-item-no-shrink"] [
-            void "img" ["aria-hidden","true";"src",asset context "check.svg"];
-            cls "span" "for-screen-reader" [text "Start Ping"]]]);
-      cls "span" "txt-small translucent pad-inline-half center"
-        [text "Type names to ping someone…"]]] in
-  page ~context frame
+  let replace_literal source needle replacement =
+    let output=Buffer.create (String.length source) in
+    let needle_length=String.length needle in
+    let rec loop offset =
+      if offset>=String.length source then Buffer.contents output
+      else if offset+needle_length<=String.length source &&
+          String.sub source offset needle_length=needle then (
+        Buffer.add_string output replacement;
+        loop (offset+needle_length))
+      else (Buffer.add_char output source.[offset]; loop (offset+1)) in
+    loop 0 in
+  let picker = {mpicker|<template id="autocompletable-user">
+  <div class="autocomplete__pill max-width" data-value="" tabindex="0">
+    <img class="avatar flex-item-no-shrink" data-content="avatar" src="" />
+    <span class="autocomplete-field__selected-value-text overflow-ellipsis flex-item-grow" data-content="label"></span>
+
+    <button type="button" data-action="autocomplete#remove:prevent" data-value="" tabindex="-1" class="btn btn--plain txt-small translucent flex-item-no-shrink">
+      {{ h::image_tag(ctx, "remove-circle.svg", h::attrs().aria_hidden().class("colorize--black")) }}
+      <span class="for-screen-reader">Remove <span data-content="screenReaderLabel"></span></span>
+    </button>
+  </div>
+</template>
+|mpicker} in
+  let picker=replace_literal picker
+    "{{ h::image_tag(ctx, \"remove-circle.svg\", h::attrs().aria_hidden().class(\"colorize--black\")) }}"
+    (legacy_img context "remove-circle.svg"
+      ["aria-hidden","true";"class","colorize--black"]) in
+  let source={mdirect|<turbo-frame id="direct_rooms_control" target="_top">
+  <div class="directs directs--new flex flex-column gap">
+    <form class="flex gap flex-item-grow" data-controller="form" data-action="keydown.esc-&gt;form#cancel" action="{{ h::routes::rooms_directs() }}" accept-charset="UTF-8" method="post">
+      <a class="btn flex-item-no-shrink" data-turbo-frame="user_sidebar" data-form-target="cancel" href="{{ h::routes::user_sidebar() }}">
+        <img aria-hidden="true" src="{{ ctx.asset("arrow-left.svg") }}" />
+        <span class="for-screen-reader">Cancel changes</span>
+</a>
+      <section class="autocomplete__container unpad input input--actor">
+        <div class="autocomplete__input input flex flex-wrap position-relative flex-item-grow"
+            data-controller="autocomplete" data-autocomplete-url-value="{{ h::routes::autocompletable_users() }}">
+          <select name="user_ids[]" data-autocomplete-target="select" data-template-id="autocompletable-user" multiple="true" hidden required></select>
+
+          {% include "users/autocompletables/_template.html" %}
+
+          <input autocomplete="off" autocorrect="off" data-1p-ignore="true" class="autocomplete__input input flex flex-wrap position-relative" data-autocomplete-target="input" data-action="input-&gt;autocomplete#search keydown-&gt;autocomplete#didPressKey" type="text" name="rooms_direct[user_ids_input]" id="rooms_direct_user_ids_input" />
+        </div>
+      </section>
+
+      <button name="button" type="submit" class="btn btn--reversed flex-item-no-shrink">
+        <img aria-hidden="true" src="{{ ctx.asset("check.svg") }}" />
+        <span class="for-screen-reader">Start Ping</span>
+</button></form>
+    <span class="txt-small translucent pad-inline-half center">Type names to ping someone…</span>
+  </div>
+</turbo-frame>|mdirect} in
+  let substitutions=[
+    "{% include \"users/autocompletables/_template.html\" %}",picker;
+    "{{ h::routes::rooms_directs() }}",Route_helpers.rooms_directs ();
+    "{{ h::routes::user_sidebar() }}",Route_helpers.user_sidebar ();
+    "{{ h::routes::autocompletable_users() }}",
+      Route_helpers.autocompletable_users ();
+    "{{ ctx.asset(\"arrow-left.svg\") }}",
+      legacy_attribute (asset context "arrow-left.svg");
+    "{{ ctx.asset(\"check.svg\") }}",
+      legacy_attribute (asset context "check.svg")]
+  in
+  let frame=List.fold_left (fun html (needle,value) ->
+    replace_literal html needle value) source substitutions in
+  page ~context (raw (Trusted_html frame))
 
 let direct_edit_page ~context ?last_room_id ~room_id ~display_name
     ~(users:user list) () =
@@ -1908,6 +2415,12 @@ let media_container dimensions content = match dimensions with
     elt "div" ["class","max-inline-size center flex overflow-clip";
       "style","width: " ^ media_number (media_half width) ^
         "px; aspect-ratio: " ^ aspect_ratio ^ ";"] [content]
+let message_image attributes =
+  let encoded=render (void "img" attributes) in
+  let length=String.length encoded in
+  if length < 2 || String.sub encoded (length-2) 2 <> "/>" then
+    failwith "unexpected Tyxml message image rendering";
+  raw (Trusted_html (String.sub encoded 0 (length-2) ^ " />"))
 let message_presentation message = match message.content with
   | Text trusted -> raw trusted
   | Sound (url,label) -> elt "audio" ["controls","controls";"src",url] [
@@ -1919,7 +2432,7 @@ let message_presentation message = match message.content with
         elt "button" ["class","btn btn--plain";
           "data-action","sound#play"] [text "🔊"];
         (match sound.image with
-        | Some (url,width,height) -> void "img" [
+        | Some (url,width,height) -> message_image [
             "width",string_of_int width;"height",string_of_int height;
             "class","align--middle";"src",url]
         | None -> text (Option.value sound.text ~default:""))]
@@ -1940,12 +2453,12 @@ let message_presentation message = match message.content with
           "data-action","lightbox#open";
           "data-lightbox-url-value",file.download_path;
           "href",file.blob_path] [
-          void "img" (size @ ["class","message__attachment";
+          message_image (size @ ["class","message__attachment";
             "loading","lazy";"src",media.preview_url])])
   | Attachment file ->
       (match file.preview_url with
-       | Some url -> a file.blob_path [image ~width:320 ~height:240
-           ~alt:file.filename url]
+       | Some url -> a file.blob_path [message_image ["src",url;
+           "alt",file.filename;"width","320";"height","240"]]
        | None ->
          let file_img attributes =
            let encoded = render (void "img" attributes) in
@@ -2008,65 +2521,85 @@ let boost_item (boost : boost) =
 </button></form>  </div>
   <span id="delete_boost_accessible_label" class="for-screen-reader">Press enter to delete this boost</span>
 |}]))
-let action_icon name = void "img" ["class","colorize--black";"aria-hidden","true";
-  "src",global_asset name;"width","20";"height","20"]
+let action_icon name = String.concat "" [
+  {|<img class="colorize--black" aria-hidden="true" src="|};
+  legacy_attribute (global_asset name); {|" width="20" height="20" />|}]
 let reactions = ["👍","Thumbs up";"👏","Clapping";"👋","Waving hand";
   "💪","Muscle";"❤️","Red heart";"😂","Face with tears of joy";
   "🎉","Party popper";"🔥","Fire"]
 let quick_boost message (character,title) =
-  form ~attrs:["data-turbo-frame",message_dom_id message "boosting";
-    "data-action","popup#close";"accept-charset","UTF-8"]
-    ("/messages/" ^ i64 message.id ^ "/boosts") (concat [
-      input ~name:"boost[content]" ~kind:"hidden" ~value:character
-        ~attrs:["id","boost_content"] ();
-      elt "button" ["name","button";"type","submit";"title",title;
-        "class","btn message__action-btn";"data-emoji",character] [
-        cls "figure" "margin-none boost-character" [text character];
-        cls "span" "for-screen-reader" [text title]]])
+  String.concat "" [
+    {|          <form data-turbo-frame="|};
+    legacy_attribute (message_dom_id message "boosting");
+    {|" data-action="popup#close" action="/messages/|};i64 message.id;
+    {|/boosts" accept-charset="UTF-8" method="post">
+            <input type="hidden" name="boost[content]" id="boost_content" value="|};
+    legacy_attribute character;
+    {|" />
+            <button name="button" type="submit" title="|};
+    legacy_attribute title;
+    {|" class="btn message__action-btn" data-emoji="|};
+    legacy_attribute character;
+    {|">
+              <figure class="margin-none boost-character">|};
+    legacy_text character;
+    {|</figure>
+              <span class="for-screen-reader">|};legacy_text title;
+    {|</span>
+</button></form>|}]
 let message_actions message =
   let new_boost_path = "/messages/" ^ i64 message.id ^ "/boosts/new" in
-  let quick = cls "div" "quick-boosts" (List.map (quick_boost message) reactions @ [
-    elt "a" ["class","btn message__action-btn message__boost-btn";
-      "data-turbo-frame",message_dom_id message "new_boost";
-      "data-action","soft-keyboard#open popup#close";"href",new_boost_path] [
-      action_icon "boost.svg";cls "span" "for-screen-reader" [text "New boost"]]]) in
   let share = match message.content with
-    | Attachment file | Media_attachment (file,_) -> [
-      elt "a" ["class","btn message__action-btn center full-width hide-in-ios-pwa";
-        "title","Download";"aria-label","Download";"href",file.download_path] [
-        action_icon "download.svg"];
-      elt "button" ["class","btn message__action-btn center full-width";
-        "data-controller","web-share";"data-action","web-share#share";
-        "data-web-share-files-value",file.blob_path;
-        "data-web-share-title-value",file.filename;
-        "title","Share";"aria-label","Share"] [action_icon "share.svg"]]
-    | _ -> [elt "button" ["class","btn message__action-btn center full-width";
-        "data-action","reply#reply";"title","Reply";"aria-label","Reply"]
-        [action_icon "reply.svg"]] in
-  let grid = cls "div" "flex flex-wrap border-top margin-block-start-half pad-block-start-half message__actions-grid"
-    (share @ [
-      elt "button" ["class","btn message__action-btn center full-width";
-        "title","Copy link";"aria-label","Copy link";
-        "data-controller","copy-to-clipboard";
-        "data-action","copy-to-clipboard#copy";
-        "data-copy-to-clipboard-success-class","btn--success";
-        "data-copy-to-clipboard-url-value",relative_at_message message.room_id message.id]
-        [action_icon "link.svg"];
-      elt "a" ["class","btn message__action-btn center full-width message__edit-btn";
-        "data-turbo-frame",message_dom_id message "edit";
-        "title","Edit";"aria-label","Edit";
-        "href",relative_message message.room_id message.id ^ "/edit"]
-        [action_icon "pencil.svg"]]) in
-  elt "div" ["class","message__actions";
-    "data-controller","soft-keyboard"] [
-    elt "details" ["class","position-relative";"data-controller","popup";
-      "data-action","keydown.esc->popup#close toggle->popup#toggle click@document->popup#closeOnClickOutside";
-      "data-popup-orientation-top-class","popup-orientation-top"] [
-      cls "summary" "btn message__action-btn message__options-btn" [
-        action_icon "menu-dots-horizontal.svg";
-        cls "span" "for-screen-reader" [text "Message options"]];
-      elt "div" ["class","message__actions-menu border shadow";
-        "data-popup-target","menu"] [quick;grid]]]
+    | Attachment file | Media_attachment (file,_) -> String.concat "" [
+      {|          <a class="btn message__action-btn center full-width hide-in-ios-pwa" title="Download" aria-label="Download" href="|};
+      legacy_attribute file.download_path;{|">
+            |};action_icon "download.svg";{|
+</a>
+          <button class="btn message__action-btn center full-width" data-controller="web-share" data-action="web-share#share" data-web-share-files-value="|};
+      legacy_attribute file.blob_path;{|" data-web-share-title-value="|};
+      legacy_attribute file.filename;{|" title="Share" aria-label="Share">
+            |};action_icon "share.svg";{|
+</button>|}]
+    | _ -> String.concat "" [
+      {|          <button class="btn message__action-btn center full-width" data-action="reply#reply" title="Reply" aria-label="Reply">
+            |};action_icon "reply.svg";{|
+</button>|}] in
+  raw (Trusted_html (String.concat "" [
+    {|<div class="message__actions" data-controller="soft-keyboard">
+  <details class="position-relative" data-controller="popup" data-action="keydown.esc-&gt;popup#close toggle-&gt;popup#toggle click@document-&gt;popup#closeOnClickOutside" data-popup-orientation-top-class="popup-orientation-top">
+    <summary class="btn message__action-btn message__options-btn">
+      |};action_icon "menu-dots-horizontal.svg";{|
+      <span class="for-screen-reader">Message options</span>
+    </summary>
+
+    <div class="message__actions-menu border shadow" data-popup-target="menu">
+      <div class="quick-boosts">|};
+    String.concat "" (List.map (fun reaction -> "\n" ^ quick_boost message reaction) reactions);
+    {|
+
+        <a class="btn message__action-btn message__boost-btn" data-turbo-frame="|};
+    legacy_attribute (message_dom_id message "new_boost");
+    {|" data-action="soft-keyboard#open popup#close" href="|};
+    legacy_attribute new_boost_path;{|">
+          |};action_icon "boost.svg";{|
+          <span class="for-screen-reader">New boost</span>
+</a>      </div>
+
+      <div class="flex flex-wrap border-top margin-block-start-half pad-block-start-half message__actions-grid">
+|};share;{|
+
+        <button class="btn message__action-btn center full-width" title="Copy link" aria-label="Copy link" data-controller="copy-to-clipboard" data-action="copy-to-clipboard#copy" data-copy-to-clipboard-success-class="btn--success" data-copy-to-clipboard-url-value="|};
+    legacy_attribute (relative_at_message message.room_id message.id);{|">
+          |};action_icon "link.svg";{|
+</button>
+        <a class="btn message__action-btn center full-width message__edit-btn" data-turbo-frame="|};
+    legacy_attribute (message_dom_id message "edit");
+    {|" title="Edit" aria-label="Edit" href="|};
+    legacy_attribute (relative_message message.room_id message.id ^ "/edit");{|">
+          |};action_icon "pencil.svg";{|
+</a>      </div>
+    </div>
+</details></div>|}]))
 let message_boosts message =
   raw (Trusted_html (String.concat "" [
     {|<turbo-frame id="|}; legacy_attribute (message_dom_id message "boosting"); {|">
@@ -2074,7 +2607,9 @@ let message_boosts message =
       data-controller="turbo-streaming" data-action="turbo:submit-start->turbo-streaming#unsubscribe">
     <div class="flex-inline flex-wrap gap" id="|}; legacy_attribute (message_dom_id message "boosts");
     {|" data-turbo-streaming-target="container">|};
-    String.concat "" (List.map (fun boost -> "\n    " ^ render (boost_item boost)) message.boosts);
+    String.concat "" (List.mapi (fun index boost ->
+      (if index=0 then "\n    " else "    ") ^ render (boost_item boost))
+      message.boosts);
     (if message.boosts=[] then "\n" else "");
     {|    </div>
 
@@ -2137,44 +2672,104 @@ let display_iso iso =
   if String.length iso >= 19 then String.sub iso 0 19 ^ "Z" else iso
 let message_item message =
   if message.content = Unrenderable then
-    elt "div" ["id",message_dom_id message "";"class","message--unrenderable"]
-      [text "This message could not be displayed"]
+    raw (Trusted_html {|
+  <div class="message message--formatted message--failed center">
+  <div class="message__body">
+    <div class="message__body-content txt-align-center">
+      Failed to load message content
+    </div>
+  </div>
+</div>|})
   else
     let link = relative_at_message message.room_id message.id in
-    elt "div" ["id",message_dom_id message "";
-      "class",(if message.all_emoji then "message message--emoji" else "message ");
-      "data-controller","reply";"data-user-id",i64 message.creator.id;
-      "data-message-id",i64 message.id;
-      "data-message-timestamp",i64 message.created_at_ms;
-      "data-message-updated-at",i64 message.updated_at_ms;
-      "data-sort-value",i64 message.created_at_ms;
-      "data-messages-target","message";"data-search-results-target","message";
-      "data-refresh-room-target","message";"data-reply-composer-outlet","#composer"] [
-      cls "h2" "message__day-separator" [
-        elt "time" ["datetime",display_iso message.created_at_iso;
-          "data-local-time-target","date"] []];
-      cls "figure" "avatar message__avatar" [
-        elt "a" ["title",message.creator.title;"class","btn avatar";
-          "data-turbo-frame","_top";"href",relative_user message.creator.id] [
-          void "img" ["aria-hidden","true";"src",message.creator.avatar_url;
-            "width","48";"height","48"]]];
-      elt "turbo-frame" ["id",message_dom_id message "edit"] [
-        cls "div" "message__body" [cls "div" "message__body-content" [
-          cls "div" "message__meta" [cls "h3" "message__heading" [
-            elt "span" ["class","message__author";"title",message.creator.title] [
-              elt "strong" ["data-reply-target","author"] [text message.creator.name]];
-            elt "a" ["target","_top";"class","message__permalink";"href",link] [
-              elt "time" ["class","message__timestamp";
-                "datetime",display_iso message.created_at_iso;
-                "data-local-time-target","time"] []];
-            cls "span" "message__room" [text " "; elt "a" ["target","_top";
-              "data-reply-target","link";"href",link] [text message.room_name]]];
-          message_actions message];
-          elt "div" ["id",message_dom_id message "presentation";"dir","auto";
-            "data-reply-target","body";"data-messages-target","body"]
-            [message_presentation message];
-          message_boosts message]]]]
-let message_index messages = concat (List.map message_item messages)
+    raw (Trusted_html (String.concat "" [
+      {|
+  <div id="|};legacy_attribute (message_dom_id message "");
+      {|" class="message |};(if message.all_emoji then "message--emoji" else "");
+      {|" data-controller="reply" data-user-id="|};i64 message.creator.id;
+      {|" data-message-id="|};i64 message.id;
+      {|" data-message-timestamp="|};i64 message.created_at_ms;
+      {|" data-message-updated-at="|};i64 message.updated_at_ms;
+      {|" data-sort-value="|};i64 message.created_at_ms;
+      {|" data-messages-target="message" data-search-results-target="message" data-refresh-room-target="message" data-reply-composer-outlet="#composer">
+    <h2 class="message__day-separator"><time datetime="|};
+      legacy_attribute (display_iso message.created_at_iso);
+      {|" data-local-time-target="date"></time></h2>
+
+    <figure class="avatar message__avatar">
+      <a title="|};legacy_attribute message.creator.title;
+      {|" class="btn avatar" data-turbo-frame="_top" href="|};
+      legacy_attribute (relative_user message.creator.id);
+      {|"><img aria-hidden="true" src="|};
+      legacy_attribute message.creator.avatar_url;
+      {|" width="48" height="48" /></a>
+    </figure>
+
+    <turbo-frame id="|};legacy_attribute (message_dom_id message "edit");
+      {|">
+      <div class="message__body">
+        <div class="message__body-content">
+          <div class="message__meta">
+            <h3 class="message__heading">
+              <span class="message__author" title="|};
+      legacy_attribute message.creator.title;
+      {|">
+                <strong data-reply-target="author">|};
+      legacy_text message.creator.name;
+      {|</strong>
+              </span>
+              <a target="_top" class="message__permalink" href="|};
+      legacy_attribute link;
+      {|"><time class="message__timestamp" datetime="|};
+      legacy_attribute (display_iso message.created_at_iso);
+      {|" data-local-time-target="time"></time></a>
+              <span class="message__room">
+                <a target="_top" data-reply-target="link" href="|};
+      legacy_attribute link;{|">|};legacy_text message.room_name;
+      {|</a>
+              </span>
+            </h3>
+            |};render (message_actions message);
+      {|
+          </div>
+          <div id="|};legacy_attribute (message_dom_id message "presentation");
+      {|" dir="auto" data-reply-target="body" data-messages-target="body">
+  |};render (message_presentation message);
+      {|
+</div>
+          |};render (message_boosts message);
+      {|
+        </div>
+      </div>
+    </turbo-frame>
+</div>|}]))
+let message_index messages = concat (List.map (fun message ->
+  concat [raw (Trusted_html "\n");message_item message]) messages)
+type recorded_page = {
+  body:string;
+  text:string;
+  fragments:(int * string) list;
+}
+let record_message_items ~prefix ~suffix ~before_each messages =
+  let text_buffer=Buffer.create (String.length prefix + String.length suffix) in
+  let body_buffer=Buffer.create (String.length prefix + String.length suffix) in
+  let fragments=ref [] in
+  let add_both value =
+    Buffer.add_string text_buffer value;
+    Buffer.add_string body_buffer value in
+  add_both prefix;
+  List.iter (fun message ->
+    add_both before_each;
+    let html=render (message_item message) in
+    Buffer.add_string body_buffer html;
+    if String.length html >= 1024 then
+      fragments := (Buffer.length text_buffer,html) :: !fragments
+    else Buffer.add_string text_buffer html) messages;
+  add_both suffix;
+  {body=Buffer.contents body_buffer; text=Buffer.contents text_buffer;
+   fragments=List.rev !fragments}
+let message_index_recorded messages =
+  record_message_items ~prefix:"" ~suffix:"" ~before_each:"\n" messages
 let message_show ~context:_ message = render (message_item message)
 let message_edit ~context message =
   let icon name attributes=void "img" (attributes @ ["src",asset context name]) in
@@ -2275,38 +2870,54 @@ let message_template context =
   let user_id = Option.fold ~none:"0" ~some:(fun (user:user) -> i64 user.id) user in
   let user_name = Option.fold ~none:"" ~some:(fun (user:user) -> user.name) user in
   let user_title = Option.fold ~none:"" ~some:(fun (user:user) -> user.title) user in
-  let open_tag name attributes =
-    let rendered=render (elt name attributes []) in
-    String.sub rendered 0 (String.index rendered '>' + 1) in
-  let img attributes =
-    let rendered=render (void "img" attributes) in
-    let n=String.length rendered in
-    if n>=2 && String.sub rendered (n-2) 2="/>" then
-      String.sub rendered 0 (n-2) ^ " />" else rendered in
   let avatar = match user with None -> "" | Some user ->
-    open_tag "a" ["title",user_title;"class","btn avatar";
-      "data-turbo-frame","_top";"href",relative_user user.id] ^
-    img ["aria-hidden","true";"src",user.avatar_url;
-      "width","48";"height","48"] ^ "</a>" in
+    String.concat "" [
+      {|<a title="|};legacy_attribute user_title;
+      {|" class="btn avatar" data-turbo-frame="_top" href="|};
+      legacy_attribute (relative_user user.id);
+      {|"><img aria-hidden="true" src="|};legacy_attribute user.avatar_url;
+      {|" width="48" height="48" /></a>|}] in
   let template=String.concat "" [
-    open_tag "div" ["class","message message--me $messageClasses$";
-      "id","message_$clientMessageId$";
-      "data-format-message-target","message";"data-user-id",user_id;
-      "data-message-timestamp","$messageTimestamp$";
-      "data-messages-target","message"];
-    " <div class=\"message__day-separator\"><time class=\"message__timestamp\" datetime=\"$messageDatetime$\" data-local-time-target=\"date\"></time></div>";
-    " <figure class=\"avatar message__avatar\"> ";avatar;" </figure>";
-    " <div class=\"message__body\"> <div class=\"message__body-content\">";
-    " <div class=\"message__meta\"> <h3 class=\"message__heading\">";
-    " <span class=\"message__author\"><strong>";
-    render (text user_name);
-    "</strong></span> <span class=\"message__permalink\"><time class=\"message__timestamp\" datetime=\"$messageDatetime$\" data-local-time-target=\"time\"></time></span> </h3>";
-    " <div class=\"message__actions\"> <div class=\"position-relative\"> <span class=\"btn message__action-btn message__options-btn\"> ";
-    img ["class","colorize--black";"aria-hidden","true";
-      "src",asset context "menu-dots-horizontal.svg"];
-    " <span class=\"for-screen-reader\">Message options</span> </span> </div class=\"position-relative\"> </div> </div> $body$ </div> </div> </div>"] in
-  elt "script" ["type","text/template";"data-messages-target","template"]
-    [raw (Trusted_html template)]
+    {|<script type="text/template" data-messages-target="template">
+  <div class="message message--me $messageClasses$"
+      id="message_$clientMessageId$"
+      data-format-message-target="message"
+      data-user-id="|};legacy_attribute user_id;
+    {|"
+      data-message-timestamp="$messageTimestamp$"
+      data-messages-target="message">
+    <div class="message__day-separator"><time class="message__timestamp" datetime="$messageDatetime$" data-local-time-target="date"></time></div>
+
+    <figure class="avatar message__avatar">
+      |};avatar;
+    {|
+    </figure>
+
+    <div class="message__body">
+      <div class="message__body-content">
+        <div class="message__meta">
+          <h3 class="message__heading">
+            <span class="message__author"><strong>|};legacy_text user_name;
+    {|</strong></span>
+            <span class="message__permalink"><time class="message__timestamp" datetime="$messageDatetime$" data-local-time-target="time"></time></span>
+          </h3>
+          <div class="message__actions">
+            <div class="position-relative">
+              <span class="btn message__action-btn message__options-btn">
+                <img class="colorize--black" aria-hidden="true" src="|};
+    legacy_attribute (asset context "menu-dots-horizontal.svg");
+    {|" />
+                <span class="for-screen-reader">Message options</span>
+              </span>
+            </div class="position-relative">
+          </div>
+        </div>
+        $body$
+      </div>
+    </div>
+  </div>
+</script>|}] in
+  raw (Trusted_html template)
 let room_noun (room:room) = if room.kind=Direct then "Ping" else "room"
 let room_edit_path (room:room) =
   let id=i64 room.id in
@@ -2561,48 +3172,65 @@ let profile_membership_item ~context (membership:profile_membership) =
     | _ -> "Notifications are off" in
   let action=Route_helpers.room_involvement (i64 membership.room_id) ^
     "?involvement=" ^ next in
-  elt "li" ["class","flex align-center gap margin-none min-width membership-item"] [
-    elt "a" ["class","overflow-ellipsis fill-shade txt-primary txt-undecorated";
-      "href",relative_room membership.room_id] [
-      elt "strong" [] [text membership.room_display_name]];
-    void "hr" ["class","separator";"aria-hidden","true"];
-    cls "span" "txt-small" [
-      id "turbo-frame" ("involvement_" ^ suffix) [
-        elt "form" ["class","button_to";"method","post";"action",action] [
-          input ~name:"_method" ~kind:"hidden" ~value:"put" ();
-          elt "button" ["role","checkbox";"aria-checked","true";
-            "aria-labelledby","involvement_label_" ^ suffix;
-            "tabindex","0";"class","btn " ^ membership.involvement;
-            "type","submit"] [
-            void "img" ["aria-hidden","true";
-              "src",asset context ("notification-bell-" ^ membership.involvement ^ ".svg");
-              "width","20";"height","20"];
-            elt "span" ["class","for-screen-reader";
-              "id","involvement_label_" ^ suffix] [text label]]]]]]
+  raw (Trusted_html (String.concat "" [
+    {|<li class="flex align-center gap margin-none min-width membership-item">
+  <a class="overflow-ellipsis fill-shade txt-primary txt-undecorated" href="|};
+    legacy_attribute (relative_room membership.room_id);
+    {|">
+    <strong>|};legacy_text membership.room_display_name;
+    {|</strong>
+</a>
+  <hr class="separator" aria-hidden="true">
+
+  <span class="txt-small">
+    <turbo-frame id="involvement_|};legacy_attribute suffix;
+    {|">
+      <form class="button_to" method="post" action="|};
+    legacy_attribute action;
+    {|"><input type="hidden" name="_method" value="put" /><button role="checkbox" aria-checked="true" aria-labelledby="involvement_label_|};
+    legacy_attribute suffix;
+    {|" tabindex="0" class="btn |};
+    legacy_attribute membership.involvement;
+    {|" type="submit">|};
+    legacy_img ~size:(Some 20) context
+      ("notification-bell-" ^ membership.involvement ^ ".svg")
+      ["aria-hidden","true"];
+    {|<span class="for-screen-reader" id="involvement_label_|};
+    legacy_attribute suffix;{|">|};legacy_text label;
+    {|</span></button></form>
+</turbo-frame>  </span>
+</li>|}]))
 
 let profile_show_page ~context ?(back_url="/") ~(user:user)
     ~email_address ~bio ~avatar_attached ~transfer_id
     ~shared_memberships ~direct_memberships () =
+  let current=match context.current_user with
+    | Some viewer -> viewer.id=user.id | None -> false in
   let icon ?(size=None) ?(attrs=[]) name =
     void "img" (attrs @ ["src",asset context (name ^ ".svg")] @
       match size with None -> [] | Some value ->
         ["width",string_of_int value;"height",string_of_int value]) in
-  let nav=concat [
-    cls "div" "flex-item-justify-start" [
-      elt "a" ["class","btn";"href",back_url] [
-        icon ~size:(Some 20) ~attrs:["aria-hidden","true"] "arrow-left";
-        cls "span" "for-screen-reader" [text "Go Back"]]];
-    cls "div" "flex-item-justify-end" [
-      elt "form" ["data-controller","sessions";"action","/session";
-        "accept-charset","UTF-8";"method","post"] [
-        input ~name:"_method" ~kind:"hidden" ~value:"delete" ();
-        void "input" ["type","hidden";"name","push_subscription_endpoint";
-          "id","push_subscription_endpoint";
-          "data-sessions-target","pushSubscriptionEndpoint"];
-        elt "button" ["class","btn";
-          "data-action","sessions#logout:prevent"] [
-          icon ~attrs:["aria-hidden","true"] "logout";
-          cls "span" "for-screen-reader" [text "Log out"]]]]] in
+  let nav=raw (Trusted_html (String.concat "" [
+    {|  <div class="flex-item-justify-start">
+    <a class="btn" href="|};
+    legacy_attribute back_url;
+    {|">|};legacy_img ~size:(Some 20) context "arrow-left.svg"
+      ["aria-hidden","true"];
+    {|<span class="for-screen-reader">Go Back</span></a>
+  </div>
+
+  <div class="flex-item-justify-end">
+    <form data-controller="sessions" action="/session" accept-charset="UTF-8" method="post"><input type="hidden" name="_method" value="delete" />
+      <input type="hidden" name="push_subscription_endpoint" id="push_subscription_endpoint" data-sessions-target="pushSubscriptionEndpoint" />
+
+      <button class="btn" data-action="sessions#logout:prevent">
+        |};
+    legacy_img context "logout.svg" ["aria-hidden","true"];
+    {|
+        <span class="for-screen-reader">Log out</span>
+      </button>
+</form>  </div>
+|}])) in
   let action="/users/me/profile" in
   let profile_form ?(attrs=[]) ?(multipart=false) content =
     elt "form" (attrs @ ["data-controller","form"] @
@@ -2678,6 +3306,98 @@ let profile_show_page ~context ?(back_url="/") ~(user:user)
       "type","submit"] [
       icon ~size:(Some 20) ~attrs:["aria-hidden","true"] "check";
       cls "span" "for-screen-reader" [text "Save changes"]]]) in
+  let avatar=if not current then avatar else raw (Trusted_html
+    (String.concat "" [
+      {|<div class="align-center center avatar__form gap" data-controller="upload-preview">
+    <form class="txt-medium" data-controller="form" enctype="multipart/form-data" action="/users/me/profile" accept-charset="UTF-8" method="post"><input type="hidden" name="_method" value="patch" />
+      <label class="btn input--file">
+        |};legacy_img ~size:(Some 20) context "camera.svg"
+        ["aria-hidden","true"];
+      {|
+        <input id="file" class="input" accept="image/*" data-upload-preview-target="input" data-action="upload-preview#previewImage change-&gt;form#submit" type="file" name="user[avatar]" />
+        <span class="for-screen-reader">Upload avatar</span>
+      </label>
+</form>
+    <form data-controller="form" enctype="multipart/form-data" action="/users/me/profile" accept-charset="UTF-8" method="post"><input type="hidden" name="_method" value="patch" />
+      <label class="btn avatar input--file txt-xx-large">
+        <img aria-hidden="true" data-upload-preview-target="image" src="|};
+      legacy_attribute user.avatar_url;
+      {|" width="300" height="300" />
+        <input id="file" class="input" accept="image/*" data-upload-preview-target="input" data-action="upload-preview#previewImage change-&gt;form#submit" type="file" name="user[avatar]" />
+        <span class="for-screen-reader">Avatar</span>
+      </label>
+</form>
+|};
+      (if avatar_attached then String.concat "" [
+        {|      <form class="button_to" method="post" action="|};
+        legacy_attribute (relative_user user.id ^ "/avatar");
+        {|"><input type="hidden" name="_method" value="delete" /><button class="btn btn--negative txt-small avatar__delete-btn" type="submit">
+        |};legacy_img ~size:(Some 20) context "minus.svg"
+          ["aria-hidden","true"];
+        {|
+        <span class="for-screen-reader">Delete avatar</span>
+</button></form>|}]
+      else "");
+      {|  </div>|}])) in
+  let fields=if not current then fields else
+    let source_field ~translation ~key ~icon_name ~attrs =
+      String.concat "" [
+        {|      <div class="flex align-center gap">
+        |};legacy_translation_button context translation;
+        {|
+
+        <label class="flex align-center gap flex-item-grow input input--actor">
+          <input |};attrs;{| name="user[|};key;{|]" id="user_|};key;
+        {|" />
+          |};legacy_img ~size:(Some 24) context (icon_name ^ ".svg")
+          ["aria-hidden","true";"class","colorize--black"];
+        {|
+        </label>
+      </div>|}] in
+    raw (Trusted_html (String.concat "" [
+      {|<form data-controller="form" action="/users/me/profile" accept-charset="UTF-8" method="post"><input type="hidden" name="_method" value="patch" />
+    <div class="flex flex-column gap">
+|};
+      source_field ~translation:"user_name" ~key:"name" ~icon_name:"person"
+        ~attrs:(String.concat "" [
+          {|class="input txt-large " autocomplete="name" placeholder="Enter your name" autofocus="autofocus" required="required" data-1p-ignore="true" type="text" value="|};
+          legacy_attribute user.name;{|"|}]);
+      {|
+
+|};
+      source_field ~translation:"email_address" ~key:"email_address"
+        ~icon_name:"email" ~attrs:(String.concat "" [
+          {|class="input txt-large" value="|};legacy_attribute email_address;
+          {|" autocomplete="username" placeholder="Enter your email address" type="email"|}]);
+      {|
+
+|};
+      source_field ~translation:"update_password" ~key:"password"
+        ~icon_name:"password"
+        ~attrs:{|class="input txt-large" autocomplete="new-password" placeholder="Change password" maxlength="72" size="72" type="password"|};
+      {|
+
+      <div class="flex align-start gap">
+        |};legacy_translation_button context "bio";
+      {|
+
+        <label class="flex align--center gap flex-item--grow input input--actor">
+          <textarea class="input txt-large" placeholder="A few words about yourself…" maxlength="200" rows="3" name="user[bio]" id="user_bio">|};
+      legacy_text (Option.value bio ~default:"");
+      {|
+</textarea>
+          |};legacy_img ~size:(Some 24) context "bio.svg"
+          ["aria-hidden","true";"class","colorize--black"];
+      {|
+        </label>
+      </div>
+
+      <button class="btn btn--reversed center txt-large" type="submit">|};
+      legacy_img ~size:(Some 20) context "check.svg"
+          ["aria-hidden","true"];
+      {|<span class="for-screen-reader">Save changes</span></button>
+    </div>
+</form>|}])) in
   let memberships=cls "div" "margin-block pad-inline pad-block fill-shade border-radius" [
     cls "menu" "flex flex-column gap margin-none pad" [
       concat (List.map (profile_membership_item ~context) shared_memberships);
@@ -2685,10 +3405,45 @@ let profile_show_page ~context ?(back_url="/") ~(user:user)
         void "hr" ["class","separator full-width";
           "style","--border-style: solid"] else concat []);
       concat (List.map (profile_membership_item ~context) direct_memberships)]] in
-  let content=elt "section" ["class","panel flex flex-column gap";
-    "style","view-transition-name: avatar-" ^ i64 user.id] [
-    pwa_install_instructions context;avatar;fields;memberships;
-    profile_transfer_fragment ~context ~user ~transfer_id] in
+  let memberships=if not current then memberships else
+    let items xs=String.concat "\n"
+      (List.map (fun item -> render (profile_membership_item ~context item)) xs) in
+    raw (Trusted_html (String.concat "" [
+      {|<div class="margin-block pad-inline pad-block fill-shade border-radius">
+    <menu class="flex flex-column gap margin-none pad">
+      |};items shared_memberships;
+      (if shared_memberships<>[] && direct_memberships<>[] then
+        {|
+
+        <hr class="separator full-width" style="--border-style: solid">
+
+      |}
+      else if shared_memberships<>[] then "\n" else "");
+      items direct_memberships;
+      {|
+    </menu>
+  </div>|}])) in
+  let transfer=profile_transfer_fragment ~context ~user ~transfer_id in
+  let content=if current then raw (Trusted_html (String.concat "" [
+    {|<section class="panel flex flex-column gap" style="view-transition-name: avatar-|};
+    i64 user.id;{|">
+  |};render (pwa_install_instructions context);
+    {|
+
+  |};render avatar;
+    {|
+
+  |};render fields;
+    {|
+  |};render memberships;
+    "\n\n  \n";render transfer;
+    {|
+
+</section>
+|}])) else
+    elt "section" ["class","panel flex flex-column gap";
+      "style","view-transition-name: avatar-" ^ i64 user.id] [
+      pwa_install_instructions context;avatar;fields;memberships;transfer] in
   page ~title:user.name ~context ~nav content
 let notification_help context =
   let browser,system,install=notification_parts context in
@@ -2790,7 +3545,7 @@ let room_invitation context join_code =
             void "br" [];
             text "To invite people to chat, share the join link below."]];
         invite_fragment context join_code]]]
-let room_show ~context ~(room:room) ~messages ~messages_stream_name
+let room_show_with_content ~context ~(room:room) ~message_content ~messages_stream_name
     ?invitation_join_code () =
   let head = concat [
     lexxy_ready_head;
@@ -2815,7 +3570,7 @@ let room_show ~context ~(room:room) ~messages ~messages_stream_name
         "data-messages-target","messages";
         "data-refresh-room-loaded-at-value",i64 room.updated_at_ms;
         "data-refresh-room-url-value",context.base_url ^ relative_room room.id ^ "/refresh"]
-        (invitation :: List.map message_item messages);
+        [invitation;message_content];
       elt "turbo-cable-stream-source" ["channel","RoomMessagesChannel";
         "signed-stream-name",messages_stream_name] [];
       elt "button" ["class","message-area__return-to-latest btn";
@@ -2824,74 +3579,82 @@ let room_show ~context ~(room:room) ~messages ~messages_stream_name
           void "img" ["aria-hidden","true";"src",asset context "arrow-down.svg";
             "width","20";"height","20"];
           cls "span" "for-screen-reader" [text "Jump to newest message"]]] in
-  let composer_icon ?(size=20) ?(class_name="") name =
-    void "img" (["aria-hidden","true";"src",asset context name;
-      "width",string_of_int size;"height",string_of_int size] @
-      if class_name="" then [] else ["class",class_name]) in
-  let footer = elt "div" ["class","composer flex align-end gap position-relative";
-    "data-controller","typing-notifications";
-    "data-typing-notifications-active-class","typing-indicator--active"] [
-    elt "a" ["class","btn flex-item-no-shrink margin-block-end composer__context-btn";
-      "style","view-transition-name: input-switcher";
-      "href",Route_helpers.searches ()] [
-        composer_icon "search.svg";
-        cls "span" "for-screen-reader" [text "Search"]];
-    elt "turbo-frame" ["id","composer-frame"] [
-      form ~attrs:["id","composer";
-        "accept-charset","UTF-8";
-        "class","margin-block flex-item-grow contain";
-        "data-controller","composer drop-target";
-        "data-composer-messages-outlet","#message-area";
-        "data-composer-room-id-value",i64 room.id;
-        "data-composer-toolbar-class","composer--rich-text";
-        "data-action","dragenter->drop-target#dragenter dragover->drop-target#dragover drop->drop-target#drop drop-target:drop@window->composer#dropFiles lexxy:file-accept->composer#preventAttachment refresh-room:online@window->composer#online typing-notifications#stop paste->composer#pasteFiles turbo:submit-end->composer#submitEnd refresh-room:offline@window->composer#offline"]
-        (relative_room room.id ^ "/messages") (concat [
-          elt "fieldset" ["data-composer-target","fields";"contents",""] [
-            cls "div" "flex flex-column" [
-              elt "div" ["class","composer__filelist flex flex--align-center gap flex-wrap";
-                "data-composer-target","fileList"] [];
-              elt "div" ["class","flex composer__input input input--actor fill-white min-width";
-                "style","--input-border-radius: 1.3rem"] [
-                cls "div" "flex align-end gap full-width" [
-                  void "img" ["aria-hidden","true";
-                    "class","composer__input-hint colorize--black";
-                    "style","view-transition-name: input-btn;";
-                    "src",asset context "messages-outlined.svg";"width","22";"height","22"];
-                  cls "div" "flex flex-column flex-item-grow min-width gap" [
-                    elt "lexxy-editor" ["rows","1";"class","input lexxy-content";
-                      "style","order: -1";"aria-multiline","true";
-                      "aria-label","Write a message";
-                      "permitted-attachment-types","application/vnd.campfire.mention application/vnd.actiontext.opengraph-embed";
-                      "data-controller","unfurl";
-                      "data-action","lexxy:change->typing-notifications#start keydown->composer#submitByKeyboard:capture lexxy:change->composer#saveDraft lexxy:insert-link->unfurl#unfurl";
-                      "data-composer-target","text";
-                      "data-direct-upload-url",context.base_url ^ "/rails/active_storage/direct_uploads";
-                      "data-blob-url-template",context.base_url ^ "/rails/active_storage/blobs/redirect/:signed_id/:filename";
-                      "id","message_body";"input","message_body_trix_input_message";
-                      "name","message[body]"] [
-                      elt "lexxy-prompt" ["trigger","@";"name","mention";
-                        "src",Route_helpers.autocompletable_users () ^ "?room_id=" ^ i64 room.id;
-                        "remote-filtering","true";"empty-results","No matches"] []]];
-                  elt "label" ["class","btn btn--borderless txt-small flex-item-no-shrink composer__attachment-btn input--file"] [
-                    composer_icon ~size:22 ~class_name:"colorize--black" "attachment.svg";
-                    void "input" ["type","file";"data-action","composer#filePicked";"multiple",""];
-                    cls "span" "for-screen-reader" [text "Attach a file"]];
-                  elt "button" ["class","btn btn--borderless txt-small flex-item-no-shrink composer__rich-text-btn";
-                    "type","button";"data-action","composer#toggleToolbar"] [
-                    composer_icon ~class_name:"colorize--black" "text-options.svg";
-                    cls "span" "for-screen-reader" [text "Rich text"]];
-                  elt "button" ["name","send";"type","submit";
-                    "data-action","composer#submit";
-                    "class","btn btn--reversed flex-item-no-shrink txt-small"] [
-                    composer_icon "arrow-up.svg";
-                    cls "span" "for-screen-reader" [text "Send Message"]]]]]];
-          elt "div" ["class","typing-indicator gap txt-small align-center flex-inline";
-            "data-typing-notifications-target","indicator"] [
-            elt "div" ["class","typing-indicator__author spinner";
-              "data-typing-notifications-target","author"] []];
-          input ~name:"message[client_message_id]" ~kind:"hidden"
-            ~attrs:["data-composer-target","clientid";
-              "id","message_client_message_id"] ()])]] in
+  let replace_literal source needle replacement =
+    let output=Buffer.create (String.length source) in
+    let needle_length=String.length needle in
+    let rec loop offset =
+      if offset>=String.length source then Buffer.contents output
+      else if offset+needle_length<=String.length source &&
+          String.sub source offset needle_length=needle then (
+        Buffer.add_string output replacement;
+        loop (offset+needle_length))
+      else (Buffer.add_char output source.[offset]; loop (offset+1)) in
+    loop 0 in
+  let footer_source = {mcomposer|  <div class="composer flex align-end gap position-relative"
+      data-controller="typing-notifications" data-typing-notifications-active-class="typing-indicator--active">
+    <a class="btn flex-item-no-shrink margin-block-end composer__context-btn" style="view-transition-name: input-switcher" href="{{ h::routes::searches() }}">
+      <img aria-hidden="true" src="{{ ctx.asset("search.svg") }}" width="20" height="20" />
+      <span class="for-screen-reader">Search</span>
+</a>
+    <turbo-frame id="composer-frame">
+      <form id="composer" class="margin-block flex-item-grow contain" data-controller="composer drop-target" data-action="dragenter-&gt;drop-target#dragenter dragover-&gt;drop-target#dragover drop-&gt;drop-target#drop drop-target:drop@window-&gt;composer#dropFiles lexxy:file-accept-&gt;composer#preventAttachment refresh-room:online@window-&gt;composer#online typing-notifications#stop paste-&gt;composer#pasteFiles turbo:submit-end-&gt;composer#submitEnd refresh-room:offline@window-&gt;composer#offline" data-composer-messages-outlet="#message-area" data-composer-toolbar-class="composer--rich-text" data-composer-room-id-value="{{ room.id }}" action="{{ h::routes::room_messages(room.id) }}" accept-charset="UTF-8" method="post">
+        <fieldset data-composer-target="fields" contents>
+          <div class="flex flex-column">
+            <div class="composer__filelist flex flex--align-center gap flex-wrap" data-composer-target="fileList"></div>
+
+            <div class="flex composer__input input input--actor fill-white min-width" style="--input-border-radius: 1.3rem">
+              <div class="flex align-end gap full-width">
+                <img aria-hidden="true" class="composer__input-hint colorize--black" style="view-transition-name: input-btn;" src="{{ ctx.asset("messages-outlined.svg") }}" width="22" height="22" />
+
+                <div class="flex flex-column flex-item-grow min-width gap">
+                  <lexxy-editor rows="1" class="input lexxy-content" style="order: -1" aria-multiline="true" aria-label="Write a message" permitted-attachment-types="application/vnd.campfire.mention application/vnd.actiontext.opengraph-embed" data-controller="unfurl" data-action="lexxy:change-&gt;typing-notifications#start keydown-&gt;composer#submitByKeyboard:capture lexxy:change-&gt;composer#saveDraft lexxy:insert-link-&gt;unfurl#unfurl" data-composer-target="text" data-direct-upload-url="{{ ctx.url("/rails/active_storage/direct_uploads") }}" data-blob-url-template="{{ ctx.url("/rails/active_storage/blobs/redirect/:signed_id/:filename") }}" id="message_body" input="message_body_trix_input_message" name="message[body]">
+                    <lexxy-prompt trigger="@" name="mention" src="{{ crate::rooms::mention_prompt_src(*room.id) }}" remote-filtering="true" empty-results="No matches"></lexxy-prompt>
+</lexxy-editor>                </div>
+
+                <label class="btn btn--borderless txt-small flex-item-no-shrink composer__attachment-btn input--file">
+                  <img class="colorize--black" aria-hidden="true" src="{{ ctx.asset("attachment.svg") }}" width="22" height="22" />
+                  <input type="file" data-action="composer#filePicked" multiple />
+                  <span class="for-screen-reader">Attach a file</span>
+                </label>
+
+                <button class="btn btn--borderless txt-small flex-item-no-shrink composer__rich-text-btn" type="button" data-action="composer#toggleToolbar">
+                  <img class="colorize--black" aria-hidden="true" src="{{ ctx.asset("text-options.svg") }}" width="20" height="20" />
+                  <span class="for-screen-reader">Rich text</span>
+                </button>
+
+                <button name="send" type="submit" data-action="composer#submit" class="btn btn--reversed flex-item-no-shrink txt-small">
+                  <img aria-hidden="true" src="{{ ctx.asset("arrow-up.svg") }}" width="20" height="20" />
+                  <span class="for-screen-reader">Send Message</span>
+</button>              </div>
+            </div>
+          </div>
+        </fieldset>
+
+        <div class="typing-indicator gap txt-small align-center flex-inline" data-typing-notifications-target="indicator">
+          <div class="typing-indicator__author spinner" data-typing-notifications-target="author"></div>
+        </div>
+
+        <input data-composer-target="clientid" type="hidden" name="message[client_message_id]" id="message_client_message_id" />
+</form>    </turbo-frame>
+  </div>|mcomposer} in
+  let substitutions = [
+    "{{ h::routes::searches() }}", Route_helpers.searches ();
+    "{{ h::routes::room_messages(room.id) }}",
+      Route_helpers.room_messages (i64 room.id);
+    "{{ room.id }}", i64 room.id;
+    "{{ crate::rooms::mention_prompt_src(*room.id) }}",
+      Route_helpers.autocompletable_users () ^ "?room_id=" ^ i64 room.id;
+    "{{ ctx.url(\"/rails/active_storage/direct_uploads\") }}",
+      context.base_url ^ "/rails/active_storage/direct_uploads";
+    "{{ ctx.url(\"/rails/active_storage/blobs/redirect/:signed_id/:filename\") }}",
+      context.base_url ^ "/rails/active_storage/blobs/redirect/:signed_id/:filename";
+  ] @ List.map (fun name ->
+    "{{ ctx.asset(\"" ^ name ^ "\") }}", asset context name)
+    ["search.svg";"messages-outlined.svg";"attachment.svg";
+     "text-options.svg";"arrow-up.svg"] in
+  let footer = raw (Trusted_html (List.fold_left (fun html (needle,value) ->
+    replace_literal html needle (legacy_attribute value))
+    footer_source substitutions)) in
   let sidebar = elt "turbo-frame" ["id","user_sidebar";
     "src",Route_helpers.user_sidebar ();
     "target","_top";"data-turbo-permanent","true";
@@ -2900,79 +3663,141 @@ let room_show ~context ~(room:room) ~messages ~messages_stream_name
     "data-action","presence:present@window->rooms-list#read read-rooms:read->rooms-list#read turbo:frame-load->rooms-list#loaded refresh-room:visible@window->turbo-frame#reload"] [] in
   page ~title:room.name ~body_class:"sidebar" ~head ~nav ~sidebar ~footer
     ~context content
+let room_show ~context ~room ~messages ~messages_stream_name
+    ?invitation_join_code () =
+  room_show_with_content ~context ~room
+    ~message_content:(concat (List.map (fun message ->
+      concat [raw (Trusted_html "\n    ");message_item message]) messages))
+    ~messages_stream_name
+    ?invitation_join_code ()
+let room_show_recorded ~context ~room ~messages ~messages_stream_name
+    ?invitation_join_code () =
+  (* The slot is rendered in an empty-message skeleton. It records the insertion
+     point without searching the finished body for repeated message HTML. *)
+  let marker="\x1eCAMPFIRE_MESSAGE_SLOT_" ^ string_of_int (Random.bits ()) ^ "\x1f" in
+  let skeleton=room_show_with_content ~context ~room
+    ~message_content:(raw (Trusted_html marker)) ~messages_stream_name
+    ?invitation_join_code () in
+  let marker_length=String.length marker in
+  let rec find at =
+    if at+marker_length>String.length skeleton then None
+    else if String.sub skeleton at marker_length=marker then Some at
+    else find (at+1) in
+  let start=match find 0 with Some start -> start
+    | None -> failwith "room message insertion slot was not rendered" in
+  if Option.is_some (find (start+marker_length)) then
+    failwith "room message insertion slot is ambiguous";
+  record_message_items
+    ~prefix:(String.sub skeleton 0 start)
+    ~suffix:(String.sub skeleton (start+marker_length)
+      (String.length skeleton-start-marker_length)) ~before_each:"\n    " messages
 let search_index_with ~context ~query ?q ?(recent_searches=[])
     ?(return_to_room_id=0L) ~results () =
   let q=match q with Some _ -> q | None ->
     if query="" then None else Some query in
-  let icon ?(attributes=[]) name =
-    void "img" (attributes @ ["src",asset context name]) in
-  let recents=concat (List.map (fun search ->
-      elt "a" ["class","align-center gap room btn txt-nowrap";
-        "href","/searches?q=" ^ Ruby_compat.cgi_escape search] [
-        cls "span" "overflow-ellipsis" [text ("“" ^ search ^ "”")]])
-      recent_searches @
-    if recent_searches=[] then [] else [
-      form ~attrs:["class","button_to"]
-        (context.base_url ^ "/searches/clear") (concat [
-        input ~name:"_method" ~kind:"hidden" ~value:"delete" ();
-        elt "button" ["class","btn searches__btn";
-          "data-turbo-confirm","Are you sure you want to clear your recent searches?";
-          "type","submit"] [
-          icon "broom.svg" ~attributes:["aria-hidden","true"];
-          cls "span" "for-screen-reader" [text "Clear recent searches"]]])]) in
-  let nav=concat [
-    (if query="" then concat [] else
-      cls "div" "searches__query flex align-center gap pad-block-start-half" [
-        cls "div" "btn btn--reversed btn--faux align-center gap txt-nowrap" [
-          cls "span" "overflow-ellipsis" [text ("“" ^ query ^ "”")];
-          cls "span" "flex-item-no-shrink" [
-            text (string_of_int (List.length results))]]]);
-    cls "div" "searches__recents align-center gap pad-block-half overflow-y overflow-hide-scrollbar"
-      [recents]] in
-  let sidebar=cls "div" "rooms position-relative flex flex-column gap overflow-y overflow-hide-scrollbar"
-    [recents] in
-  let footer=cls "div" "composer flex align-end gap" [
-    elt "a" ["class","btn flex-item-no-shrink margin-block-end";
-      "style","view-transition-name: input-switcher; --btn-border-radius: 0.5em";
-      "href",relative_room return_to_room_id] [
-      icon "arrow-left.svg" ~attributes:["aria-hidden","true"];
-      cls "span" "for-screen-reader" [text "Exit search "]];
-    form ~attrs:["class","margin-block flex-item-grow contain flex align-center gap";
-      "data-controller","form";"data-action","keydown.esc->form#cancel";
-      "accept-charset","UTF-8"] "/searches"
-      (cls "div" "composer__input flex align-center flex-item-grow gap full-width input input--actor min-width" [
-        icon "search.svg" ~attributes:["aria-hidden","true";
-          "class","composer__input-hint colorize--black";
-          "style","view-transition-name: input-btn;";
-          "width","20";"height","20"];
-        void "input" ((match q with None -> [] | Some value -> ["value",value]) @
-          ["class","searches__input input flex-item-grow";
-            "role","searchbox";"aria-label","search";
-            "autofocus","autofocus";"required","required";
-            "type","text";"name","q";"id","q"]);
-        elt "a" ["data-form-target","cancel";"role","button";
-          "class","searches__reset";"href","/searches"] [
-          icon "remove.svg" ~attributes:["aria-hidden","true";
-            "class","colorize--black";"width","14";"height","14"];
-          cls "span" "for-screen-reader" [text "Clear search field"]];
-        elt "button" ["name","button";"type","submit";
-          "class","btn btn--reversed flex-item-no-shrink txt-small";
-          "style","--btn-border-radius: 0.5em"] [
-          icon "arrow-up.svg" ~attributes:["aria-hidden","true"];
-          cls "span" "for-screen-reader" [text "Search"]]])] in
-  let content=elt "div" ["id","message-area";"class","message-area"] [
-    cls "div" "message-area--empty min-width center" [
-      cls "figure" "center pad" [
-        icon "search.svg" ~attributes:["aria-hidden","true";
-          "class","colorize--black translucent"]]];
-    elt "div" ["id","search-results";"class","messages searches__results";
-      "data-controller","search-results";
-      "data-search-results-target","messages";
-      "data-search-results-me-class","message--me";
-      "data-search-results-threaded-class","message--threaded";
-      "data-search-results-mentioned-class","message--mentioned";
-      "data-search-results-formatted-class","message--formatted"] [
-      message_index results]] in
+  let recent_item search = String.concat "" [
+    {|
+      <a class="align-center gap room btn txt-nowrap" href="|};
+    legacy_attribute ("/searches?q=" ^ Ruby_compat.cgi_escape search);
+    {|">
+        <span class="overflow-ellipsis">“|};legacy_text search;
+    {|”</span>
+</a>|}] in
+  let clear_recents=if recent_searches=[] then "" else String.concat "" [
+    {|
+      <form class="button_to" method="post" action="|};
+    legacy_attribute (context.base_url ^ "/searches/clear");
+    {|"><input type="hidden" name="_method" value="delete" /><button class="btn searches__btn" data-turbo-confirm="Are you sure you want to clear your recent searches?" type="submit">
+        |};
+    legacy_img context "broom.svg" ["aria-hidden","true"];
+    {|
+        <span class="for-screen-reader">Clear recent searches</span>
+</button></form>|}] in
+  let recents=String.concat "" (List.map recent_item recent_searches)
+    ^ clear_recents in
+  let nav_query=if query="" then "\n" else String.concat "" [
+    {|
+    <div class="searches__query flex align-center gap pad-block-start-half">
+      <div class="btn btn--reversed btn--faux align-center gap txt-nowrap">
+        <span class="overflow-ellipsis">“|};legacy_text query;
+    {|”</span>
+        <span class="flex-item-no-shrink">|};
+    string_of_int (List.length results);
+    {|</span>
+</div>    </div>
+|}] in
+  let nav=raw (Trusted_html (String.concat "" [
+    nav_query;
+    {|
+  <div class="searches__recents align-center gap pad-block-half overflow-y overflow-hide-scrollbar">
+    |};
+    recents;{|
+  </div>|}])) in
+  let sidebar=raw (Trusted_html (String.concat "" [
+    {|
+  <div class="rooms position-relative flex flex-column gap overflow-y overflow-hide-scrollbar">
+    |};
+    recents;{|
+  </div>|}])) in
+  let replace_literal source needle replacement =
+    let output=Buffer.create (String.length source) in
+    let needle_length=String.length needle in
+    let rec loop offset =
+      if offset>=String.length source then Buffer.contents output
+      else if offset+needle_length<=String.length source &&
+          String.sub source offset needle_length=needle then (
+        Buffer.add_string output replacement;
+        loop (offset+needle_length))
+      else (Buffer.add_char output source.[offset]; loop (offset+1)) in
+    loop 0 in
+  let footer_source={msearchfooter|  <div class="composer flex align-end gap">
+    <a class="btn flex-item-no-shrink margin-block-end" style="view-transition-name: input-switcher; --btn-border-radius: 0.5em" href="{{ h::routes::room(index.return_to_room_id) }}">
+      <img aria-hidden="true" src="{{ ctx.asset("arrow-left.svg") }}" />
+      <span class="for-screen-reader">Exit search </span>
+</a>
+    <form class="margin-block flex-item-grow contain flex align-center gap" data-controller="form" data-action="keydown.esc-&gt;form#cancel" action="{{ h::routes::searches() }}" accept-charset="UTF-8" method="post">
+      <div class="composer__input flex align-center flex-item-grow gap full-width input input--actor min-width">
+        <img aria-hidden="true" class="composer__input-hint colorize--black" style="view-transition-name: input-btn;" src="{{ ctx.asset("search.svg") }}" width="20" height="20" />
+
+        <input{% if let Some(q) = index.q %} value="{{ q }}"{% endif %} class="searches__input input flex-item-grow" role="searchbox" aria-label="search" autofocus="autofocus" required="required" type="text" name="q" id="q" />
+
+        <a data-form-target="cancel" role="button" class="searches__reset" href="{{ h::routes::searches() }}">
+          <img aria-hidden="true" class="colorize--black" src="{{ ctx.asset("remove.svg") }}" width="14" height="14" />
+          <span class="for-screen-reader">Clear search field</span>
+</a>
+        <button name="button" type="submit" class="btn btn--reversed flex-item-no-shrink txt-small" style="--btn-border-radius: 0.5em">
+          <img aria-hidden="true" src="{{ ctx.asset("arrow-up.svg") }}" />
+          <span class="for-screen-reader">Search</span>
+</button>      </div>
+</form>  </div>|msearchfooter} in
+  let q_attribute=match q with None -> "" | Some value ->
+    " value=\"" ^ legacy_attribute value ^ "\"" in
+  let substitutions=[
+    "{% if let Some(q) = index.q %} value=\"{{ q }}\"{% endif %}",q_attribute;
+    "{{ h::routes::room(index.return_to_room_id) }}",
+      legacy_attribute (relative_room return_to_room_id);
+    "{{ h::routes::searches() }}",Route_helpers.searches ();
+  ] @ List.map (fun name ->
+    "{{ ctx.asset(\"" ^ name ^ "\") }}",
+      legacy_attribute (asset context name))
+    ["arrow-left.svg";"search.svg";"remove.svg";"arrow-up.svg"] in
+  let footer=raw (Trusted_html (List.fold_left (fun html (needle,value) ->
+    replace_literal html needle value) footer_source substitutions)) in
+  let content=raw (Trusted_html (String.concat "" [
+    {|<div id="message-area" class="message-area">
+  <div class="message-area--empty min-width center">
+    <figure class="center pad">
+      <img aria-hidden="true" class="colorize--black translucent" src="|};
+    legacy_attribute (asset context "search.svg");
+    {|" />
+    </figure>
+  </div>
+
+  <div id="search-results" class="messages searches__results" data-controller="search-results" data-search-results-target="messages" data-search-results-me-class="message--me" data-search-results-threaded-class="message--threaded" data-search-results-mentioned-class="message--mentioned" data-search-results-formatted-class="message--formatted">|};
+    String.concat "" (List.map (fun message ->
+      "\n    " ^ render (message_item message)) results);
+    {|
+  </div></div>|}])) in
   page ~title:"Search" ~body_class:"sidebar searches" ~context
     ~nav ~sidebar ~footer content
 let search_index ~context ~query ~results =

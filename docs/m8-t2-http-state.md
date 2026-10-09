@@ -1,30 +1,30 @@
 # M8-T2 live Rust/OCaml HTTP and state differential: default, ordinary
 
 Pinned Rust `9872c1d9541551c0889a60e3d49a14488bd1e403` and shared verification `6f71d70b5e1f17507404ad06cac134aa453a04a6`. Each server uses its own Rails seed copy.
-OCaml candidate `/tmp/m8-t2-main-next-integrated-20261009.exe` SHA-256 `90b091071bdb9e6d39913273b772fd876f2ff7d0aa334ca608a18c360dae5c78`.
-Source-file hash manifest: `docs/m8-t2-next-source-files.sha256` (88 files; manifest SHA-256 `c891112de059f5eb7515cab30a90662100a5e399fbc547d1893fbbdda22bf760`). The shared verification checkout for this run was `/tmp/m3-t3-verification-pinned` at the pinned revision above.
+OCaml candidate `/tmp/m8-t2-main-checkpoint-7bd8a496.exe` SHA-256 `e4917ea03168aa25ac42afcad711de14c8ee58c4a15c26c8e2642692b59a3fe8`.
+Clean OCaml checkpoint `7bd8a4964603e3de3800c1edf45674be08dd3a9f`; source-file hash manifest `docs/m8-t2-checkpoint-7bd8a496-source-files.sha256` (89 files, manifest SHA-256 `92ba118b6002cd93f85cabb79083b040253e0e25bab2f08e972f29e2a3a0d489`). Shared verification checkout `/tmp/m3-t3-verification-pinned` was at the pinned revision above.
 Response comparison includes exact status, every returned header value, and every body byte. Only valid current Date, six-decimal X-Runtime, and authenticated equivalent AES-GCM session-cookie plaintext are normalized because each server generates independent time/IV values; header presence and cookie attributes are compared. For transfer, deactivation, and join-code writes, only independently generated base58/UUIDv4/alphanumeric fields are canonicalized after shape, uniqueness, row identity/count, every other column, and signed-cookie HMAC/payload linkage checks. SQLite comparison hashes every table before and after each request. No deterministic values are masked in comparison; credentials and signed URLs are omitted from this report.
 
-Cases: pass **661**, fail **47**, not-run **0**. Case isolation: **fresh seed per case**. Scenario: **ordinary**. Shared contracts, Cable, and media remain separate gates.
+Cases: pass **674**, fail **34**, not-run **0**. Case isolation: **fresh seed per case**. Scenario: **ordinary**. Shared contracts, Cable, and media remain separate gates.
 
-Run command (pinned test fixture credentials only):
+Exact command (pinned test fixture credentials only):
 
 ```sh
-python3 scripts/m8_t2_http_state.py --seed default --rust-port 3228 --ocaml-port 3230 --ocaml-target-port 3229 --rust-db ../once-campfire-rust/parity/.seed/.candidates/3228/db/production.sqlite3 --ocaml-db /tmp/campfire-m8-t2-isolated-default-1000/db/production.sqlite3 --ocaml-seed-dir /tmp/campfire-m8-t2-isolated-default-1000 --ocaml-container campfire-m8-t2-default-ocaml --ocaml-network container:campfire-m8-t2-network --ocaml-binary /tmp/m8-t2-main-next-integrated-20261009.exe --verification-checkout /tmp/m3-t3-verification-pinned --output docs/m8-t2-http-state.md --isolate
+python3 scripts/m8_t2_http_state.py --seed default --rust-port 3228 --ocaml-port 3230 --ocaml-target-port 3229 --rust-db ../once-campfire-rust/parity/.seed/.candidates/3228/db/production.sqlite3 --ocaml-db /tmp/campfire-m8-t2-isolated-default-1000/db/production.sqlite3 --ocaml-seed-dir /tmp/campfire-m8-t2-isolated-default-1000 --ocaml-container campfire-m8-t2-default-ocaml --ocaml-network container:campfire-m8-t2-network --ocaml-binary /tmp/m8-t2-main-checkpoint-7bd8a496.exe --verification-checkout /tmp/m3-t3-verification-pinned --output docs/m8-t2-http-state.md --isolate
 ```
 
-Compared with the preserved prior 657-case-pass report (`/tmp/m8-t2-default-657.json`), exactly four row-8 transfer GET role cells changed from failure to pass, with no regressions. All 47 current failures are body-byte differences with derived `Content-Length` and `ETag` differences; no status, `Link`, SQLite-state, or infrastructure mismatch remains in this matrix. They occupy 24 route rows: 28, 30, 31, 39, 43, 49, 56, 59, 65, 73, 74, 75, 92, 95, 100, 106, 107, 114, 115, 122, 128, 130, 137, and 145. All 160 action-not-found and four missing-controller role cells pass. The full route table and each role's safe body length/hash are below.
+Against the preserved 661-pass report (`/tmp/m8-t2-default-661.json`), **13 failed cases became passes** on rows 28, 49, 74, 92, 128, 130, and 137; there were no regressions. The 34 remaining failures are signed/denied pairs on exactly 17 rows: 30, 31, 39, 43, 56, 59, 65, 73, 75, 95, 100, 106, 107, 114, 115, 122, and 145. Every failure is a body-byte difference with derived `Content-Length` and `ETag` differences. Status, other headers, and SQLite state match for all 708 cases. All 160 action-not-found and four missing-controller role cells pass.
 
-Pending M8-T2 gates: an integrated rerun after the remaining view byte fixes; positive CSRF-aware writes across implemented mutating families; default-seed override and malformed-path matrices; ordinary crowd, custom-styles, restricted, and first-run seed matrices; and final-image shared contract/acknowledged-write replay. This default ordinary matrix does not close M8-T2.
+Pending M8-T2 gates: remaining view bytes; positive CSRF-aware writes across implemented mutating families; default-seed override and malformed-path matrices; ordinary crowd, custom-styles, restricted, and first-run seed matrices; and final-image shared contract/acknowledged-write replay. This default ordinary matrix does not close M8-T2.
 
 ## Class and role matrix
 
 | Rust action | Role | Pass | Fail | Not-run |
 | --- | --- | ---: | ---: | ---: |
-| implemented | anonymous | 135 | 1 | 0 |
-| implemented | signed | 113 | 23 | 0 |
-| implemented | denied | 114 | 22 | 0 |
-| implemented | bot | 135 | 1 | 0 |
+| implemented | anonymous | 136 | 0 | 0 |
+| implemented | signed | 119 | 17 | 0 |
+| implemented | denied | 119 | 17 | 0 |
+| implemented | bot | 136 | 0 | 0 |
 | action_not_found | anonymous | 40 | 0 | 0 |
 | action_not_found | signed | 40 | 0 | 0 |
 | action_not_found | denied | 40 | 0 | 0 |
@@ -66,7 +66,7 @@ Pending M8-T2 gates: an integrated rerun after the remaining view byte fixes; po
 | 25 | DELETE | `/account/users/:id(.:format)` | implemented | 4 | 0 | 0 |
 | 26 | PATCH | `/account/bots/:bot_id/key(.:format)` | implemented | 4 | 0 | 0 |
 | 27 | PUT | `/account/bots/:bot_id/key(.:format)` | implemented | 4 | 0 | 0 |
-| 28 | GET | `/account/bots(.:format)` | implemented | 2 | 2 | 0 |
+| 28 | GET | `/account/bots(.:format)` | implemented | 4 | 0 | 0 |
 | 29 | POST | `/account/bots(.:format)` | implemented | 4 | 0 | 0 |
 | 30 | GET | `/account/bots/new(.:format)` | implemented | 2 | 2 | 0 |
 | 31 | GET | `/account/bots/:id/edit(.:format)` | implemented | 2 | 2 | 0 |
@@ -87,7 +87,7 @@ Pending M8-T2 gates: an integrated rerun after the remaining view byte fixes; po
 | 46 | PUT | `/account(.:format)` | implemented | 4 | 0 | 0 |
 | 47 | DELETE | `/account(.:format)` | action_not_found | 4 | 0 | 0 |
 | 48 | POST | `/account(.:format)` | action_not_found | 4 | 0 | 0 |
-| 49 | GET | `/join/:join_code(.:format)` | implemented | 2 | 2 | 0 |
+| 49 | GET | `/join/:join_code(.:format)` | implemented | 4 | 0 | 0 |
 | 50 | POST | `/join/:join_code(.:format)` | implemented | 4 | 0 | 0 |
 | 51 | GET | `/qr_code/:id(.:format)` | implemented | 4 | 0 | 0 |
 | 52 | GET | `/users/:user_id/avatar(.:format)` | implemented | 4 | 0 | 0 |
@@ -112,7 +112,7 @@ Pending M8-T2 gates: an integrated rerun after the remaining view byte fixes; po
 | 71 | PUT | `/users/:user_id/push_subscriptions/:id(.:format)` | action_not_found | 4 | 0 | 0 |
 | 72 | DELETE | `/users/:user_id/push_subscriptions/:id(.:format)` | implemented | 4 | 0 | 0 |
 | 73 | GET | `/users/:id(.:format)` | implemented | 2 | 2 | 0 |
-| 74 | GET | `/autocompletable/users(.:format)` | implemented | 2 | 2 | 0 |
+| 74 | GET | `/autocompletable/users(.:format)` | implemented | 4 | 0 | 0 |
 | 75 | GET | `/rooms/:room_id/messages(.:format)` | implemented | 2 | 2 | 0 |
 | 76 | POST | `/rooms/:room_id/messages(.:format)` | implemented | 4 | 0 | 0 |
 | 77 | GET | `/rooms/:room_id/messages/new(.:format)` | action_not_found | 4 | 0 | 0 |
@@ -130,7 +130,7 @@ Pending M8-T2 gates: an integrated rerun after the remaining view byte fixes; po
 | 89 | DELETE | `/rooms/:room_id/:bot_key/messages/:id(.:format)` | implemented | 4 | 0 | 0 |
 | 90 | GET | `/rooms/:room_id/refresh(.:format)` | implemented | 4 | 0 | 0 |
 | 91 | GET | `/rooms/:room_id/settings(.:format)` | missing_controller | 4 | 0 | 0 |
-| 92 | GET | `/rooms/:room_id/involvement(.:format)` | implemented | 2 | 2 | 0 |
+| 92 | GET | `/rooms/:room_id/involvement(.:format)` | implemented | 4 | 0 | 0 |
 | 93 | PATCH | `/rooms/:room_id/involvement(.:format)` | implemented | 4 | 0 | 0 |
 | 94 | PUT | `/rooms/:room_id/involvement(.:format)` | implemented | 4 | 0 | 0 |
 | 95 | GET | `/rooms/:room_id/@:message_id(.:format)` | implemented | 2 | 2 | 0 |
@@ -166,16 +166,16 @@ Pending M8-T2 gates: an integrated rerun after the remaining view byte fixes; po
 | 125 | PATCH | `/rooms/directs/:id(.:format)` | action_not_found | 4 | 0 | 0 |
 | 126 | PUT | `/rooms/directs/:id(.:format)` | action_not_found | 4 | 0 | 0 |
 | 127 | DELETE | `/rooms/directs/:id(.:format)` | implemented | 4 | 0 | 0 |
-| 128 | GET | `/messages/:message_id/boosts(.:format)` | implemented | 2 | 2 | 0 |
+| 128 | GET | `/messages/:message_id/boosts(.:format)` | implemented | 4 | 0 | 0 |
 | 129 | POST | `/messages/:message_id/boosts(.:format)` | implemented | 4 | 0 | 0 |
-| 130 | GET | `/messages/:message_id/boosts/new(.:format)` | implemented | 2 | 2 | 0 |
+| 130 | GET | `/messages/:message_id/boosts/new(.:format)` | implemented | 4 | 0 | 0 |
 | 131 | GET | `/messages/:message_id/boosts/:id/edit(.:format)` | action_not_found | 4 | 0 | 0 |
 | 132 | GET | `/messages/:message_id/boosts/:id(.:format)` | action_not_found | 4 | 0 | 0 |
 | 133 | PATCH | `/messages/:message_id/boosts/:id(.:format)` | action_not_found | 4 | 0 | 0 |
 | 134 | PUT | `/messages/:message_id/boosts/:id(.:format)` | action_not_found | 4 | 0 | 0 |
 | 135 | DELETE | `/messages/:message_id/boosts/:id(.:format)` | implemented | 4 | 0 | 0 |
 | 136 | GET | `/messages(.:format)` | implemented | 4 | 0 | 0 |
-| 137 | POST | `/messages(.:format)` | implemented | 3 | 1 | 0 |
+| 137 | POST | `/messages(.:format)` | implemented | 4 | 0 | 0 |
 | 138 | GET | `/messages/new(.:format)` | action_not_found | 4 | 0 | 0 |
 | 139 | GET | `/messages/:id/edit(.:format)` | implemented | 4 | 0 | 0 |
 | 140 | GET | `/messages/:id(.:format)` | implemented | 4 | 0 | 0 |
@@ -333,8 +333,8 @@ Pending M8-T2 gates: an integrated rerun after the remaining view byte fixes; po
 | 27 | denied | pass | 429 | 429 |  |
 | 27 | bot | pass | 403 | 403 |  |
 | 28 | anonymous | pass | 302 | 302 |  |
-| 28 | signed | fail | 200 | 200 | headers content-length,etag; body len=38500/36661 sha256=de84c7c2585d/26cb1137a2ad |
-| 28 | denied | fail | 200 | 200 | headers content-length,etag; body len=38500/36661 sha256=de84c7c2585d/26cb1137a2ad |
+| 28 | signed | pass | 200 | 200 |  |
+| 28 | denied | pass | 200 | 200 |  |
 | 28 | bot | pass | 403 | 403 |  |
 | 29 | anonymous | pass | 302 | 302 |  |
 | 29 | signed | pass | 400 | 400 |  |
@@ -416,10 +416,10 @@ Pending M8-T2 gates: an integrated rerun after the remaining view byte fixes; po
 | 48 | signed | pass | 404 | 404 |  |
 | 48 | denied | pass | 404 | 404 |  |
 | 48 | bot | pass | 404 | 404 |  |
-| 49 | anonymous | fail | 200 | 200 | headers content-length,etag; body len=27281/26766 sha256=af5286598d43/c9e09f563e19 |
+| 49 | anonymous | pass | 200 | 200 |  |
 | 49 | signed | pass | 302 | 302 |  |
 | 49 | denied | pass | 302 | 302 |  |
-| 49 | bot | fail | 200 | 200 | headers content-length,etag; body len=27281/26766 sha256=af5286598d43/c9e09f563e19 |
+| 49 | bot | pass | 200 | 200 |  |
 | 50 | anonymous | pass | 400 | 400 |  |
 | 50 | signed | pass | 302 | 302 |  |
 | 50 | denied | pass | 429 | 429 |  |
@@ -517,12 +517,12 @@ Pending M8-T2 gates: an integrated rerun after the remaining view byte fixes; po
 | 73 | denied | fail | 200 | 200 | headers content-length,etag; body len=25218/24878 sha256=f1afc5fa949c/917ec81a730c |
 | 73 | bot | pass | 403 | 403 |  |
 | 74 | anonymous | pass | 302 | 302 |  |
-| 74 | signed | fail | 200 | 200 | headers content-length,etag; body len=8846/8523 sha256=4a07478af756/9e9a2b34219c |
-| 74 | denied | fail | 200 | 200 | headers content-length,etag; body len=8846/8523 sha256=4a07478af756/9e9a2b34219c |
+| 74 | signed | pass | 200 | 200 |  |
+| 74 | denied | pass | 200 | 200 |  |
 | 74 | bot | pass | 403 | 403 |  |
 | 75 | anonymous | pass | 302 | 302 |  |
-| 75 | signed | fail | 200 | 200 | headers content-length,etag; body len=382814/340112 sha256=63968eae7b96/5c82a1b49cc8 |
-| 75 | denied | fail | 200 | 200 | headers content-length,etag; body len=382814/340112 sha256=63968eae7b96/5c82a1b49cc8 |
+| 75 | signed | fail | 200 | 200 | headers content-length,etag; body len=382814/343174 sha256=63968eae7b96/dc1f70b5dea8 |
+| 75 | denied | fail | 200 | 200 | headers content-length,etag; body len=382814/343174 sha256=63968eae7b96/dc1f70b5dea8 |
 | 75 | bot | pass | 403 | 403 |  |
 | 76 | anonymous | pass | 302 | 302 |  |
 | 76 | signed | pass | 400 | 400 |  |
@@ -589,8 +589,8 @@ Pending M8-T2 gates: an integrated rerun after the remaining view byte fixes; po
 | 91 | denied | pass | 500 | 500 |  |
 | 91 | bot | pass | 500 | 500 |  |
 | 92 | anonymous | pass | 302 | 302 |  |
-| 92 | signed | fail | 200 | 200 | headers content-length,etag; body len=21144/21138 sha256=743677e586da/377cadcf1e36 |
-| 92 | denied | fail | 200 | 200 | headers content-length,etag; body len=21144/21138 sha256=743677e586da/377cadcf1e36 |
+| 92 | signed | pass | 200 | 200 |  |
+| 92 | denied | pass | 200 | 200 |  |
 | 92 | bot | pass | 403 | 403 |  |
 | 93 | anonymous | pass | 302 | 302 |  |
 | 93 | signed | pass | 302 | 302 |  |
@@ -601,8 +601,8 @@ Pending M8-T2 gates: an integrated rerun after the remaining view byte fixes; po
 | 94 | denied | pass | 429 | 429 |  |
 | 94 | bot | pass | 403 | 403 |  |
 | 95 | anonymous | pass | 302 | 302 |  |
-| 95 | signed | fail | 200 | 200 | headers content-length,etag; body len=416349/371687 sha256=aaa9305357de/f857a54d3d8a |
-| 95 | denied | fail | 200 | 200 | headers content-length,etag; body len=416349/371687 sha256=aaa9305357de/f857a54d3d8a |
+| 95 | signed | fail | 200 | 200 | headers content-length,etag; body len=416349/374749 sha256=aaa9305357de/cc018e329353 |
+| 95 | denied | fail | 200 | 200 | headers content-length,etag; body len=416349/374749 sha256=aaa9305357de/cc018e329353 |
 | 95 | bot | pass | 403 | 403 |  |
 | 96 | anonymous | pass | 302 | 302 |  |
 | 96 | signed | pass | 302 | 302 |  |
@@ -621,8 +621,8 @@ Pending M8-T2 gates: an integrated rerun after the remaining view byte fixes; po
 | 99 | denied | pass | 404 | 404 |  |
 | 99 | bot | pass | 404 | 404 |  |
 | 100 | anonymous | pass | 302 | 302 |  |
-| 100 | signed | fail | 200 | 200 | headers content-length,etag; body len=416349/371687 sha256=aaa9305357de/f857a54d3d8a |
-| 100 | denied | fail | 200 | 200 | headers content-length,etag; body len=416349/371687 sha256=aaa9305357de/f857a54d3d8a |
+| 100 | signed | fail | 200 | 200 | headers content-length,etag; body len=416349/374749 sha256=aaa9305357de/cc018e329353 |
+| 100 | denied | fail | 200 | 200 | headers content-length,etag; body len=416349/374749 sha256=aaa9305357de/cc018e329353 |
 | 100 | bot | pass | 403 | 403 |  |
 | 101 | anonymous | pass | 404 | 404 |  |
 | 101 | signed | pass | 404 | 404 |  |
@@ -733,16 +733,16 @@ Pending M8-T2 gates: an integrated rerun after the remaining view byte fixes; po
 | 127 | denied | pass | 429 | 429 |  |
 | 127 | bot | pass | 403 | 403 |  |
 | 128 | anonymous | pass | 302 | 302 |  |
-| 128 | signed | fail | 200 | 200 | headers content-length,etag; body len=22691/22548 sha256=1d6947af92e3/e2adfbff4004 |
-| 128 | denied | fail | 200 | 200 | headers content-length,etag; body len=22691/22548 sha256=1d6947af92e3/e2adfbff4004 |
+| 128 | signed | pass | 200 | 200 |  |
+| 128 | denied | pass | 200 | 200 |  |
 | 128 | bot | pass | 403 | 403 |  |
 | 129 | anonymous | pass | 302 | 302 |  |
 | 129 | signed | pass | 400 | 400 |  |
 | 129 | denied | pass | 429 | 429 |  |
 | 129 | bot | pass | 403 | 403 |  |
 | 130 | anonymous | pass | 302 | 302 |  |
-| 130 | signed | fail | 200 | 200 | headers content-length,etag; body len=22146/22014 sha256=e63eab618b97/20fe2e912300 |
-| 130 | denied | fail | 200 | 200 | headers content-length,etag; body len=22146/22014 sha256=e63eab618b97/20fe2e912300 |
+| 130 | signed | pass | 200 | 200 |  |
+| 130 | denied | pass | 200 | 200 |  |
 | 130 | bot | pass | 403 | 403 |  |
 | 131 | anonymous | pass | 404 | 404 |  |
 | 131 | signed | pass | 404 | 404 |  |
@@ -769,7 +769,7 @@ Pending M8-T2 gates: an integrated rerun after the remaining view byte fixes; po
 | 136 | denied | pass | 404 | 404 |  |
 | 136 | bot | pass | 403 | 403 |  |
 | 137 | anonymous | pass | 302 | 302 |  |
-| 137 | signed | fail | 200 | 200 | headers content-length,etag; body len=20647/20633 sha256=79f1ae993504/5e632b8b3894 |
+| 137 | signed | pass | 200 | 200 |  |
 | 137 | denied | pass | 429 | 429 |  |
 | 137 | bot | pass | 403 | 403 |  |
 | 138 | anonymous | pass | 404 | 404 |  |
@@ -931,8 +931,6 @@ Pending M8-T2 gates: an integrated rerun after the remaining view byte fixes; po
 
 ## Failures
 
-- Row 28, signed: headers content-length,etag; body len=38500/36661 sha256=de84c7c2585d/26cb1137a2ad
-- Row 28, denied: headers content-length,etag; body len=38500/36661 sha256=de84c7c2585d/26cb1137a2ad
 - Row 30, signed: headers content-length,etag; body len=24484/24370 sha256=ebe88701671e/50fe5898cc1b
 - Row 30, denied: headers content-length,etag; body len=24484/24370 sha256=ebe88701671e/50fe5898cc1b
 - Row 31, signed: headers content-length,etag; body len=25833/25663 sha256=818353342355/7a127bff7b58
@@ -941,8 +939,6 @@ Pending M8-T2 gates: an integrated rerun after the remaining view byte fixes; po
 - Row 39, denied: headers content-length,etag; body len=23662/23526 sha256=2a639a49344f/a4570ca5f8b1
 - Row 43, signed: headers content-length,etag; body len=37630/36300 sha256=e142b92544a8/a52983c7ffcb
 - Row 43, denied: headers content-length,etag; body len=37630/36300 sha256=e142b92544a8/a52983c7ffcb
-- Row 49, anonymous: headers content-length,etag; body len=27281/26766 sha256=af5286598d43/c9e09f563e19
-- Row 49, bot: headers content-length,etag; body len=27281/26766 sha256=af5286598d43/c9e09f563e19
 - Row 56, signed: headers content-length,etag; body len=30763/29934 sha256=8a31e5e0f669/e2dd1bb1c5b2
 - Row 56, denied: headers content-length,etag; body len=30763/29934 sha256=8a31e5e0f669/e2dd1bb1c5b2
 - Row 59, signed: headers content-length,etag; body len=41834/40842 sha256=0a5984f54d55/2993e68e30ce
@@ -951,16 +947,12 @@ Pending M8-T2 gates: an integrated rerun after the remaining view byte fixes; po
 - Row 65, denied: headers content-length,etag; body len=23151/22934 sha256=0ccd247130d6/a6603e843d4c
 - Row 73, signed: headers content-length,etag; body len=25218/24878 sha256=f1afc5fa949c/917ec81a730c
 - Row 73, denied: headers content-length,etag; body len=25218/24878 sha256=f1afc5fa949c/917ec81a730c
-- Row 74, signed: headers content-length,etag; body len=8846/8523 sha256=4a07478af756/9e9a2b34219c
-- Row 74, denied: headers content-length,etag; body len=8846/8523 sha256=4a07478af756/9e9a2b34219c
-- Row 75, signed: headers content-length,etag; body len=382814/340112 sha256=63968eae7b96/5c82a1b49cc8
-- Row 75, denied: headers content-length,etag; body len=382814/340112 sha256=63968eae7b96/5c82a1b49cc8
-- Row 92, signed: headers content-length,etag; body len=21144/21138 sha256=743677e586da/377cadcf1e36
-- Row 92, denied: headers content-length,etag; body len=21144/21138 sha256=743677e586da/377cadcf1e36
-- Row 95, signed: headers content-length,etag; body len=416349/371687 sha256=aaa9305357de/f857a54d3d8a
-- Row 95, denied: headers content-length,etag; body len=416349/371687 sha256=aaa9305357de/f857a54d3d8a
-- Row 100, signed: headers content-length,etag; body len=416349/371687 sha256=aaa9305357de/f857a54d3d8a
-- Row 100, denied: headers content-length,etag; body len=416349/371687 sha256=aaa9305357de/f857a54d3d8a
+- Row 75, signed: headers content-length,etag; body len=382814/343174 sha256=63968eae7b96/dc1f70b5dea8
+- Row 75, denied: headers content-length,etag; body len=382814/343174 sha256=63968eae7b96/dc1f70b5dea8
+- Row 95, signed: headers content-length,etag; body len=416349/374749 sha256=aaa9305357de/cc018e329353
+- Row 95, denied: headers content-length,etag; body len=416349/374749 sha256=aaa9305357de/cc018e329353
+- Row 100, signed: headers content-length,etag; body len=416349/374749 sha256=aaa9305357de/cc018e329353
+- Row 100, denied: headers content-length,etag; body len=416349/374749 sha256=aaa9305357de/cc018e329353
 - Row 106, signed: headers content-length,etag; body len=29387/28857 sha256=241c399175b7/644177e2a5c3
 - Row 106, denied: headers content-length,etag; body len=29387/28857 sha256=241c399175b7/644177e2a5c3
 - Row 107, signed: headers content-length,etag; body len=30025/29481 sha256=373c95c79df5/7eb08179c00e
@@ -971,10 +963,5 @@ Pending M8-T2 gates: an integrated rerun after the remaining view byte fixes; po
 - Row 115, denied: headers content-length,etag; body len=31224/30397 sha256=8b2cdf10ed2a/2bd5f0a00211
 - Row 122, signed: headers content-length,etag; body len=22796/22604 sha256=70342937dd89/9f86aaabd903
 - Row 122, denied: headers content-length,etag; body len=22796/22604 sha256=70342937dd89/9f86aaabd903
-- Row 128, signed: headers content-length,etag; body len=22691/22548 sha256=1d6947af92e3/e2adfbff4004
-- Row 128, denied: headers content-length,etag; body len=22691/22548 sha256=1d6947af92e3/e2adfbff4004
-- Row 130, signed: headers content-length,etag; body len=22146/22014 sha256=e63eab618b97/20fe2e912300
-- Row 130, denied: headers content-length,etag; body len=22146/22014 sha256=e63eab618b97/20fe2e912300
-- Row 137, signed: headers content-length,etag; body len=20647/20633 sha256=79f1ae993504/5e632b8b3894
 - Row 145, signed: headers content-length,etag; body len=24543/24197 sha256=c932a6fe062d/97c1d885e426
 - Row 145, denied: headers content-length,etag; body len=24543/24197 sha256=c932a6fe062d/97c1d885e426

@@ -36,11 +36,11 @@ those components, but the M3 milestone remains open until integrated responses s
 
 | Ticket | Focused evidence now available | Every-route gate still open |
 | --- | --- | --- |
-| M3-T1 | 16/16 HTTP foundation tests, 2,755 Rails params vectors, 129 MiB streamed multipart, request temp cleanup through cancellation, real TCP listener and 64 KiB header bound | Verify shared headers, cookies, malformed methods and body limits over the live Rust/OCaml route matrix and packaged listener. |
+| M3-T1 | 16/16 HTTP foundation tests, 2,755 Rails params vectors, 129 MiB streamed multipart, request temp cleanup through cancellation, real TCP listener and 64 KiB header bound | **Accepted:** clean 674-case-pass matrix matches all 100 affected `Vary` role cells; packaged 65 KiB and 1 MiB front/target header probes reject oversized requests while normal requests pass. |
 | M3-T2 | 73 owned catalog rows dispatched, seeded controller suite 11/11, avatar/logo live corpus passed under M4/M6, scoped push-subscription subset lookup | Complete session/onboarding/account/profile/push response and state comparison for anonymous, signed, denied and bot roles; full HTML byte parity remains open. |
 | M3-T3 | 73 owned rows dispatched, seeded controller suite 9/9 including disk-backed browser and bot attachments, live Cable broadcast checks | Compare all room/message/search status, headers, HTML/JSON/Turbo bodies and persisted effects; page-part/cache response parity depends on the M4 view corpus. |
 | M3-T4 | 31 owned rows dispatched, 9/9 focused tests, 39 pinned QR matrices and 18 capacity vectors, M6's 256-case live storage corpus, M5's guarded integration tests | **Accepted:** latest immutable default-seed matrix passes all 124/124 assigned route/role cases; positive manifest, service-worker and unfurl checks pass 3/3 exact on the same binary. |
-| M3-T5 | 10/10 focused cache tests, public QR route, authenticated room and sidebar private-cache hits with SQLite invalidation and revoked-session bypass | Compare exact conditional, gzip, HEAD, fresh_when, page-part and cache headers/bodies on live routes; flash bypass and large finite body behavior need review. |
+| M3-T5 | 13/13 focused cache tests, public QR route, authenticated room and sidebar private-cache hits with SQLite invalidation and revoked-session bypass | Compare page-part and conditional/gzip/HEAD cache behavior on live routes; remaining fragment offsets and alternate scenarios need review. |
 
 M8-T2 ran the 177-row, four-role live Rust/OCaml response and SQLite-state
 matrix. Its four isolated `GET /` role cases pass after the shared 404, header,
@@ -48,7 +48,26 @@ cookie and session fixes. No M3 ticket is accepted from the focused suites alone
 
 ## Current ticket acceptance, 2026-10-09
 
-The latest pinned, isolated default-seed matrix in `docs/m8-t2-http-state.md`
+The clean checkpoint `7bd8a4964603e3de3800c1edf45674be08dd3a9f`
+passes **674/708** default-seed route/role cases. All 34 failures are rendered
+body bytes and derived Content-Length/ETag values; status, independent headers,
+and SQLite state match in all 708. T1's 25 affected `Vary` route rows pass
+**100/100** role cells. The same source's packaged image passed 66,560-byte
+and 1,048,576-byte front and target header probes with normal 302 responses,
+front 431 rejection, no oversized target response, and no nonloopback target
+reachability. With its streamed multipart, parser, request/session and startup
+tests, T1 satisfies its foundation ticket. T1 and T4 boxes are checked; T2,
+T3, T5 and the M3 every-route milestone remain open.
+
+T5's newer offline suite passes 13/13 after flash-aware private-cache bypass,
+bounded finite-body hashing, and a page-part ETag helper. Room page-part
+validators still need view fragment offsets and live conditional/HEAD/gzip
+parity. These later cache changes are not claimed by the clean 674-case matrix.
+
+### Earlier 661-case checkpoint
+
+The earlier pinned, isolated default-seed matrix archived at
+`/tmp/m8-t2-default-661.json`
 passes **661/708** route/role cases. It reports no status, persisted-state,
 or independent header difference. The remaining 47 cases are page body bytes
 and derived Content-Length/ETag values across 24 rows. T4 owns rows 146–176;
@@ -56,11 +75,11 @@ all **124/124** of its route/role cases pass. The same OCaml binary passed
 the positive `.json` manifest, `.js` service-worker and signed missing-URL
 unfurl comparisons **3/3**, including exact headers, body, and SQLite state.
 Together with focused QR/capacity, M5 integration and M6 storage/media
-evidence, this satisfies T4's assigned HTTP controller scope. The M3
-milestone remains open for T1/T2/T3/T5 and its every-route gate.
+evidence, this satisfied T4's assigned HTTP controller scope. At that
+checkpoint, the M3 milestone remained open for T1/T2/T3/T5.
 
-T1's newest public-exception `Vary` correction still needs a targeted live
-row probe and integrated rerun. T2 has 18 residual page cells in nine rows;
+T1's public-exception `Vary` correction then awaited an integrated rerun; the
+current 674-case-pass checkpoint above closed it. T2 had 18 residual page cells in nine rows;
 T3 has 29 in 15 rows. Their controller presenters have pinned structural
 coverage, but the full byte gate and positive mutation/alternate-seed suite
 remain open. T5's remaining M3-specific work is room page-part validators,

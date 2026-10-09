@@ -88,6 +88,10 @@ module Page_parts = struct
      where a fragment was inserted. These offsets must come from the renderer,
      never from searching the final HTML for duplicate fragment bytes. *)
   type part = Text of string | Fragment of string * string
+  external deflate_piece : string -> string -> string * int32 =
+    "campfire_deflate_piece"
+  external combine_crc : int32 -> int32 -> int64 -> int32 =
+    "campfire_crc32_combine"
   let min_fragment = 1024
   let max_glue = 256
 
@@ -145,6 +149,47 @@ module Page_parts = struct
       (Mirage_crypto.Hash.SHA256.get !state))) 0 32
 
   let of_offsets ~text fragments = Option.map etag (splice ~text fragments)
+
+  (* Cohttp writes each string separately for an identity response. Fragment
+     glue is a separate frame, as in the pinned Rust PlainBody iterator. *)
+  let chunks parts = List.concat_map (function
+    | Text text -> [text]
+    | Fragment ("", fragment) -> [fragment]
+    | Fragment (glue, fragment) -> [glue; fragment]) parts
+
+  let body parts = Cohttp_lwt.Body.of_string_list (chunks parts)
+
+  let length parts = List.fold_left (fun size -> function
+    | Text text -> size + String.length text
+    | Fragment (glue, fragment) ->
+        size + String.length glue + String.length fragment) 0 parts
+
+  (* The pinned PageParts compressor emits a raw sync-flushed piece per part,
+     followed by an empty final block. libz and zlib-rs choose different
+     deflate matches, so this has the same framing and decoded bytes, though
+     its compressed bytes are not identical to the Rust implementation. *)
+  let gzip ?(mtime=0) parts =
+    let output=Buffer.create 4096 in
+    let byte value = Buffer.add_char output (Char.chr (value land 255)) in
+    let little32 value =
+      for i=0 to 3 do byte (Int32.to_int
+        (Int32.logand 255l (Int32.shift_right_logical value (i*8)))) done in
+    byte 0x1f; byte 0x8b; byte 8; byte 0;
+    little32 (Int32.of_int mtime); byte 0; byte 3;
+    let before=ref "" and checksum=ref 0l and total=ref 0L in
+    List.iter (fun part ->
+      let data,next_before=match part with
+        | Text text -> text,text
+        | Fragment (glue,fragment) -> glue ^ fragment,fragment in
+      let piece,crc=deflate_piece !before data in
+      Buffer.add_string output piece;
+      checksum := combine_crc !checksum crc (Int64.of_int (String.length data));
+      total := Int64.add !total (Int64.of_int (String.length data));
+      before := next_before) parts;
+    byte 3; byte 0;
+    little32 !checksum;
+    little32 (Int64.to_int32 !total);
+    Buffer.contents output
 end
 
 let combined_etag ?(strong=false) ?(frame=false) ?template ?(flash=[]) validator =
@@ -154,6 +199,27 @@ let combined_etag ?(strong=false) ?(frame=false) ?template ?(flash=[]) validator
     (if flash=[] then [] else [String.concat "&" flash]) in
   let digest = String.sub (hex (sha256 (String.concat "/" parts))) 0 32 in
   (if strong then "\"" else "W/\"") ^ digest ^ "\""
+
+(* serde_json::Value's Debug representation is what the pinned Rust
+   ETagWithFlash etagger includes after each flash key. *)
+let rec rust_json_debug = function
+  | `Null -> "Null"
+  | `Bool value -> "Bool(" ^ string_of_bool value ^ ")"
+  | `Int value -> "Number(" ^ string_of_int value ^ ")"
+  | `Float value -> "Number(" ^ Yojson.Basic.to_string (`Float value) ^ ")"
+  | `String value -> "String(" ^ Yojson.Basic.to_string (`String value) ^ ")"
+  | `List values -> "Array [" ^
+      String.concat ", " (List.map rust_json_debug values) ^ "]"
+  | `Assoc values -> "Object {" ^
+      (List.sort (fun (left,_) (right,_) -> String.compare left right) values
+       |> List.map (fun (key,value) ->
+         Yojson.Basic.to_string (`String key) ^ ": " ^ rust_json_debug value)
+       |> String.concat ", ") ^ "}"
+
+let flash_etaggers values =
+  List.sort (fun (left,_) (right,_) -> String.compare left right) values
+  |> List.map (fun (key,value) ->
+    key ^ "=Some(" ^ rust_json_debug value ^ ")")
 
 let httpdate time = Storage_file_server.httpdate (Ptime.to_float_s time)
 

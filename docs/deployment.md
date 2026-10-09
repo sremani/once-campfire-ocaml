@@ -19,9 +19,12 @@ arm64 runners, pushes architecture tags, and assembles a manifest. The
 Dockerfile pins Debian trixie and Ubuntu 24.04 base image digests and the
 OCaml API, Caddy, libvips, and ffmpeg package versions. Ubuntu 24.04 provides
 OCaml 4.14, Mirage Crypto 0.11.2, and PBKDF 1.2.0 for the build. The runtime
-is Debian trixie. Transitive apt dependencies still follow the configured
-distribution repositories; retain the built image digest for repeatable
-deployment and rollback.
+is Debian trixie. Each image includes the exact build-stage package inventory
+and copyright notices under `/usr/share/doc/once-campfire-ocaml/`. Transitive apt
+dependencies still follow the configured distribution repositories; retain the
+built image digest for repeatable deployment and rollback. Run
+`scripts/release_image_inventory.py` on each candidate image to record its
+runtime packages, linked libraries, packaged notices, hooks, and assets.
 
 The image includes the project MIT license, the vendored WebSocket ISC license,
 and the Gumbo dependency notices and provenance record under

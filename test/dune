@@ -263,6 +263,40 @@
 
 (rule
  (alias runtest)
+ (deps view_sidebar_bytes.py fixtures/views_sidebar_frame.html
+  fixtures/views_sidebar_frame.json fixtures/views_sidebar_david.html
+  fixtures/views_sidebar_david.json fixtures/views_sidebar_kevin.html
+  fixtures/views_sidebar_kevin.json fixtures/views_shared_room.html
+  fixtures/views_shared_room_unread.html)
+ (action (run python3 view_sidebar_bytes.py %{exe:m4_t2_test.exe})))
+
+(rule
+ (alias runtest)
+ (deps view_message_bytes.py fixtures/views_messages_index.json
+  fixtures/views_messages_show_text.json fixtures/views_messages_show_image.json
+  fixtures/views_messages_create.json)
+ (action (run python3 view_message_bytes.py %{exe:m4_t2_test.exe})))
+
+(rule
+ (alias runtest)
+ (deps view_direct_bytes.py fixtures/views_rooms_directs_new.json)
+ (action (run python3 view_direct_bytes.py %{exe:m4_t2_test.exe})))
+
+(rule
+ (alias runtest)
+ (deps view_search_bytes.py fixtures/views_searches_index.json
+  fixtures/views_searches_index_empty.json)
+ (action (run python3 view_search_bytes.py %{exe:m4_t2_test.exe})))
+
+(rule
+ (alias runtest)
+ (deps view_seeded_bytes.py fixtures/campfire_routes.json
+  fixtures/campfire_sessions.json fixtures/rails_compat.json
+  ../scripts/m8_t2_http_state.py)
+ (action (run python3 view_seeded_bytes.py %{exe:m4_t2_probe.exe})))
+
+(rule
+ (alias runtest)
  (deps view_dom_compare.py fixtures/views_a_onboarding.json
   fixtures/views_custom_styles_edit.html fixtures/views_custom_styles_layout.html)
  (action
@@ -348,7 +382,7 @@
 (test
  (name m4_t1_test)
  (modules m4_t1_test)
- (libraries campfire alcotest yojson cstruct mirage-crypto str)
+ (libraries campfire alcotest yojson cstruct mirage-crypto str cohttp cohttp-lwt lwt.unix)
  (deps (source_tree ../assets) (source_tree fixtures/assets)))
 
 (test
@@ -466,3 +500,8 @@
  (modules m8_t1_user_agent_test)
  (libraries campfire alcotest yojson cohttp cohttp-lwt lwt.unix unix logs logs.fmt)
  (deps fixtures/campfire_user_agents.json fixtures/rails_compat.json fixtures/storage.json))
+
+(test
+ (name m8_t1_session_chain_test)
+ (modules m8_t1_session_chain_test)
+ (libraries campfire alcotest sqlite3 yojson cohttp cohttp-lwt lwt.unix uri))

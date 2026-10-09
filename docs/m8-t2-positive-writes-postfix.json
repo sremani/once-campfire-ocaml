@@ -1,0 +1,1530 @@
+{
+  "rust_revision": "9872c1d9541551c0889a60e3d49a14488bd1e403",
+  "verification_revision": "6f71d70b5e1f17507404ad06cac134aa453a04a6",
+  "ocaml_binary_sha256": "b30ff25a75e6690d08cc0b672779b6d677a8f4162899d13be65b9f0b461efba6",
+  "seed": "default",
+  "csrf_policy": "pinned header_only: matching Origin and Sec-Fetch-Site same-origin",
+  "settle_seconds": 2.0,
+  "counts": {
+    "pass": 26,
+    "fail": 4,
+    "not-run": 0
+  },
+  "cases": [
+    {
+      "name": "account_user_role",
+      "family": "account roles",
+      "route": 23,
+      "method": "PATCH",
+      "route_pattern": "/account/users/:id(.:format)",
+      "status": "pass",
+      "rust_status": 302,
+      "ocaml_status": 302,
+      "rust_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "ocaml_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "rust_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "ocaml_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "rust_changed": [
+        "users"
+      ],
+      "ocaml_changed": [
+        "users"
+      ],
+      "problems": []
+    },
+    {
+      "name": "account_user_deactivate",
+      "family": "account roles",
+      "route": 25,
+      "method": "DELETE",
+      "route_pattern": "/account/users/:id(.:format)",
+      "status": "pass",
+      "rust_status": 302,
+      "ocaml_status": 302,
+      "rust_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "ocaml_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "rust_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "ocaml_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "rust_changed": [
+        "memberships",
+        "push_subscriptions",
+        "searches",
+        "sessions",
+        "users"
+      ],
+      "ocaml_changed": [
+        "memberships",
+        "push_subscriptions",
+        "searches",
+        "sessions",
+        "users"
+      ],
+      "problems": [],
+      "validated_random_state": {
+        "table": "users",
+        "column": "email_address",
+        "row_id": 127326141,
+        "rust_sha256": "94aa693d3626123b0d60c2c4131ea08dc8af0ecad7e2710f63026cf2d4f9353a",
+        "ocaml_sha256": "e5fc6d34e0e4d84392d8a2f70eab4070b2071954d4e05b89898f75e4f290ddf5",
+        "generator": "UUIDv4 deactivated email"
+      }
+    },
+    {
+      "name": "account_bot_create",
+      "family": "account bots",
+      "route": 29,
+      "method": "POST",
+      "route_pattern": "/account/bots(.:format)",
+      "status": "pass",
+      "rust_status": 302,
+      "ocaml_status": 302,
+      "rust_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "ocaml_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "rust_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "ocaml_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "rust_changed": [
+        "memberships",
+        "users"
+      ],
+      "ocaml_changed": [
+        "memberships",
+        "users"
+      ],
+      "problems": [],
+      "validated_random_state": {
+        "column": "bot_token",
+        "generator": "alphanumeric(12)",
+        "row_id": 773523959,
+        "rust_sha256": "22a2ece374d69b41b94598be7978548204fdcbd558c094814d3bd6c0b66e5571",
+        "ocaml_sha256": "1ed69994f3f9da2b68f34ca291ab0f39bb0192c3f77d7cdd01ca693076cf689e"
+      }
+    },
+    {
+      "name": "account_bot_rename",
+      "family": "account bots",
+      "route": 33,
+      "method": "PATCH",
+      "route_pattern": "/account/bots/:id(.:format)",
+      "status": "pass",
+      "rust_status": 302,
+      "ocaml_status": 302,
+      "rust_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "ocaml_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "rust_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "ocaml_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "rust_changed": [
+        "users",
+        "webhooks"
+      ],
+      "ocaml_changed": [
+        "users",
+        "webhooks"
+      ],
+      "problems": []
+    },
+    {
+      "name": "account_bot_key_reset",
+      "family": "account bots",
+      "route": 26,
+      "method": "PATCH",
+      "route_pattern": "/account/bots/:bot_id/key(.:format)",
+      "status": "pass",
+      "rust_status": 302,
+      "ocaml_status": 302,
+      "rust_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "ocaml_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "rust_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "ocaml_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "rust_changed": [
+        "users"
+      ],
+      "ocaml_changed": [
+        "users"
+      ],
+      "problems": [],
+      "validated_random_state": {
+        "column": "bot_token",
+        "generator": "alphanumeric(12)",
+        "row_id": 394959859,
+        "rust_sha256": "eb4a0a903b70e08d25f25297bbaf8ff1a2b7ed67d48115cda84bf43764b2a42b",
+        "ocaml_sha256": "3a909c15da34ac4734ede4d0a821f342d6db12190664461ef1c1ec4c465cb4a4"
+      }
+    },
+    {
+      "name": "account_join_code_reset",
+      "family": "account settings",
+      "route": 36,
+      "method": "POST",
+      "route_pattern": "/account/join_code(.:format)",
+      "status": "pass",
+      "rust_status": 302,
+      "ocaml_status": 302,
+      "rust_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "ocaml_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "rust_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "ocaml_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "rust_changed": [
+        "accounts"
+      ],
+      "ocaml_changed": [
+        "accounts"
+      ],
+      "problems": [],
+      "validated_random_state": {
+        "table": "accounts",
+        "column": "join_code",
+        "row_id": 873240054,
+        "rust_sha256": "25eac8df80d64849d999f086b52fba46f32647e2c6a76ba98c03aca430e4a9aa",
+        "ocaml_sha256": "79306d2b721f96dbfd95b88f433cac2be0acf84fa630e32871f579d02d85c217",
+        "generator": "alphanumeric(12) grouped 4-4-4"
+      }
+    },
+    {
+      "name": "account_styles",
+      "family": "account styles",
+      "route": 40,
+      "method": "PATCH",
+      "route_pattern": "/account/custom_styles(.:format)",
+      "status": "fail",
+      "rust_status": 302,
+      "ocaml_status": 302,
+      "rust_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "ocaml_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "rust_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "ocaml_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "rust_changed": [
+        "accounts"
+      ],
+      "ocaml_changed": [
+        "accounts"
+      ],
+      "problems": [
+        "headers set-cookie"
+      ],
+      "safe_cookie_difference": {
+        "rust_cookie_names": [
+          "_campfire_session"
+        ],
+        "ocaml_cookie_names": [],
+        "attributes_equal": []
+      }
+    },
+    {
+      "name": "account_name",
+      "family": "account settings",
+      "route": 45,
+      "method": "PATCH",
+      "route_pattern": "/account(.:format)",
+      "status": "fail",
+      "rust_status": 302,
+      "ocaml_status": 302,
+      "rust_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "ocaml_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "rust_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "ocaml_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "rust_changed": [
+        "accounts"
+      ],
+      "ocaml_changed": [
+        "accounts"
+      ],
+      "problems": [
+        "headers set-cookie"
+      ],
+      "safe_cookie_difference": {
+        "rust_cookie_names": [
+          "_campfire_session"
+        ],
+        "ocaml_cookie_names": [],
+        "attributes_equal": []
+      }
+    },
+    {
+      "name": "profile_name",
+      "family": "user profile",
+      "route": 60,
+      "method": "PATCH",
+      "route_pattern": "/users/:user_id/profile(.:format)",
+      "status": "fail",
+      "rust_status": 302,
+      "ocaml_status": 302,
+      "rust_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "ocaml_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "rust_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "ocaml_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "rust_changed": [
+        "users"
+      ],
+      "ocaml_changed": [
+        "users"
+      ],
+      "problems": [
+        "headers set-cookie"
+      ],
+      "safe_cookie_difference": {
+        "rust_cookie_names": [
+          "_campfire_session"
+        ],
+        "ocaml_cookie_names": [],
+        "attributes_equal": []
+      }
+    },
+    {
+      "name": "avatar_delete",
+      "family": "user avatar",
+      "route": 53,
+      "method": "DELETE",
+      "route_pattern": "/users/:user_id/avatar(.:format)",
+      "status": "fail",
+      "rust_status": 302,
+      "ocaml_status": 302,
+      "rust_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "ocaml_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "rust_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "ocaml_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "rust_changed": [
+        "active_storage_attachments",
+        "active_storage_blobs",
+        "active_storage_variant_records",
+        "users"
+      ],
+      "ocaml_changed": [
+        "active_storage_attachments"
+      ],
+      "problems": [
+        "changed tables active_storage_attachments,active_storage_blobs,active_storage_variant_records,users/active_storage_attachments",
+        "state active_storage_attachments",
+        "state active_storage_blobs",
+        "state active_storage_variant_records",
+        "state users"
+      ],
+      "validated_setup_random_state": {
+        "table": "sessions",
+        "column": "token",
+        "row_id": 481019662,
+        "rust_sha256": "19088ecc29ba7c7c1214f2a9a06cc7638857711c453db07e32019d132d3e37be",
+        "ocaml_sha256": "f1d83e7299d88865ecd73e0fdf8ec20d974e5c9a03a60bcd8c42bc356a8463e0",
+        "generator": "base58(24)"
+      }
+    },
+    {
+      "name": "ban_create",
+      "family": "user bans",
+      "route": 55,
+      "method": "POST",
+      "route_pattern": "/users/:user_id/ban(.:format)",
+      "status": "pass",
+      "rust_status": 302,
+      "ocaml_status": 302,
+      "rust_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "ocaml_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "rust_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "ocaml_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "rust_changed": [
+        "action_text_rich_texts",
+        "active_storage_attachments",
+        "active_storage_blobs",
+        "active_storage_variant_records",
+        "boosts",
+        "message_search_index",
+        "message_search_index_content",
+        "message_search_index_data",
+        "message_search_index_docsize",
+        "message_search_index_idx",
+        "messages",
+        "rooms",
+        "users"
+      ],
+      "ocaml_changed": [
+        "action_text_rich_texts",
+        "active_storage_attachments",
+        "active_storage_blobs",
+        "active_storage_variant_records",
+        "boosts",
+        "message_search_index",
+        "message_search_index_content",
+        "message_search_index_data",
+        "message_search_index_docsize",
+        "message_search_index_idx",
+        "messages",
+        "rooms",
+        "users"
+      ],
+      "problems": []
+    },
+    {
+      "name": "ban_delete",
+      "family": "user bans",
+      "route": 54,
+      "method": "DELETE",
+      "route_pattern": "/users/:user_id/ban(.:format)",
+      "status": "pass",
+      "rust_status": 302,
+      "ocaml_status": 302,
+      "rust_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "ocaml_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "rust_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "ocaml_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "rust_changed": [
+        "bans",
+        "users"
+      ],
+      "ocaml_changed": [
+        "bans",
+        "users"
+      ],
+      "problems": []
+    },
+    {
+      "name": "push_subscription_delete",
+      "family": "push subscriptions",
+      "route": 72,
+      "method": "DELETE",
+      "route_pattern": "/users/:user_id/push_subscriptions/:id(.:format)",
+      "status": "pass",
+      "rust_status": 302,
+      "ocaml_status": 302,
+      "rust_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "ocaml_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "rust_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "ocaml_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "rust_changed": [
+        "push_subscriptions"
+      ],
+      "ocaml_changed": [
+        "push_subscriptions"
+      ],
+      "problems": []
+    },
+    {
+      "name": "room_involvement",
+      "family": "room involvement",
+      "route": 93,
+      "method": "PATCH",
+      "route_pattern": "/rooms/:room_id/involvement(.:format)",
+      "status": "pass",
+      "rust_status": 302,
+      "ocaml_status": 302,
+      "rust_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "ocaml_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "rust_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "ocaml_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "rust_changed": [
+        "memberships"
+      ],
+      "ocaml_changed": [
+        "memberships"
+      ],
+      "problems": []
+    },
+    {
+      "name": "open_room_create",
+      "family": "open rooms",
+      "route": 105,
+      "method": "POST",
+      "route_pattern": "/rooms/opens(.:format)",
+      "status": "pass",
+      "rust_status": 302,
+      "ocaml_status": 302,
+      "rust_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "ocaml_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "rust_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "ocaml_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "rust_changed": [
+        "memberships",
+        "rooms"
+      ],
+      "ocaml_changed": [
+        "memberships",
+        "rooms"
+      ],
+      "problems": []
+    },
+    {
+      "name": "open_room_rename",
+      "family": "open rooms",
+      "route": 109,
+      "method": "PATCH",
+      "route_pattern": "/rooms/opens/:id(.:format)",
+      "status": "pass",
+      "rust_status": 302,
+      "ocaml_status": 302,
+      "rust_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "ocaml_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "rust_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "ocaml_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "rust_changed": [
+        "memberships",
+        "rooms"
+      ],
+      "ocaml_changed": [
+        "memberships",
+        "rooms"
+      ],
+      "problems": []
+    },
+    {
+      "name": "closed_room_create",
+      "family": "closed rooms",
+      "route": 113,
+      "method": "POST",
+      "route_pattern": "/rooms/closeds(.:format)",
+      "status": "pass",
+      "rust_status": 302,
+      "ocaml_status": 302,
+      "rust_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "ocaml_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "rust_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "ocaml_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "rust_changed": [
+        "memberships",
+        "rooms"
+      ],
+      "ocaml_changed": [
+        "memberships",
+        "rooms"
+      ],
+      "problems": []
+    },
+    {
+      "name": "closed_room_rename",
+      "family": "closed rooms",
+      "route": 117,
+      "method": "PATCH",
+      "route_pattern": "/rooms/closeds/:id(.:format)",
+      "status": "pass",
+      "rust_status": 302,
+      "ocaml_status": 302,
+      "rust_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "ocaml_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "rust_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "ocaml_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "rust_changed": [
+        "memberships",
+        "rooms"
+      ],
+      "ocaml_changed": [
+        "memberships",
+        "rooms"
+      ],
+      "problems": []
+    },
+    {
+      "name": "direct_room_create",
+      "family": "direct rooms",
+      "route": 121,
+      "method": "POST",
+      "route_pattern": "/rooms/directs(.:format)",
+      "status": "pass",
+      "rust_status": 302,
+      "ocaml_status": 302,
+      "rust_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "ocaml_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "rust_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "ocaml_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "rust_changed": [
+        "memberships",
+        "rooms"
+      ],
+      "ocaml_changed": [
+        "memberships",
+        "rooms"
+      ],
+      "problems": []
+    },
+    {
+      "name": "human_message_create",
+      "family": "human messages",
+      "route": 76,
+      "method": "POST",
+      "route_pattern": "/rooms/:room_id/messages(.:format)",
+      "status": "pass",
+      "rust_status": 200,
+      "ocaml_status": 200,
+      "rust_body": {
+        "length": 9348,
+        "sha256": "1b89c9ffa3912b3d77d9e8d9371b9f539e377b7e3e6b8448599f8dfa508d2b5c"
+      },
+      "ocaml_body": {
+        "length": 9348,
+        "sha256": "1b89c9ffa3912b3d77d9e8d9371b9f539e377b7e3e6b8448599f8dfa508d2b5c"
+      },
+      "rust_safe_headers": {
+        "content-type": [
+          "text/vnd.turbo-stream.html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept,Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "ocaml_safe_headers": {
+        "content-type": [
+          "text/vnd.turbo-stream.html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept,Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "rust_changed": [
+        "action_text_rich_texts",
+        "memberships",
+        "message_search_index",
+        "message_search_index_content",
+        "message_search_index_data",
+        "message_search_index_docsize",
+        "message_search_index_idx",
+        "messages",
+        "push_subscriptions",
+        "rooms"
+      ],
+      "ocaml_changed": [
+        "action_text_rich_texts",
+        "memberships",
+        "message_search_index",
+        "message_search_index_content",
+        "message_search_index_data",
+        "message_search_index_docsize",
+        "message_search_index_idx",
+        "messages",
+        "push_subscriptions",
+        "rooms"
+      ],
+      "problems": []
+    },
+    {
+      "name": "human_message_update",
+      "family": "human messages",
+      "route": 80,
+      "method": "PATCH",
+      "route_pattern": "/rooms/:room_id/messages/:id(.:format)",
+      "status": "pass",
+      "rust_status": 302,
+      "ocaml_status": 302,
+      "rust_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "ocaml_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "rust_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "ocaml_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "rust_changed": [
+        "action_text_rich_texts",
+        "message_search_index",
+        "message_search_index_content",
+        "message_search_index_data",
+        "message_search_index_docsize",
+        "message_search_index_idx",
+        "messages",
+        "rooms"
+      ],
+      "ocaml_changed": [
+        "action_text_rich_texts",
+        "message_search_index",
+        "message_search_index_content",
+        "message_search_index_data",
+        "message_search_index_docsize",
+        "message_search_index_idx",
+        "messages",
+        "rooms"
+      ],
+      "problems": []
+    },
+    {
+      "name": "human_message_delete",
+      "family": "human messages",
+      "route": 82,
+      "method": "DELETE",
+      "route_pattern": "/rooms/:room_id/messages/:id(.:format)",
+      "status": "pass",
+      "rust_status": 200,
+      "ocaml_status": 200,
+      "rust_body": {
+        "length": 99,
+        "sha256": "fbd3fcb86e89b4b1f194e8ac6d85e657cf032c6f214b0b4146b10da01bd2422e"
+      },
+      "ocaml_body": {
+        "length": 99,
+        "sha256": "fbd3fcb86e89b4b1f194e8ac6d85e657cf032c6f214b0b4146b10da01bd2422e"
+      },
+      "rust_safe_headers": {
+        "content-type": [
+          "text/vnd.turbo-stream.html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept,Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "ocaml_safe_headers": {
+        "content-type": [
+          "text/vnd.turbo-stream.html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept,Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "rust_changed": [
+        "action_text_rich_texts",
+        "message_search_index",
+        "message_search_index_content",
+        "message_search_index_data",
+        "message_search_index_docsize",
+        "message_search_index_idx",
+        "messages",
+        "rooms"
+      ],
+      "ocaml_changed": [
+        "action_text_rich_texts",
+        "message_search_index",
+        "message_search_index_content",
+        "message_search_index_data",
+        "message_search_index_docsize",
+        "message_search_index_idx",
+        "messages",
+        "rooms"
+      ],
+      "problems": []
+    },
+    {
+      "name": "human_boost_create",
+      "family": "human boosts",
+      "route": 129,
+      "method": "POST",
+      "route_pattern": "/messages/:message_id/boosts(.:format)",
+      "status": "pass",
+      "rust_status": 302,
+      "ocaml_status": 302,
+      "rust_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "ocaml_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "rust_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "ocaml_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "rust_changed": [
+        "boosts",
+        "message_search_index_data",
+        "message_search_index_idx",
+        "messages",
+        "rooms"
+      ],
+      "ocaml_changed": [
+        "boosts",
+        "message_search_index_data",
+        "message_search_index_idx",
+        "messages",
+        "rooms"
+      ],
+      "problems": []
+    },
+    {
+      "name": "human_boost_delete",
+      "family": "human boosts",
+      "route": 135,
+      "method": "DELETE",
+      "route_pattern": "/messages/:message_id/boosts/:id(.:format)",
+      "status": "pass",
+      "rust_status": 204,
+      "ocaml_status": 204,
+      "rust_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "ocaml_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "rust_safe_headers": {
+        "content-type": [],
+        "vary": [
+          "Accept-Encoding"
+        ]
+      },
+      "ocaml_safe_headers": {
+        "content-type": [],
+        "vary": [
+          "Accept-Encoding"
+        ]
+      },
+      "rust_changed": [
+        "boosts",
+        "message_search_index_data",
+        "message_search_index_idx",
+        "messages",
+        "rooms"
+      ],
+      "ocaml_changed": [
+        "boosts",
+        "message_search_index_data",
+        "message_search_index_idx",
+        "messages",
+        "rooms"
+      ],
+      "problems": []
+    },
+    {
+      "name": "bot_message_create",
+      "family": "bot messages",
+      "route": 86,
+      "method": "POST",
+      "route_pattern": "/rooms/:room_id/:bot_key/messages(.:format)",
+      "status": "pass",
+      "rust_status": 201,
+      "ocaml_status": 201,
+      "rust_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "ocaml_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "rust_safe_headers": {
+        "content-type": [
+          "application/json"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "ocaml_safe_headers": {
+        "content-type": [
+          "application/json"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "rust_changed": [
+        "action_text_rich_texts",
+        "memberships",
+        "message_search_index",
+        "message_search_index_content",
+        "message_search_index_data",
+        "message_search_index_docsize",
+        "message_search_index_idx",
+        "messages",
+        "push_subscriptions",
+        "rooms"
+      ],
+      "ocaml_changed": [
+        "action_text_rich_texts",
+        "memberships",
+        "message_search_index",
+        "message_search_index_content",
+        "message_search_index_data",
+        "message_search_index_docsize",
+        "message_search_index_idx",
+        "messages",
+        "push_subscriptions",
+        "rooms"
+      ],
+      "problems": [],
+      "validated_random_state": {
+        "column": "client_message_id",
+        "generator": "UUIDv4",
+        "row_id": 933434638,
+        "rust_sha256": "61c9a4b1aa99eec7a3db3c3c0d658a5653d8d4ca261374824a452029feb28483",
+        "ocaml_sha256": "79e8d13e43fbd71292e134657b93de04457552a706f042438ad396bd3017d4b9"
+      }
+    },
+    {
+      "name": "bot_message_update",
+      "family": "bot messages",
+      "route": 87,
+      "method": "PATCH",
+      "route_pattern": "/rooms/:room_id/:bot_key/messages/:id(.:format)",
+      "status": "pass",
+      "rust_status": 200,
+      "ocaml_status": 200,
+      "rust_body": {
+        "length": 543,
+        "sha256": "0d1660ff291fb3b88683c2dfeecef028b2025bf7cf8621a0e148a1051b0634c7"
+      },
+      "ocaml_body": {
+        "length": 543,
+        "sha256": "0d1660ff291fb3b88683c2dfeecef028b2025bf7cf8621a0e148a1051b0634c7"
+      },
+      "rust_safe_headers": {
+        "content-type": [
+          "application/json; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "ocaml_safe_headers": {
+        "content-type": [
+          "application/json; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "rust_changed": [
+        "action_text_rich_texts",
+        "message_search_index",
+        "message_search_index_content",
+        "message_search_index_data",
+        "message_search_index_docsize",
+        "message_search_index_idx",
+        "messages",
+        "rooms"
+      ],
+      "ocaml_changed": [
+        "action_text_rich_texts",
+        "message_search_index",
+        "message_search_index_content",
+        "message_search_index_data",
+        "message_search_index_docsize",
+        "message_search_index_idx",
+        "messages",
+        "rooms"
+      ],
+      "problems": []
+    },
+    {
+      "name": "bot_boost_create",
+      "family": "bot boosts",
+      "route": 83,
+      "method": "POST",
+      "route_pattern": "/rooms/:room_id/:bot_key/messages/:message_id/boosts(.:format)",
+      "status": "pass",
+      "rust_status": 201,
+      "ocaml_status": 201,
+      "rust_body": {
+        "length": 423,
+        "sha256": "f3e5c046ade0117edc2dd6223cd2b3c3db5ecef1bbe6f12a45994da1ff9cce59"
+      },
+      "ocaml_body": {
+        "length": 423,
+        "sha256": "f3e5c046ade0117edc2dd6223cd2b3c3db5ecef1bbe6f12a45994da1ff9cce59"
+      },
+      "rust_safe_headers": {
+        "content-type": [
+          "application/json; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "ocaml_safe_headers": {
+        "content-type": [
+          "application/json; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "rust_changed": [
+        "boosts",
+        "message_search_index_data",
+        "message_search_index_idx",
+        "messages",
+        "rooms"
+      ],
+      "ocaml_changed": [
+        "boosts",
+        "message_search_index_data",
+        "message_search_index_idx",
+        "messages",
+        "rooms"
+      ],
+      "problems": []
+    },
+    {
+      "name": "search_clear",
+      "family": "searches",
+      "route": 144,
+      "method": "DELETE",
+      "route_pattern": "/searches/clear(.:format)",
+      "status": "pass",
+      "rust_status": 302,
+      "ocaml_status": 302,
+      "rust_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "ocaml_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "rust_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "ocaml_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "rust_changed": [
+        "searches"
+      ],
+      "ocaml_changed": [
+        "searches"
+      ],
+      "problems": []
+    },
+    {
+      "name": "search_create",
+      "family": "searches",
+      "route": 146,
+      "method": "POST",
+      "route_pattern": "/searches(.:format)",
+      "status": "pass",
+      "rust_status": 302,
+      "ocaml_status": 302,
+      "rust_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "ocaml_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "rust_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "ocaml_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "rust_changed": [
+        "searches"
+      ],
+      "ocaml_changed": [
+        "searches"
+      ],
+      "problems": []
+    },
+    {
+      "name": "session_logout",
+      "family": "sessions",
+      "route": 16,
+      "method": "DELETE",
+      "route_pattern": "/session(.:format)",
+      "status": "pass",
+      "rust_status": 302,
+      "ocaml_status": 302,
+      "rust_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "ocaml_body": {
+        "length": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "rust_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "ocaml_safe_headers": {
+        "content-type": [
+          "text/html; charset=utf-8"
+        ],
+        "vary": [
+          "Accept-Encoding",
+          "Accept-Encoding"
+        ]
+      },
+      "rust_changed": [
+        "sessions"
+      ],
+      "ocaml_changed": [
+        "sessions"
+      ],
+      "problems": []
+    }
+  ]
+}

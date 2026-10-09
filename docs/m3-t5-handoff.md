@@ -2,7 +2,7 @@
 
 The implementation is `lib/http_cache.ml`, integrated through `lib/http_app.ml`
 and the eligible room/message/search controllers. Its focused suite is
-`test/m3_t5_test.ml` (13 passing cases). It was read against pinned Rust
+`test/m3_t5_test.ml` (15 passing cases). It was read against pinned Rust
 `crates/kit/src/ctx.rs`, `crates/kit/src/front/cache.rs`,
 `crates/kit/src/front/handler.rs`, `crates/campfire/src/response_cache.rs`,
 and the room/message controller route tests. M3-T5 stays open for the gaps below.
@@ -100,31 +100,40 @@ HTTP/state rerun and conditional/public/private cache route scenarios.
 
 ## Open parity work
 
-1. Integrate remaining controller-specific cache keys and page-part digests
-   for rooms/messages and template/frame/flash etaggers.
-   `Controller_rooms.message_index` now uses `Http_cache.rendered_freshness`
-   for the pinned `messages#index` byte-body fallback: SHA-256 of rendered
-   bytes, template `messages/index`, an optional nonblank Turbo frame etagger,
-   and no `Last-Modified`. The scoped seed test checks its 304 GET, HEAD
-   validator and identity length, and IMS-only 200. Current views do not
-   expose page-part digests; a room page still gets a Rack body digest.
-   `Http_cache.Page_parts.of_offsets` now matches the pinned Rust whole/mixed
-   splice ETag vectors exactly. It requires renderer-recorded fragment byte
-   offsets and applies Rust's 1024-byte minimum fragment and 256-byte glue
-   threshold. Current `Views.room_show` returns one string and exposes no
-   offsets or parts, so the room route still gets Rack's whole-body ETag and
-   one materialized body. Integration requires a renderer seam and frame
-   transport work; deriving offsets by searching final HTML is unsafe when
-   identical fragments repeat. Account avatar/logo handlers already set record-key validators; no-account
-   logo must omit ETag, which was sent to M3-T2.
-2. Compare exact route headers and body frames with pinned Rust/Rails after
-   M4 views, M5 live responses and M6 storage streams settle. Pinned Rust
-   `rooms/tests.rs::pages_of_messages_go_out_in_parts` requires over 40 body
-   frames, identical plain/gzip/HEAD ETags, plain `Content-Length`, and no gzip
-   `Content-Length`; this OCaml stack currently materializes those pages as a
-   string. Pinned `messages/tests.rs::index_pages_with_conditional_gets`
-   requires a weak ETag, 304 and no `Last-Modified`; the focused room route
-   confirms those response semantics, but does not claim exact message-page parity.
+1. Align the remaining room-show view bytes on signed rows 95 and 100, then
+   rerun exact ETag/body parity. `Views.room_show_recorded` and
+   `Views.message_index_recorded` now supply explicit fragment byte offsets.
+   `Controller_rooms.recorded_html` uses `Http_cache.Page_parts.splice` for
+   Rust-compatible part ETags and identity body chunks. Messages#index
+   combines its raw part digest with template, frame and flash etaggers and
+   omits `Last-Modified`; a fresh no-store conditional returns an early 304
+   with `Vary: Accept-Encoding`, matching pinned Rust. A page with no large
+   fragment falls back to Rack's whole-body digest. The pinned whole/mixed
+   splice vectors pass; no offsets are inferred by searching rendered HTML.
+2. The recorded PageParts gzip path now writes one raw `Z_SYNC_FLUSH` deflate
+   piece per text or fragment, using the prior part's last 32 KiB as its
+   dictionary, then a final empty block and combined CRC/length. `Http_app`
+   passes the controller's recorded parts to `Http_gzip`; ordinary responses
+   retain the existing whole-body gzip path. The focused 30-message vector
+   checks header, mtime, decompression, 32 flush boundaries and a stable libz
+   digest. The seeded 40-message room and index each have over 40 flush
+   boundaries and decompress exactly to their identity bodies; HEAD, ETag,
+   conditional and private-cache assertions remain green. This was an offline
+   source/seed test; a new live pinned route check has not run yet.
+
+   Exact compressed bytes remain different. Pinned Rust uses flate2's
+   `zlib-rs` compressor, whereas this OCaml port uses the installed libz.
+   An isolated identical level-6 raw deflate of the first message fragment
+   with the same dictionary and sync flush is 87 bytes in `zlib-rs` and 81
+   bytes in libz. The 30-message pinned Rust gzip SHA-256 is
+   `20bebddcfa29cdde1b76e1572479c130eb4cfd9bfb0e032e5332a2e3b453cfe3`;
+   the new libz partwise member's SHA-256 is
+   `08ef761b5374d9b4e2ebb35d2f4743a893b47150dc53d0304ce383e7aef428bd`.
+   Compressed-byte parity therefore requires the Rust compressor or an
+   equivalent port; current route semantics do not require it.
+3. Complete the conditional/public/private route gate after view bytes and
+   storage streams settle. Account avatar/logo validators are handled by
+   M3-T2; exact sidebar body bytes belong to view parity.
 
 ## 2026-10-09 offline flash, Vary and finite-body gate
 
@@ -155,12 +164,48 @@ SHA-256/HEAD length for a 3 MiB regression. Stream bodies are marked
 file routes keep their explicit length/Last-Modified or model validator, as
 in pinned Rust `kit/ctx.rs::rack_etag` (Bytes/Parts only).
 
-The thirteen tests exercise actual SHA-256 bytes, 304/HEAD/empty body behavior,
+## 2026-10-09 recorded PageParts live gate
+
+The immutable OCaml build `ec3b563d4e84105a8e9b187d5db148de57c863607e9541d2264ed8da88bbc6ad`
+was compared with the pinned Rust candidate on separate disposable default
+seeds at `2026-03-02T16:00:00Z`. Raw signed test-fixture bodies and redacted
+request/response metadata are mode 0600 in `/tmp/m3-t5-pageparts-capture/`;
+the source hash snapshot is `/tmp/m3-t5-live-3382-source.sha256`. All own
+identity/gzip GETs were 200, all HEADs had the identity validator and length,
+all own-validator conditionals were 304, and gzip decoded to each own identity
+body. Gzip GETs had no `Content-Length` and used chunked transfer.
+
+| Route | Rust identity | OCaml identity | ETag | Rust/OCaml gzip bytes |
+| --- | ---: | ---: | --- | ---: |
+| Row 75 message index | 382,814 | 382,814 | Exact `W/"7693faa7e480145fc0d639c2e8494395"` | 17,457 / 13,727 |
+| Row 95 room at message | 416,349 | 414,389 | Derived mismatch | 24,275 / 20,568 |
+| Row 100 room show | 416,349 | 414,389 | Derived mismatch | 24,275 / 20,568 |
+
+Row 75 identity SHA-256 matches exactly on both servers:
+`63968eae7b9687518ba62b5855a81324cccfe6bb6fd1d07cff004fc23daf95b8`.
+The 1,960-byte room residual was sent to M4-T2 with the raw captures. The
+no-store OCaml seeded route preserves 81 body chunks for the 40-message room
+and 80 for its index; the pinned Rust router test requires more than 40.
+HTTP/1 sends identity with `Content-Length` and no chunk delimiters, so raw
+TCP reads cannot establish Rust's internal frame count. Ordinary initial
+private-cache misses and hits materialize bounded completed bodies, as in
+pinned Rust `response_cache::completed`; the pinned frame test uses `no-store`.
+
+The first live candidate returned `Vary: Accept` on row 75 conditional 304,
+where Rust returned `Accept-Encoding`. After an early `fresh_when` 304 fix,
+immutable OCaml build `2da35ad8b04d5449fccb1b3129ec34126bfa39e8bc2677c643632c372949ac4b`
+matched Rust on row 75 identity GET and conditional status, body, ETag,
+`Content-Length`, and `Vary`. That focused result is in
+`/tmp/m3-t5-pageparts-capture/conditional-v2.json`; source hashes are in
+`/tmp/m3-t5-live-3382-v2-source.sha256`. Both disposable servers and their
+isolated containers were stopped after capture.
+
+The fourteen tests exercise actual SHA-256 bytes, 304/HEAD/empty body behavior,
 date and directive formatting, public eligibility, Vary/URI/limit checks,
 private ticket isolation and generation/TTL/size rejection, a public QR route
 miss/hit/304/Range bypass, and pinned Rails seed room/sidebar routes through
 private hits, message-index conditional GET/HEAD, identity/gzip lengths, streamed HEAD,
 SQLite commit invalidation and session revocation.
-`dune exec --build-dir _build_m3_t5 ./test/m3_t5_test.exe` passed 13/13;
+`dune exec --build-dir _build_m3_t5 ./test/m3_t5_test.exe` passed 14/14;
 M3-T3 focused suite passed 9/9 after message-index integration. These are
 targeted route checks, not full body/header parity.

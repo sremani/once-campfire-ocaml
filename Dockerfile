@@ -26,7 +26,15 @@ WORKDIR /src
 COPY . .
 RUN dune build --profile release bin/main.exe bin/front.exe && \
     install -D -m 755 _build/default/bin/main.exe /out/campfire && \
-    install -D -m 755 _build/default/bin/front.exe /out/campfire-front
+    install -D -m 755 _build/default/bin/front.exe /out/campfire-front && \
+    dpkg-query -W --showformat='${Package}\t${Version}\t${Architecture}\n' \
+      > /out/build-packages.tsv && \
+    mkdir -p /out/build-copyrights && \
+    dpkg-query -W --showformat='${Package}\n' | \
+      while IFS= read -r package; do \
+        cp -L "/usr/share/doc/${package}/copyright" \
+          "/out/build-copyrights/${package}.copyright" || exit 1; \
+      done
 
 FROM ${DEBIAN_IMAGE}
 ARG CADDY_VERSION=2.6.2-12+deb13u1
@@ -47,6 +55,8 @@ COPY --chmod=644 LICENSE /usr/share/doc/once-campfire-ocaml/LICENSE
 COPY --chmod=644 vendor/cable_websocket/LICENSE.md /usr/share/doc/once-campfire-ocaml/CABLE-WEBSOCKET-LICENSE.md
 COPY --chmod=644 vendor/gumbo/LICENSE-DEPENDENCIES.md /usr/share/doc/once-campfire-ocaml/GUMBO-LICENSE-DEPENDENCIES.md
 COPY --chmod=644 vendor/gumbo/provenance.json /usr/share/doc/once-campfire-ocaml/GUMBO-PROVENANCE.json
+COPY --from=build --chmod=644 /out/build-packages.tsv /usr/share/doc/once-campfire-ocaml/build-packages.tsv
+COPY --from=build --chmod=644 /out/build-copyrights/ /usr/share/doc/once-campfire-ocaml/build-copyrights/
 COPY --chmod=755 deploy/boot /rails/bin/boot
 COPY --chmod=755 hooks/pre-backup /hooks/pre-backup
 COPY --chmod=755 hooks/post-restore /hooks/post-restore

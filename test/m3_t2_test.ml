@@ -12,6 +12,25 @@ let cookie response =
 let now = "2026-10-08T12:00:00Z"
 let secret = String.make 64 't'
 
+let flash_notice response =
+  let header = Cohttp.Header.get_multi (Cohttp.Response.headers response) "set-cookie"
+    |> List.find (String.starts_with ~prefix:"_campfire_session=") in
+  let raw = Cookie_http.parse_header header
+    |> Cookie_http.find "_campfire_session" |> Option.get in
+  let data = Encrypted_cookie.decrypt ~secret_key_base:secret
+    ~name:"_campfire_session" ~raw ~now |> Option.get in
+  match data with
+  | `Assoc fields ->
+      (match List.assoc_opt "flash" fields with
+       | Some (`Assoc flash) ->
+           (match List.assoc_opt "flashes" flash with
+            | Some (`Assoc values) ->
+                (match List.assoc_opt "notice" values with
+                 | Some (`String value) -> value | _ -> failwith "notice missing")
+            | _ -> failwith "flashes missing")
+       | _ -> failwith "flash missing")
+  | _ -> failwith "session object missing"
+
 let rec reference_root path remaining =
   if remaining = 0 then failwith "pinned Rust reference checkout not found"
   else let candidate = Filename.concat path "once-campfire-rust" in
@@ -35,7 +54,8 @@ let with_seed variant f =
       [temporary;temporary^"-wal";temporary^"-shm"])
     (fun () -> f runtime)
 
-let send ?cookie_header ?accept ?turbo_frame ?range ?(content_type="application/x-www-form-urlencoded")
+let send ?cookie_header ?accept ?turbo_frame ?range ?if_none_match ?(at=now)
+    ?(content_type="application/x-www-form-urlencoded")
     ?(body="") runtime meth path =
   let headers = ["host","chat.example.com";
     "content-type",content_type;
@@ -49,10 +69,12 @@ let send ?cookie_header ?accept ?turbo_frame ?range ?(content_type="application/
     | None -> headers | Some value -> ("turbo-frame",value)::headers in
   let headers = match range with
     | None -> headers | Some value -> ("range",value)::headers in
+  let headers = match if_none_match with
+    | None -> headers | Some value -> ("if-none-match",value)::headers in
   let request = Cohttp.Request.make ~meth ~headers:(Cohttp.Header.of_list headers)
     (Uri.of_string ("https://chat.example.com"^path)) in
   let response, body = Lwt_main.run (Http_app.handle ~runtime ~secret_key_base:secret
-    ~now ~ssl:true ~force_ssl:true ~dispatch:Controller_accounts.endpoint
+    ~now:at ~ssl:true ~force_ssl:true ~dispatch:Controller_accounts.endpoint
     request (Cohttp_lwt.Body.of_string body)) in
   response, Lwt_main.run (Cohttp_lwt.Body.to_string body)
 
@@ -130,9 +152,15 @@ let test_session_account_and_join () = with_seed "default" (fun runtime ->
   let updated,_ = send ~cookie_header:admin_cookie ~body:"account%5Bname%5D=Campfire+OCaml"
     runtime `PATCH "/account" in
   Alcotest.(check int) "administrator update" 302 (status updated);
+  Alcotest.(check string) "account update flash notice" "✓" (flash_notice updated);
   Db_runtime.read runtime (fun db ->
     Alcotest.(check string) "account persisted" "Campfire OCaml"
       (Option.get (Db_accounts.Account.first db)).name);
+  let styles,_ = send ~cookie_header:admin_cookie
+    ~body:"account%5Bcustom_styles%5D=body%7Bcolor%3Ared%7D"
+    runtime `PATCH "/account/custom_styles" in
+  Alcotest.(check int) "custom styles update" 302 (status styles);
+  Alcotest.(check string) "custom styles flash notice" "✓" (flash_notice styles);
 
   let member_cookie = mint_session runtime 712064548L in
   let denied,_ = send ~cookie_header:member_cookie ~body:"account%5Bname%5D=Wrong"
@@ -168,6 +196,34 @@ let test_first_run () = with_seed "first_run" (fun runtime ->
   let repeated,_ = send runtime `GET "/first_run" in
   Alcotest.(check int) "setup cannot repeat" 302 (status repeated))
 
+let test_first_run_stock_logo_cache () =
+  with_seed "first_run" (fun runtime ->
+    Alcotest.(check int) "first-run seed has no account" 0
+      (Db_runtime.read runtime Db_accounts.Account.count);
+    let large,body=send runtime `GET "/account/logo" in
+    let headers=Cohttp.Response.headers large in
+    Alcotest.(check int) "public stock logo" 200 (status large);
+    check "stock logo has body" (String.length body > 100);
+    Alcotest.(check (option string)) "stock logo MIME"
+      (Some "image/png") (Cohttp.Header.get headers "content-type");
+    Alcotest.(check (option string)) "stock logo cache policy"
+      (Some "max-age=300, public, stale-while-revalidate=604800")
+      (Cohttp.Header.get headers "cache-control");
+    check "no account means no logo ETag"
+      (not (Cohttp.Header.mem headers "etag"));
+    let small,small_body=send ~if_none_match:"*" runtime `GET
+      "/account/logo?size=small" in
+    Alcotest.(check int) "stock icon ignores wildcard validator" 200
+      (status small);
+    check "small stock icon has body" (String.length small_body > 100);
+    check "small no-account icon has no ETag"
+      (not (Cohttp.Header.mem (Cohttp.Response.headers small) "etag")));
+  with_seed "default" (fun runtime ->
+    let present,_=send runtime `GET "/account/logo" in
+    Alcotest.(check int) "account stock logo" 200 (status present);
+    check "account-backed logo retains validator"
+      (Cohttp.Header.mem (Cohttp.Response.headers present) "etag"))
+
 let test_roles_bots_profile_and_bans () = with_seed "default" (fun runtime ->
   let admin = mint_session runtime 127326141L in
   let member = mint_session runtime 712064548L in
@@ -199,6 +255,7 @@ let test_roles_bots_profile_and_bans () = with_seed "default" (fun runtime ->
     ~body:"user%5Bname%5D=Kevin+Edited&user%5Bbio%5D=Working+here"
     runtime `PATCH "/users/me/profile" in
   Alcotest.(check int) "self profile update" 302 (status updated);
+  Alcotest.(check string) "profile update flash notice" "✓" (flash_notice updated);
   Db_runtime.read runtime (fun db ->
     let user = Db_accounts.User.find db 712064548L in
     Alcotest.(check string) "profile name" "Kevin Edited" user.name;
@@ -478,13 +535,88 @@ let test_avatar_file_headers () = with_seed "default" (fun runtime ->
       (String.length partial);
     Alcotest.(check (option string)) "range send_file encoding"
       (Some "binary") (Cohttp.Header.get (Cohttp.Response.headers ranged)
-        "content-transfer-encoding")))
+        "content-transfer-encoding");
+    let image=Option.get (Storage_image.existing_variant runtime blob variation) in
+    let avatar_attachment,variant_record,variant_attachment=
+      Db_runtime.read runtime (fun db ->
+        let avatar_attachment=Option.get
+          (Db_remaining.Attachment.find_for db ~record_type:"User"
+            ~record_id:149087659L ~name:"avatar") in
+        let variant_record=Option.get
+          (Db_remaining.Variant_record.find_for db ~blob_id:blob.id
+            ~variation_digest:(Storage_variation.digest variation)) in
+        let variant_attachment=Option.get
+          (Db_remaining.Attachment.find_for db
+            ~record_type:"ActiveStorage::VariantRecord"
+            ~record_id:variant_record.id ~name:"image") in
+        avatar_attachment,variant_record,variant_attachment) in
+    let image_path=Storage_disk.path_for service image.key in
+    let source_path=Storage_disk.path_for service blob.key in
+    let before=Db_runtime.read runtime (fun db ->
+      (Db_accounts.User.find db 149087659L).updated_at) in
+    let jason=mint_session runtime 149087659L in
+    Db_runtime.write runtime (fun tx ->
+      ignore (Db_runtime.execute (Db_runtime.conn tx)
+        "CREATE TRIGGER avatar_touch_fail BEFORE UPDATE OF updated_at ON users BEGIN SELECT RAISE(ABORT, 'touch failed'); END"
+        []));
+    let rolled_back,_=send ~cookie_header:jason runtime `DELETE
+      (avatar 149087659) in
+    Alcotest.(check int) "failed touch rolls back destroy" 500
+      (status rolled_back);
+    Db_runtime.read runtime (fun db ->
+      check "avatar attachment retained after rollback"
+        (Option.is_some (Db_remaining.Attachment.find_for db
+          ~record_type:"User" ~record_id:149087659L ~name:"avatar"));
+      Alcotest.(check string) "failed touch keeps user timestamp" before
+        (Db_accounts.User.find db 149087659L).updated_at);
+    check "rollback keeps avatar file" (Sys.file_exists source_path);
+    check "rollback keeps variant file" (Sys.file_exists image_path);
+    Db_runtime.write runtime (fun tx ->
+      ignore (Db_runtime.execute (Db_runtime.conn tx)
+        "DROP TRIGGER avatar_touch_fail" []));
+    let deleted,_=send ~cookie_header:jason runtime `DELETE
+      (avatar 149087659) in
+    Alcotest.(check int) "avatar delete redirect" 302 (status deleted);
+    Db_runtime.read runtime (fun db ->
+      let absent table id =
+        Db_runtime.query_one db
+          ("SELECT 1 FROM " ^ table ^ " WHERE id=? LIMIT 1")
+          [Sqlite3.Data.INT id] (fun _ -> ()) = None in
+      check "source avatar attachment gone"
+        (Db_remaining.Attachment.find_for db ~record_type:"User"
+          ~record_id:149087659L ~name:"avatar" = None);
+      check "source attachment row gone"
+        (absent "active_storage_attachments" avatar_attachment.id);
+      check "variant attachment row gone"
+        (absent "active_storage_attachments" variant_attachment.id);
+      check "source avatar blob gone" (absent "active_storage_blobs" blob.id);
+      check "variant blob gone" (absent "active_storage_blobs" image.id);
+      check "variant record row gone"
+        (absent "active_storage_variant_records" variant_record.id);
+      check "variant record gone"
+        (Db_remaining.Variant_record.find_for db ~blob_id:blob.id
+          ~variation_digest:(Storage_variation.digest variation) = None);
+      let updated=(Db_accounts.User.find db 149087659L).updated_at in
+      check "avatar deletion touched user" (updated <> before);
+      Alcotest.(check string) "avatar touch time"
+        (Db_time.of_rfc3339 now) updated);
+    check "source avatar file gone" (not (Sys.file_exists source_path));
+    check "variant avatar file gone" (not (Sys.file_exists image_path));
+    let again,_=send ~cookie_header:jason
+      ~at:"2026-10-08T12:05:00Z" runtime `DELETE (avatar 149087659) in
+    Alcotest.(check int) "missing avatar destroy still redirects" 302
+      (status again);
+    Db_runtime.read runtime (fun db ->
+      Alcotest.(check string) "missing attachment does not touch user"
+        (Db_time.of_rfc3339 now)
+        (Db_accounts.User.find db 149087659L).updated_at)))
 
 let () = Alcotest.run "M3-T2 onboarding and account controllers" [
   "routes",[Alcotest.test_case "all 73 route rows" `Quick test_route_inventory];
   "fixture HTTP",[
     Alcotest.test_case "session, administration, join" `Quick test_session_account_and_join;
     Alcotest.test_case "first run" `Quick test_first_run;
+    Alcotest.test_case "first-run stock logo cache" `Quick test_first_run_stock_logo_cache;
     Alcotest.test_case "roles, bots, profile, bans" `Quick test_roles_bots_profile_and_bans;
     Alcotest.test_case "sidebar page or frame" `Quick test_sidebar_response_mode;
     Alcotest.test_case "transfer and push" `Quick test_transfer_and_push;

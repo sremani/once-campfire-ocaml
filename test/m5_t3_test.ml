@@ -80,6 +80,36 @@ let valid_subscription id =
     p256dh_key=Some (string json "p256dh");
     auth_key=Some (string json "auth") }
 
+let test_strict_subscription_base64 () =
+  let decode=Web_push_crypto.decode64 in
+  List.iter (fun value -> Alcotest.(check (result string string))
+    ("canonical "^value) (Ok "A")
+    (Result.map_error (fun _ -> "bad") (decode value)))
+    ["QQ";"QQ=="];
+  let mixed=decode "a+b_" and urlsafe=decode "a-b_" in
+  Alcotest.(check bool) "mixed standard and URL-safe alphabets" true
+    (mixed=urlsafe && Result.is_ok mixed);
+  let seeded_firefox_key=
+    "BFirefoxKeyRIXcMgkdjhRnFZaYjjGvo00dydRQbCpQTuXFjLaCPSE7ofxi19awgGc3Doqa1RmYQqsbQDfQTifFZgc" in
+  List.iter (fun value -> Alcotest.(check bool)
+    ("reject noncanonical "^value) true (Result.is_error (decode value)))
+    ["QR";"QR==";"QQ=";"QQ===";"QQ\n";"Q Q";seeded_firefox_key];
+  let subscription={ (valid_subscription 782661004L) with
+    endpoint=Some "https://updates.push.services.mozilla.com/wpush/v2/parity-firefox";
+    p256dh_key=Some seeded_firefox_key;auth_key=Some "firefoxAuthKeyAAAAAAAAA"} in
+  let outbound_called=ref false in
+  let result=Web_push.deliver ~resolve:(fun _ -> Some "142.250.185.206")
+    ~outbound:(fun _ -> outbound_called:=true;
+      Ok {Web_push.status=201;reason="Created"})
+    ~vapid:(fixture_vapid ()) ~now:1700000000
+    {Web_push.title="Designers";body="message";path="/rooms/1";badge=0L;
+     subscription} in
+  Alcotest.(check bool) "seeded Firefox is argument error" true
+    (result=Error (Web_push.Argument "invalid base64"));
+  Alcotest.(check bool) "argument error retains subscription" false
+    (Web_push.invalidates_subscription (Web_push.Argument "invalid base64"));
+  Alcotest.(check bool) "malformed Firefox key never sends" false !outbound_called
+
 let test_payload_and_safety () =
   let json=expected () in
   let n={Web_push.title="Designers <&> \"quotes\" é 😀";
@@ -205,7 +235,9 @@ let test_pool_order_and_invalidation () =
 let () = Alcotest.run "M5-T3 jobs and Web Push" [
   "crypto",[Alcotest.test_case "RFC 8291 vector" `Quick test_rfc_vector;
     Alcotest.test_case "Rails gem ciphertext" `Quick test_gem_ciphertext;
-    Alcotest.test_case "VAPID fixture" `Quick test_vapid];
+    Alcotest.test_case "VAPID fixture" `Quick test_vapid;
+    Alcotest.test_case "strict seeded subscription Base64" `Quick
+      test_strict_subscription_base64];
   "wire",[Alcotest.test_case "Rails payload and safety" `Quick test_payload_and_safety;
     Alcotest.test_case "pinned delivery" `Quick test_delivery_wire];
   "limits",[Alcotest.test_case "jobs" `Quick test_jobs_limits_and_isolation;

@@ -61,6 +61,17 @@ let remember_room c id =
 
 let room_path id = "/rooms/" ^ Int64.to_string id
 let room_message_path room_id id = room_path room_id ^ "/messages/" ^ Int64.to_string id
+let recorded_html ?context (page : Views.recorded_page) =
+  let reply,_ = H.html ~status:200 page.body in
+  match Http_cache.Page_parts.splice ~text:page.text page.fragments with
+  | None -> reply, Cohttp_lwt.Body.of_string page.body,
+      Http_cache.hex (Http_cache.sha256 page.body)
+  | Some parts ->
+      Option.iter (fun c -> c.H.page_parts <- Some parts) context;
+      let validator=Http_cache.Page_parts.etag parts in
+      let headers=Cohttp.Header.replace (Cohttp.Response.headers reply)
+        "etag" ("W/\"" ^ validator ^ "\"") in
+      {reply with headers}, Http_cache.Page_parts.body parts, validator
 let room_sidebar_html (room : R.Room.t) =
   let name = Option.value room.name ~default:"" |> Ruby_compat.html_escape in
   let id = Cable_broadcasts.room_dom_id room "list" in
@@ -146,12 +157,13 @@ let room_show c = room_or_root c (fun room ->
   let messages_stream_name = Turbo_stream.signed_stream_name
     ~secret_key_base:c.H.secret_key_base
     [Cable_channels.room_param room; "messages"] in
-  response (H.html ~status:200
-    (Views.room_show ~context ~room:room_view ~messages ~messages_stream_name
+  let page=Views.room_show_recorded ~context ~room:room_view ~messages ~messages_stream_name
       ?invitation_join_code:(if invitation then
         Option.map (fun (row : Db_accounts.Account.t) -> row.join_code) account
         else None)
-      ())))
+      () in
+  let reply,body,_=recorded_html ~context:c page in
+  response (reply,body))
 let room_destroy c = room_or_root c (fun room ->
   if not (can_admin c room.R.Room.creator_id) then head 403 else
   write c (fun tx ->
@@ -349,9 +361,20 @@ let message_index c = scope_or_404 c (fun _ room ->
   | None ->
   read c (fun db -> List.map (View_presenter.message c db room) messages)
   >>= fun messages ->
-  Http_cache.rendered_freshness ~request:c.H.request
-    ~template:"messages/index"
-    (H.html ~status:200 (Views.message_index messages |> Views.render)))
+  let page=Views.message_index_recorded messages in
+  let reply,body,validator=recorded_html ~context:c page in
+  let frame=match H.header c "turbo-frame" with
+    | Some id -> String.trim id <> "" | None -> false in
+  let flash=Http_cache.flash_etaggers (H.flash c) in
+  let headers,_,fresh=Http_cache.fresh_when ~frame ~flash ~template:"messages/index"
+    ~validator c.H.request (Cohttp.Response.headers reply) in
+  let headers=Cohttp.Header.remove headers "last-modified" in
+  if fresh then
+    let headers=Cohttp.Header.remove headers "content-type"
+      |> fun headers -> Cohttp.Header.remove headers "content-length" in
+    response (Cohttp.Response.make ~status:`Not_modified ~headers (),
+      Cohttp_lwt.Body.empty)
+  else response ({reply with headers},body))
 type attachment_change = Keep_attachment | Remove_attachment
   | Upload_attachment of Http_params.upload | Invalid_attachment
 
@@ -632,7 +655,7 @@ let bot_create c = bot_room c (fun room ->
       deliver_webhooks_to_bots c room message >>= fun () ->
       let location = absolute c ("/messages/" ^ Int64.to_string message.M.Message.id) in
       response (H.respond ~headers:["location",location] ~status:201
-        ~content_type:"text/html; charset=utf-8" ""))
+        ~content_type:"application/json" ""))
 let bot_update c = bot_room c (fun room ->
   bot_message c room "id" (fun message ->
     if not (can_admin c message.M.Message.creator_id) then head 403 else

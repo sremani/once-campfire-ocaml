@@ -153,12 +153,20 @@ val message_boosts : message -> fragment
 val message_new_boost : context:context -> message:message -> user:user -> fragment
 val message_room_not_found : fragment
 val message_index : message list -> fragment
+type recorded_page = {
+  body:string;
+  text:string;
+  fragments:(int * string) list;
+}
+val message_index_recorded : message list -> recorded_page
 val message_show : context:context -> message -> string
 val message_edit : context:context -> message -> string
 val message_json : ?base_url:string -> ?plain_text_body:string -> message -> string
 val boost_json : base_url:string -> room_id:int64 -> created_at:string -> boost -> string
 val room_show : context:context -> room:room -> messages:message list ->
   messages_stream_name:string -> ?invitation_join_code:string -> unit -> string
+val room_show_recorded : context:context -> room:room -> messages:message list ->
+  messages_stream_name:string -> ?invitation_join_code:string -> unit -> recorded_page
 val search_index : context:context -> query:string ->
   results:message list -> string
 val search_index_with : context:context -> query:string -> ?q:string ->

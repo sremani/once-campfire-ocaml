@@ -39,6 +39,7 @@ type context = {
   cache_generation : int64 option;
   mutable private_ticket : Http_cache.Private.ticket option;
   mutable private_hit : bool;
+  mutable page_parts : Http_cache.Page_parts.part list option;
   secret_key_base : string;
   remote_ip : string;
   now : string;
@@ -362,13 +363,15 @@ let commit ctx (response, body) =
       let host = Option.value (header ctx "host") ~default:"localhost" in
       Cookie_http.set_cookie_headers ctx.cookies ~ssl:ctx.ssl ~host in
     let headers = Cohttp.Response.headers response in
-    let rendered_html = Cohttp.Response.status response = `OK &&
+    let rendered_with_accept = Cohttp.Response.status response = `OK &&
       (match Cohttp.Header.get headers "content-type" with
-       | Some content_type -> String.starts_with ~prefix:"text/html" content_type
+       | Some content_type ->
+           String.starts_with ~prefix:"text/html" content_type ||
+           String.starts_with ~prefix:"text/vnd.turbo-stream.html" content_type
        | None -> false) &&
       (match body with `String text -> text <> "" | `Strings parts -> parts <> []
         | _ -> false) in
-    let headers = if rendered_html && not (Cohttp.Header.mem headers "vary") &&
+    let headers = if rendered_with_accept && not (Cohttp.Header.mem headers "vary") &&
         Http_format.should_apply_vary_header
           ?format_param:(param_string ctx "format")
           ?accept:(header ctx "accept")
@@ -475,7 +478,12 @@ let handle_uncompressed ~runtime ~secret_key_base ?cable ?private_cache
   let content_type = Cohttp.Header.get headers "content-type" in
   let uri = Cohttp.Request.uri request in
   let path = Uri.path uri in
-  let query = Option.value (Uri.verbatim_query uri) ~default:"" in
+  (* Uri.of_string repairs malformed percent escapes. Rails parses the raw
+     request target and rejects them, so retain Cohttp's unmodified resource. *)
+  let resource = Cohttp.Request.resource request in
+  let query = match String.index_opt resource '?' with
+    | None -> ""
+    | Some i -> String.sub resource (i + 1) (String.length resource - i - 1) in
   let raw_method = Cohttp.Code.string_of_method (Cohttp.Request.meth request) in
   let uploaded_paths = ref [] in
   let upload_workers = ref [] in
@@ -488,7 +496,8 @@ let handle_uncompressed ~runtime ~secret_key_base ?cable ?private_cache
         match Http_params.parse_query query with
         | Error reason ->
             Http_request_log.rejected reason;
-            Lwt.return (error ~status:400)
+            Lwt.return (respond ~status:400 ~content_type:"text/html; charset=UTF-8"
+              ~headers:["x-campfire-public-exception", "1"; "content-length", "0"] "")
         | Ok query_params ->
       let form_method = if Routes.form_data_media_type content_type then
         Http_params.find_string "_method" request_params else None in
@@ -531,7 +540,7 @@ let handle_uncompressed ~runtime ~secret_key_base ?cable ?private_cache
                  cable; event_sink; private_cache;
                  cache_generation=Option.bind private_cache (fun cache ->
                    Http_cache.Observer.version cache.observer);
-                 private_ticket=None;private_hit=false;
+                 private_ticket=None;private_hit=false;page_parts=None;
                  secret_key_base; remote_ip; now; ssl; force_ssl; auth = None;
                  current_user = None;
                  bot_user = None; authenticated_by = Nothing;
@@ -621,10 +630,12 @@ let handle ~runtime ~secret_key_base ?cable ?event_sink ?front_cache
     public_exception := Cohttp.Header.mem (Cohttp.Response.headers (fst response))
       "x-campfire-public-exception";
     let digestible = match snd response with `Stream _ -> false | _ -> true in
-    Http_cache.finish ~digestible ~request response >>= fun response ->
+    (if Option.is_some static then Lwt.return response
+     else Http_cache.finish ~digestible ~request response) >>= fun response ->
     (match !context with
      | Some ctx when ctx.private_hit -> Lwt.return response
-     | _ -> Http_gzip.apply request response) >>= fun (response,body) ->
+     | Some ctx -> Http_gzip.apply ?parts:ctx.page_parts request response
+     | None -> Http_gzip.apply request response) >>= fun (response,body) ->
     (match !context with
      | Some ctx when not ctx.private_hit &&
          Cohttp.Request.meth request=`GET &&

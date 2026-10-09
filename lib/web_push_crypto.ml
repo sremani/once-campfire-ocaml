@@ -6,12 +6,22 @@ let encode64 bytes = Base64.encode_string ~pad:false ~alphabet:Base64.uri_safe_a
 
 let decode64 value =
   let normalized = String.map (function '-' -> '+' | '_' -> '/' | c -> c) value in
-  let bare = String.trim normalized in
-  let bare = String.sub bare 0 (match String.index_opt bare '=' with None -> String.length bare | Some i -> i) in
-  if String.length bare mod 4 = 1 then Error (Argument "invalid base64") else
+  let bad () = Error (Argument "invalid base64") in
+  let first_padding = match String.index_opt normalized '=' with
+    | None -> String.length normalized | Some pos -> pos in
+  let bare = String.sub normalized 0 first_padding in
+  let padded = first_padding < String.length normalized in
+  if String.length bare mod 4 = 1 ||
+     (padded && String.length normalized mod 4 <> 0)
+  then bad () else
   match Base64.decode ~pad:false bare with
-  | Ok bytes -> Ok bytes
-  | Error _ -> Error (Argument "invalid base64")
+  | Error _ -> bad ()
+  | Ok bytes ->
+    (* Ruby's Base64.urlsafe_decode64 uses a strict standard decoder after
+       alphabet translation. A permissive decode would turn noncanonical
+       trailing bits into an invalid EC point and wrongly delete a subscription. *)
+    let canonical=Base64.encode_string ~pad:padded bytes in
+    if canonical=normalized then Ok bytes else bad ()
 
 let cs = Cstruct.of_string
 let string = Cstruct.to_string

@@ -52,9 +52,11 @@ HTTP rerun confirmed **all 25,156 body bytes equal** for row 17 in anonymous,
 signed, denied, and bot roles. M8-T2 also fixed the shared stylesheet preload
 header, yielding full status/header/body/state parity in all four cells.
 
-## Current gaps
+## Historical byte-gap baseline and remaining gates
 
-The golden corpus checks DOM/content equivalence at the same levels as Rust's
+The measurements in this section predate the seeded byte probes documented
+below; rows 28 and 43 are now exact. The golden corpus checks DOM/content
+equivalence at the same levels as Rust's
 `assert_dom` and `assert_content`. It does not assert byte-identical HTML for
 every full page. M3's focused live capture found all eight account/join/bot/
 profile page rows structurally exact (524, 339, 357, 279, 558, 426, 730,
@@ -174,3 +176,88 @@ and Cable; its sidebar XHR differs in the raw response body hash and `Vary`
 header. The sidebar fragment uses compact Tyxml serialization, so this
 remaining body hash is a scoped serialization difference pending integrated
 capture; M3-T5 owns the `Vary` header.
+
+## Sidebar bytes and recorded message parts
+
+`Views.sidebar_frame` now follows the pinned `users/sidebars/show.html` and
+direct/shared/placeholder partials literally, including helper attribute
+order, void tags, newlines, and safe arrow spelling in fixed controller
+attributes. Dynamic text and attribute values still use Tyxml encoding.
+`test/view_sidebar_bytes.py` is in the Dune test alias and compares the whole
+frame against the three pinned Rails cases after removing Rails' hidden
+`authenticity_token` inputs and the final newline that Rust's cached room
+partials omit. Rust checks `Sec-Fetch-Site` instead of rendering those inputs.
+The remaining bytes match: sidebar frame 8,257/8,257, David 8,257/8,257,
+Kevin 7,563/7,563. The default-seed signed `/users/me/sidebar` full page is
+also exact against a fresh pinned Rust capture at 30,763 bytes (row 56).
+The browser XHR body hash needs a fresh packaged-image check.
+
+`Views.message_index_recorded` and `Views.room_show_recorded` expose a
+`recorded_page` with the existing body string, text with large message
+fragments left out, and each fragment's byte offset in that text. Messages
+under 1,024 bytes remain text, matching Rust's `recorded.rs` threshold. The
+room renderer marks its message insertion point while rendering an empty
+skeleton; it never searches the completed HTML for duplicate message bytes.
+The recorded and string-returning functions produce the same bytes as each
+other, including the room template's four-space prefix before each message.
+The focused test reconstructs both bodies and checks duplicate large
+fragments, short messages, multibyte room text, and the current
+`Http_cache.Page_parts.of_offsets` digest seam. M3-T5's seeded live capture
+confirmed row 75 `messages#index` is byte exact at 382,814 bytes on both
+servers with the same ETag. A separate direct pinned Rust renderer oracle
+matches all 124,594 bytes of the 12-message golden index, including rich
+text, image, sound, attachment, and boost examples; text and image partials
+also match at 9,328 and 10,851 bytes. The room show source now uses the
+Rust message-loop indentation and exact 1,724-byte client message template.
+Its seeded body remains 1,552 bytes shorter than Rust at rows 95/100,
+concentrated in the room navigation, notification help, and composer
+serialization. The 123-file matrix remains 121 rendered passes and two
+linked input metadata cases, and focused M4 tests pass 9/9.
+
+The next scoped pass copied the pinned `rooms/show/_composer.html` whitespace
+and substituted escaped route and asset values. M3-T5's private seeded room
+capture confirms the complete composer segment is now byte exact. The room
+body is 1,040 bytes shorter overall: the client message template and composer
+match exactly, and the 40-message loop uses the same indentation as Rust.
+The remaining body difference is dominated by `rooms/show/_nav.html` and its
+notification help partials. The OCaml room head also intentionally carries a
+553-byte Lexxy readiness script that preserves the two-tab edit regression;
+the pinned Rust room head lacks it. The exact body residual therefore cannot
+be removed simply by deleting the script.
+
+The direct-room new form now renders the complete pinned Rust
+`rooms/directs/new.html` and autocomplete template fragment byte for byte:
+2,405/2,405 bytes, checked by `test/view_direct_bytes.py`. Its boolean
+`hidden` attribute is bare as in Askama; the DOM comparator treats bare and
+empty-value boolean attributes as equivalent, as browsers do. The full
+123-file matrix remains 121 rendered passes, zero failures, and two linked
+input metadata cases.
+
+The search index uses source-aligned nav and recent-search links, the empty
+state or message list, and the composer. `test/view_search_bytes.py` checks
+the nav, content, footer, and sidebar sections against direct pinned Rust
+renders: 4,069/4,069 bytes for the empty search and 14,898/14,898 bytes
+for a populated result. Its seeded route 145 still needs a live HTTP rerun;
+that route has a different count of recent searches than the golden cases.
+
+The seeded custom-styles edit page, including navigation, translation
+control, form, and textarea, now matches M3-T2's private pinned Rust capture
+byte for byte at 23,662 bytes (row 39). A direct Rust `CreateStream` render
+also matches `Views.message_create_stream` at 9,234/9,234 bytes and is in the
+message byte fixture. The older positive-create live delta predated the
+message-item rewrite and needs a fresh write-route comparison.
+
+The current offline seeded probe reran **16** saved private Rust pairs:
+rows 8, 28, 30, 31, 39, 43, 49, 56, 59, 65, 73, 74, 92, 128, 130, and
+137 are all exact body bytes. The new account/bot/profile/push cases copy the
+pinned Askama nav, forms, member rows, invite controls, and partial boundaries
+while still escaping dynamic text and attributes through Tyxml. Row 43 account
+edit matches all 37,630 bytes, row 59 profile all 41,834, and row 65 with
+both seeded subscriptions all 23,151. `test/view_seeded_bytes.py` records
+each byte length and Rust SHA-256; its Dune rule stages the route fixture
+dependency and locates the actual workspace when run from `_build/default`.
+The probes use the pinned default SQLite seed, request paths, clock, and test
+session. They do not validate Caddy response headers or the remaining route
+families. The 123-file golden matrix remains 121 rendered passes, 2 linked
+input metadata cases, and no failures. Room-show rows 95/100 still need a
+fresh view/browser gate with the required Lexxy readiness script retained.

@@ -308,7 +308,7 @@ let test_message_stream_goldens () =
   check_contains "relative permalink" create
     "href=\"/rooms/654632876/@933434495\"";
   check_contains "search result room separator" create
-    "class=\"message__room\"> <a";
+    "class=\"message__room\">\n                <a";
   check_absent "cache safe host" create "campfire.test";
   let destroy = Views.message_destroy_stream message in
   let expected_destroy = fixture_json "fixtures/views_messages_destroy.json"
@@ -345,6 +345,50 @@ let test_message_stream_goldens () =
     "signed-stream-name=\"rooms-signature\"";
   check_contains "sidebar shell controller" room_page
     "data-controller=\"rooms-list read-rooms turbo-frame\""
+
+let test_recorded_message_parts () =
+  let message,_=message_from_golden () in
+  let long={message with Views.content=Views.Text
+    (Views.trusted_html_of_sanitized ("<p>" ^ String.make 2048 'x' ^ "</p>"))} in
+  let short={message with Views.content=Views.Unrenderable;
+    client_message_id="short"} in
+  let reconstruct (recorded:Views.recorded_page) =
+    let output=Buffer.create (String.length recorded.body) in
+    let position=ref 0 in
+    List.iter (fun (offset,fragment) ->
+      Alcotest.(check bool) "recorded offset in range" true
+        (offset >= !position && offset <= String.length recorded.text);
+      Buffer.add_substring output recorded.text !position (offset- !position);
+      Buffer.add_string output fragment;
+      position:=offset) recorded.fragments;
+    Buffer.add_substring output recorded.text !position
+      (String.length recorded.text- !position);
+    Alcotest.(check string) "recorded body reconstruction"
+      recorded.body (Buffer.contents output) in
+  let indexed=Views.message_index_recorded [long;short;long] in
+  reconstruct indexed;
+  Alcotest.(check string) "index keeps string API"
+    (Views.message_index [long;short;long] |> Views.render) indexed.body;
+  Alcotest.(check int) "two identical large fragments" 2
+    (List.length indexed.fragments);
+  Alcotest.(check bool) "page parts digest available" true
+    (Option.is_some (Http_cache.Page_parts.of_offsets
+      ~text:indexed.text indexed.fragments));
+  let room : Views.room={id=message.room_id;kind=Views.Closed;
+    name="Designers 世界";updated_at_ms=0L} in
+  let page=Views.room_show_recorded ~context:sample_context ~room
+    ~messages:[long;short;long] ~messages_stream_name:"signed" () in
+  reconstruct page;
+  Alcotest.(check string) "room keeps string API"
+    (Views.room_show ~context:sample_context ~room
+      ~messages:[long;short;long] ~messages_stream_name:"signed" ())
+    page.body;
+  Alcotest.(check int) "room large fragment count" 2
+    (List.length page.fragments);
+  let empty=Views.message_index_recorded [short] in
+  reconstruct empty;
+  Alcotest.(check int) "short fragment stays in text" 0
+    (List.length empty.fragments)
 
 let message_from_b_json data : Views.message =
   let open Yojson.Safe.Util in
@@ -1239,4 +1283,6 @@ else Alcotest.run "M4 views" [
   "messages", [Alcotest.test_case "golden stream anchors and cache safety"
     `Quick test_message_stream_goldens;
     Alcotest.test_case "message permalink room names from pinned memberships"
-      `Quick test_message_room_names]]
+      `Quick test_message_room_names;
+    Alcotest.test_case "renderer recorded message offsets" `Quick
+      test_recorded_message_parts]]

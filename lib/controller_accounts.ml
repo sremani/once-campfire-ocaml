@@ -45,6 +45,11 @@ let view c render =
 let absolute c path = H.base_url c ^ path
 let redirect c path = response (H.redirect (absolute c path))
 let redirect_raw path = response (H.redirect path)
+let redirect_with_notice c path notice =
+  H.session_set c "flash" (`Assoc [
+    "flashes", `Assoc ["notice", `String notice];
+    "discard", `List []]);
+  redirect c path
 let read c f = Db_runtime.read_async c.H.runtime f
 let write c f = Db_runtime.write_async c.H.runtime f
 let number c key = Option.bind (H.param_string c key) Int64.of_string_opt
@@ -287,7 +292,7 @@ let account_update c = match object_param c "account" with
         let db = Db_runtime.conn tx in
         let account = Option.get (A.Account.first db) in
         ignore (A.Account.update db ~now:c.H.now account ?name ?settings ()))
-      >>= fun () -> redirect c "/account/edit"
+      >>= fun () -> redirect_with_notice c "/account/edit" "✓"
 let account_join_code c =
   write c (fun tx -> let db=Db_runtime.conn tx in
     let account=Option.get (A.Account.first db) in
@@ -305,7 +310,7 @@ let account_styles_update c = match object_param c "account" with
       write c (fun tx -> let db=Db_runtime.conn tx in
         let account=Option.get (A.Account.first db) in
         ignore (A.Account.update db ~now:c.H.now account ?custom_styles ()))
-      >>= fun () -> redirect c "/account/custom_styles/edit"
+      >>= fun () -> redirect_with_notice c "/account/custom_styles/edit" "✓"
 
 let find_user c key = match number c key with
   | None -> Lwt.return_none
@@ -485,7 +490,9 @@ let profile_update c = match object_param c "user" with
           password_digest;
           bio=Option.map (fun value -> Some value) (field fields "bio")} in
         write c (fun tx -> ignore (U.update (Db_runtime.conn tx) ~now:c.H.now user changes))
-        >>= fun () -> redirect c "/users/me/profile"
+        >>= fun () -> redirect_with_notice c "/users/me/profile"
+          (if field_present fields "avatar" then
+             "It may take up to 30 minutes to change everywhere." else "✓")
 let user_ban c = find_user c "user_id" >>= function
   | None -> record_not_found ()
   | Some user ->
@@ -699,10 +706,11 @@ let cache_key table id updated_at =
   table ^ "/" ^ Int64.to_string id ^ "-" ^ version
 
 let media_headers c ~seconds ?validator ?template () =
-  let etag = Http_cache.combined_etag ?template validator in
-  let headers = ["etag",etag;
-    "cache-control",Printf.sprintf
-      "max-age=%d, public, stale-while-revalidate=604800" seconds] in
+  let etag_headers = match validator,template with
+    | None,None -> []
+    | _ -> ["etag",Http_cache.combined_etag ?template validator] in
+  let headers = etag_headers @ ["cache-control",Printf.sprintf
+    "max-age=%d, public, stale-while-revalidate=604800" seconds] in
   let fresh = Http_cache.is_fresh c.H.request (Cohttp.Header.of_list headers) in
   headers,fresh
 
@@ -719,11 +727,13 @@ let stock_file ~logical ~filename ~content_type ~headers =
   | None -> response (empty 404)
   | Some asset ->
       let disposition=Storage_disk.disposition "inline" filename in
-      response (media_response ~status:200 ~content_type
-        ~headers:(("content-transfer-encoding","binary")::
+      let headers=Cohttp.Header.of_list
+        (("content-type",content_type)::
+          ("content-transfer-encoding","binary")::
           ("content-disposition",disposition)::
-          ("content-length",string_of_int (String.length asset.body))::headers)
-        asset.body)
+          ("content-length",string_of_int (String.length asset.body))::headers) in
+      Lwt.return (Cohttp.Response.make ~status:`OK ~headers (),
+        Cohttp_lwt.Body.of_stream (Lwt_stream.of_list [asset.body]))
 
 let variant_file c service blob ~content_type ~headers =
   let path=Storage_disk.path_for service blob.Db_remaining.Blob.key in
@@ -826,9 +836,30 @@ let avatar_destroy c = match current_id c with
   | None -> forbidden ()
   | Some id ->
       write c (fun tx ->
-        match Db_remaining.Attachment.find_for (Db_runtime.conn tx)
+        let db=Db_runtime.conn tx in
+        match Db_remaining.Attachment.find_for db
           ~record_type:"User" ~record_id:id ~name:"avatar" with
-        | None -> () | Some attachment -> Db_remaining.Attachment.delete tx attachment)
+        | None -> None
+        | Some attachment ->
+            Db_remaining.Attachment.delete tx attachment;
+            ignore (Db_runtime.execute db
+              "UPDATE users SET updated_at=? WHERE id=?"
+              [Sqlite3.Data.TEXT (Db_time.of_rfc3339 c.H.now);
+               Sqlite3.Data.INT id]);
+            Some attachment.blob_id)
+      >>= (function
+        | None -> Lwt.return_unit
+        | Some blob_id -> match !storage_service with
+          | None ->
+              c.H.event_sink (Db_remaining.Event.PurgeBlob {blob_id});
+              Lwt.return_unit
+          | Some service -> Lwt_preemptive.detach (fun () ->
+              match Db_runtime.read c.H.runtime (fun db ->
+                Db_runtime.query_one db
+                  (Db_remaining.Blob.select ^ " WHERE id=? LIMIT 1")
+                  [Sqlite3.Data.INT blob_id] Db_remaining.Blob.decode) with
+              | None -> ()
+              | Some blob -> Storage_blob.purge c.H.runtime service blob) ())
       >>= fun () -> redirect c "/users/me/profile"
 
 let endpoint name : H.endpoint option =

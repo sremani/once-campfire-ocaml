@@ -83,3 +83,23 @@ The M5 manager independently reran the core 8/8 and controlled TLS seeded
 integration 12/12, and accepted T3. The M5/M4 exact bot file-link HTML
 differential now matches the pinned Rust bytes. Literal default-adapter
 delivery to a public push provider remains outside local test evidence.
+
+## M8 positive-write subscription correction
+
+The clean M8-T2 bot-message differential found that OCaml deleted David's
+Firefox subscription 782661004 while Rust retained it. Its seeded P-256 key is
+noncanonical Base64: the final `...FZgc` decodes to bytes whose canonical
+encoding ends `...FZgQ`. Pinned Rust rejects this in strict Base64 decoding as
+an `ArgumentError`, which does not invalidate a subscription. The previous
+OCaml decoder accepted those trailing bits, then classified the resulting
+invalid curve point as a subscription fault and deleted the row.
+
+`Web_push_crypto.decode64` now checks canonical encoding after accepting either
+standard or URL-safe alphabet, with optional complete padding. The new focused
+test checks canonical controls, malformed padding/trailing bits, and the exact
+seeded key's noninvalidating error class. A seeded pool test proves that
+subscription 782661004 is retained and never sent or invalidated. All nine
+core tests, nine seeded integration tests, and `dune build @check` pass. An
+offline scan of all five default-seed subscriptions found only 782661004 has a
+noncanonical key; the other keys' classification is unchanged. M8-T2 will
+rerun the live positive-write case after its current Docker interval.

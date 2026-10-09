@@ -21,7 +21,7 @@ class Tokens(html.parser.HTMLParser):
         values = dict(attrs)
         # HTML boolean attributes have the same DOM value whether serialized
         # bare (Askama) or with an empty value (Tyxml).
-        for name in ("readonly", "disabled", "required", "checked", "multiple"):
+        for name in ("readonly", "disabled", "required", "checked", "multiple", "hidden"):
             if name in values:
                 values[name] = None
         if "contents" in values and values["contents"] is None:

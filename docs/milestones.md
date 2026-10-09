@@ -56,9 +56,11 @@ transaction, concurrency, and search behavior matches Rust tests and fixture sta
 Manager: `m3_manager`. Gate: every application route has the Rust status, redirect, headers,
 authorization, and response shape under the shared HTTP fixture suite.
 
-- [ ] **M3-T1 HTTP foundation.** Build request/response/context, params and multipart parsing,
+- [x] **M3-T1 HTTP foundation.** Build request/response/context, params and multipart parsing,
   sessions, errors, content negotiation, gzip, and server startup with established OCaml HTTP
-  libraries.
+  libraries. The 16/16 foundation suite, 2,755 Rails parameter vectors, 129 MiB streamed upload,
+  all 100 affected `Vary` role cases in the [clean 674/708 matrix](m8-t2-http-state.md), and both
+  packaged 65 KiB/1 MiB header-bound probes pass; see [T1 handoff](m3-t1-http-foundation.md).
 - [ ] **M3-T2 Onboarding and account controllers.** Port first run, sessions/transfers, account,
   users, profiles, bans, joins, bots, and settings routes with permission tests.
 - [ ] **M3-T3 Rooms, messages, and search controllers.** Port all CRUD and fragments, read state,
@@ -76,7 +78,7 @@ authorization, and response shape under the shared HTTP fixture suite.
 Manager: `m4_manager`. Gate: supported pages, fragments, rich text, assets, and browser flows
 pass DOM/accessibility/screenshot comparisons and escaping tests.
 
-- [ ] **M4-T1 Asset pipeline.** Package pinned frontend JS/CSS/fonts/images, import maps,
+- [x] **M4-T1 Asset pipeline.** Package pinned frontend JS/CSS/fonts/images, import maps,
   digests, overrides, manifests, and cache headers without a runtime Node requirement.
 - [ ] **M4-T2 Templates and helpers.** Port layout, navigation, forms, room/message/search,
   account/user/bot, and media views using an established OCaml HTML/template library.

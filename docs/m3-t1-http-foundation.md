@@ -75,8 +75,16 @@ requests over loopback. A normal 4,096-byte `X-Fill` header returns **200**;
 66,560-byte and 1,048,576-byte `X-Fill` headers close without a response and
 never reach route dispatch. `Front_target.read_line` counts request-line and
 header bytes against **64 KiB**, with a separate 256-line cap. The earlier
-**302** observation came from the old `campfire-ocaml:m7-t3` image; a current
-packaged-image probe remains for the M8 security gate. The current Caddy
+**302** observation came from the old `campfire-ocaml:m7-t3` image. A clean
+packaged image (`sha256:1ffb96c88fc92ee90710e27b7f2fcc03b540b3cd7ec8210c7c09c03e21b44c3b`,
+source `7bd8a4964603e3de3800c1edf45674be08dd3a9f`) passed disposable
+66,560-byte and 1,048,576-byte header probes. Both normal front and target
+requests returned 302; oversized front requests returned 431, oversized
+target requests were closed without a response, and the target was unreachable
+from the host's nonloopback interface. Raw summaries are under
+`/home/srikanth/projects/once-campfire-verification/tmp/bench/m8-t4-resilience-1791539310-3184816`
+and `/home/srikanth/projects/once-campfire-verification/tmp/bench/m8-t4-resilience-1791539316-3189563`.
+The current Caddy
 configuration sets Caddy `max_header_size 60KiB` to account for Go's roughly
 4 KiB parser slack and enforce the 64 KiB front/target boundary in live probes.
 
@@ -100,8 +108,13 @@ boundary now adds one fallback `Vary` on empty marked exceptions, without
 adding a duplicate. The focused test checks one `Vary` on empty **400/406**,
 the exact empty **400** MIME and length, omission of app version, security,
 cookie, cache and internal marker headers, and the expected two `Vary` fields
-on a nonempty response when the front cache is bypassed. A targeted live row
-probe and fresh 708-cell differential remain the completion gates.
+on a nonempty response when the front cache is bypassed. The clean pinned
+default-seed Rust/OCaml matrix at source `7bd8a4964603e3de3800c1edf45674be08dd3a9f`
+passes all 100 role cases across the 25 affected route rows, including the
+empty public exceptions. It passes 674/708 overall; all 34 residual failures
+are rendered view body bytes with derived Content-Length/ETag differences.
+The saved focused row probe passes 16/16. The T1 foundation ticket is accepted;
+the M3 every-route gate remains open.
 
 ## Cable listener seam
 

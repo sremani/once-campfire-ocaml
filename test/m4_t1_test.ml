@@ -118,6 +118,42 @@ let helpers_and_edges () =
   Alcotest.(check bool) "multipart prefix" true (String.starts_with ~prefix:"\r\n--AaB03x\r\ncontent-type: audio/mpeg\r\ncontent-range: bytes 0-1/" multiple.body);
   Alcotest.(check bool) "multipart suffix" true (String.ends_with ~suffix:"\r\n--AaB03x--\r\n" multiple.body)
 
+let integrated_static_headers () =
+  let db_path = Filename.temp_file "campfire-m4-assets-" ".sqlite3" in
+  let runtime = Db_runtime.open_db db_path in
+  Fun.protect ~finally:(fun () ->
+    Db_runtime.close runtime;
+    List.iter (fun path -> if Sys.file_exists path then Sys.remove path)
+      [db_path; db_path ^ "-wal"; db_path ^ "-shm"]) (fun () ->
+    let send ?range ?if_modified_since path =
+      let headers = ["host", "campfire.test"] in
+      let headers = match range with None -> headers | Some value -> ("range", value) :: headers in
+      let headers = match if_modified_since with None -> headers
+        | Some value -> ("if-modified-since", value) :: headers in
+      let request = Cohttp.Request.make ~headers:(Cohttp.Header.of_list headers)
+        (Uri.of_string path) in
+      let response, body = Lwt_main.run (Http_app.handle ~runtime
+        ~secret_key_base:"unused" ~dispatch:(fun _ -> None) request Cohttp_lwt.Body.empty) in
+      response, Lwt_main.run (Cohttp_lwt.Body.to_string body) in
+    let status response = Cohttp.Code.code_of_status (Cohttp.Response.status response) in
+    let header response name = Cohttp.Header.get (Cohttp.Response.headers response) name in
+    let plain, body = send "/robots.txt" in
+    Alcotest.(check int) "integrated static GET" 200 (status plain);
+    Alcotest.(check int) "integrated body length" 99 (String.length body);
+    Alcotest.(check (option string)) "integrated Content-Length" (Some "99")
+      (header plain "content-length");
+    let last_modified = Option.get (header plain "last-modified") in
+    let conditional, body = send ~if_modified_since:last_modified "/robots.txt" in
+    Alcotest.(check int) "integrated static 304" 304 (status conditional);
+    Alcotest.(check string) "integrated 304 body" "" body;
+    Alcotest.(check (option string)) "static 304 has no Cache-Control" None
+      (header conditional "cache-control");
+    let unsatisfiable, body = send ~range:"bytes=999999999-" "/robots.txt" in
+    Alcotest.(check int) "integrated static 416" 416 (status unsatisfiable);
+    Alcotest.(check string) "integrated 416 body" "Byte range unsatisfiable\n" body;
+    Alcotest.(check (option string)) "static 416 has no Cache-Control" None
+      (header unsatisfiable "cache-control"))
+
 let () = Alcotest.run "M4 asset pipeline" [
   "reference", [
     Alcotest.test_case "manifest" `Quick manifest_matches;
@@ -125,5 +161,6 @@ let () = Alcotest.run "M4 asset pipeline" [
     Alcotest.test_case "head tags" `Quick tags_match;
     Alcotest.test_case "static responses" `Quick static_vectors;
     Alcotest.test_case "helpers and edge paths" `Quick helpers_and_edges;
+    Alcotest.test_case "integrated static headers" `Quick integrated_static_headers;
   ]
 ]

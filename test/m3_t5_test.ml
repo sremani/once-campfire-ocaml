@@ -80,6 +80,117 @@ let page_part_vectors () =
   check (option string) "invalid renderer offset rejected" None
     (C.Page_parts.of_offsets ~text:"hello" [6,message 0])
 
+let page_part_gzip_framing () =
+  let message n = Printf.sprintf "<div id=\"message_%d\" class=\"message\">%s</div>\n"
+    n (String.concat "" (List.init (40+n mod 7)
+      (fun _ -> "<button>Boost</button> hello there "))) in
+  let text=Buffer.create 1024 and fragments=ref [] and plain=Buffer.create 40000 in
+  let add value = Buffer.add_string text value; Buffer.add_string plain value in
+  add "<html><head>layout</head><body>";
+  for n=0 to 29 do
+    add "  ";
+    let fragment=message n in
+    fragments := (Buffer.length text,fragment) :: !fragments;
+    Buffer.add_string plain fragment
+  done;
+  add "</body></html>";
+  let parts=Option.get (C.Page_parts.splice ~text:(Buffer.contents text)
+    (List.rev !fragments)) in
+  let encoded=C.Page_parts.gzip ~mtime:7 parts in
+  check string "Rust-style gzip header and mtime"
+    "\031\139\008\000\007\000\000\000\000\003"
+    (String.sub encoded 0 10);
+  let inflater=Campfire.Webhook_transport.inflater_create true in
+  let decoded=match Campfire.Webhook_transport.inflater_feed inflater encoded
+      (Buffer.length plain) true with
+    | Ok bytes -> bytes | Error why -> fail why in
+  check string "sync-flushed parts inflate to recorded body"
+    (Buffer.contents plain) decoded;
+  let flush="\000\000\255\255" in
+  let rec count_flush offset count =
+    if offset+4>String.length encoded then count
+    else if String.sub encoded offset 4=flush then count_flush (offset+4) (count+1)
+    else count_flush (offset+1) count in
+  check bool "each of 32 parts ends on a sync-flush boundary" true
+    (count_flush 10 0 >= List.length parts);
+  check string "system libz piecewise fixture"
+    "08ef761b5374d9b4e2ebb35d2f4743a893b47150dc53d0304ce383e7aef428bd"
+    (C.hex (C.sha256 encoded));
+  let req=request ~headers:["accept-encoding","gzip"] "/rooms/1" in
+  let reply,body=Lwt_main.run (Campfire.Http_gzip.apply ~parts req
+    (response ~headers:["etag","W/\"recorded\""] (),
+      C.Page_parts.body parts)) in
+  check (option string) "middleware keeps identity validator"
+    (Some "W/\"recorded\"") (get reply "etag");
+  check string "middleware selects partwise member" (C.Page_parts.gzip parts)
+    (Lwt_main.run (Cohttp_lwt.Body.to_string body));
+  let mixed_text=Buffer.create 1024 and mixed_plain=Buffer.create 6000 in
+  let mixed_fragments=ref [] in
+  let add_mixed value =
+    Buffer.add_string mixed_text value; Buffer.add_string mixed_plain value in
+  let fragment_mixed value =
+    mixed_fragments := (Buffer.length mixed_text,value) :: !mixed_fragments;
+    Buffer.add_string mixed_plain value in
+  add_mixed "<p>"; fragment_mixed (message 0);
+  add_mixed (String.make 300 'x'); fragment_mixed (message 1);
+  add_mixed "  "; fragment_mixed "<i>small</i>";
+  add_mixed "  "; fragment_mixed (message 2); add_mixed "</p>";
+  let mixed=Option.get (C.Page_parts.splice
+    ~text:(Buffer.contents mixed_text) (List.rev !mixed_fragments)) in
+  let mixed_gzip=C.Page_parts.gzip ~mtime:7 mixed in
+  check string "libz mixed glue/short-fragment fixture"
+    "ae2b0e23a3dda641230abe9f52a7f229bc1dfb554d93f6acdf534eba3f125614"
+    (C.hex (C.sha256 mixed_gzip));
+  let inflater=Campfire.Webhook_transport.inflater_create true in
+  let mixed_decoded=match Campfire.Webhook_transport.inflater_feed inflater
+      mixed_gzip (Buffer.length mixed_plain) true with
+    | Ok bytes -> bytes | Error why -> fail why in
+  check string "mixed glue/short-fragment decompression"
+    (Buffer.contents mixed_plain) mixed_decoded
+
+let recorded_part_transport () =
+  let open Lwt.Infix in
+  let text=Buffer.create 1024 and plain=Buffer.create 45000 in
+  let fragments=ref [] in
+  let add value = Buffer.add_string text value; Buffer.add_string plain value in
+  add "<main>";
+  for n=0 to 39 do
+    add "  ";
+    let fragment=Printf.sprintf "<article id=\"%d\">%s</article>" n
+      (String.make 1100 (Char.chr (65+n mod 26))) in
+    fragments := (Buffer.length text,fragment) :: !fragments;
+    Buffer.add_string plain fragment
+  done;
+  add "</main>";
+  let page : Campfire.Views.recorded_page = {
+    body=Buffer.contents plain; text=Buffer.contents text;
+    fragments=List.rev !fragments } in
+  let reply,body,validator=Campfire.Controller_rooms.recorded_html page in
+  check (option string) "recorded page ETag" (Some ("W/\""^validator^"\""))
+    (get reply "etag");
+  check bool "identity response has over 40 frames" true
+    (match body with `Strings parts -> List.length parts > 40 | _ -> false);
+  check string "part frames reconstruct exact body" page.body
+    (Lwt_main.run (Cohttp_lwt.Body.to_string body));
+  let head_req=request ~meth:`HEAD "/rooms/1" in
+  let head=Lwt_main.run (C.finish ~request:head_req
+    (Campfire.Controller_rooms.recorded_html page |> fun (reply,body,_) -> reply,body)) in
+  check string "part HEAD empty" "" (body_text head);
+  check (option string) "part HEAD validator" (get reply "etag")
+    (get (fst head) "etag");
+  check (option string) "part HEAD length" (Some (string_of_int (String.length page.body)))
+    (get (fst head) "content-length");
+  let gzip_req=request ~headers:["accept-encoding","gzip"] "/rooms/1" in
+  let gzip=Lwt_main.run (C.finish ~request:gzip_req
+    (Campfire.Controller_rooms.recorded_html page |> fun (reply,body,_) -> reply,body)
+    >>= Campfire.Http_gzip.apply gzip_req) in
+  check (option string) "part gzip validator" (get reply "etag")
+    (get (fst gzip) "etag");
+  check (option string) "part gzip encoding" (Some "gzip")
+    (get (fst gzip) "content-encoding");
+  check string "part gzip member" "\031\139"
+    (String.sub (body_text gzip) 0 2)
+
 let rendered_vary_rules () =
   let vary=Campfire.Http_format.should_apply_vary_header in
   check bool "explicit Accept makes rendered page vary" true
@@ -111,7 +222,15 @@ let explicit_freshness () =
   check (option string) "last modified format" (Some "Mon, 01 Jan 2024 00:00:00 GMT")
     (Cohttp.Header.get h "last-modified");
   let req=request ~headers:["if-modified-since","garbage"] "/" in
-  check bool "malformed date" false (C.is_fresh req h)
+  check bool "malformed date" false (C.is_fresh req h);
+  let flash=C.flash_etaggers ["notice",`String "hello";
+    "alert",`String "Room not found"] in
+  check (list string) "Rust flash Debug etaggers"
+    ["alert=Some(String(\"Room not found\"))";
+     "notice=Some(String(\"hello\"))"] flash;
+  check bool "flash changes template validator" true
+    (C.combined_etag ~template:"messages/index" ~flash (Some "parts") <>
+     C.combined_etag ~template:"messages/index" (Some "parts"))
 
 let rendered_message_freshness () =
   let open Lwt.Infix in
@@ -361,6 +480,65 @@ let private_route_invalidation () =
           (Some (string_of_int (String.length body)))
           (get initial "content-length");
         check int "private item stored" 1 (Hashtbl.length cache.store.items);
+        check bool "room uses page-part validator" true
+          (get initial "etag" <> C.rack_etag body);
+        let uncached_req=Cohttp.Request.make
+          ~headers:(headers ["host","chat.example.com";"cookie",cookie;
+            "origin","https://chat.example.com";"accept","text/html";
+            "cache-control","no-store"])
+          (Uri.of_string "https://chat.example.com/rooms/654632876") in
+        let uncached_reply,uncached_body=Lwt_main.run
+          (Campfire.Http_app.handle ~runtime ~secret_key_base:secret
+             ~private_cache:cache ~now ~ssl:true
+             ~dispatch:Campfire.App_dispatch.endpoint uncached_req
+             Cohttp_lwt.Body.empty) in
+        let frames=match uncached_body with
+          | `Strings parts -> List.length parts | _ -> 0 in
+        check bool (Printf.sprintf "no-store room preserves part frames (%d)" frames)
+          true (frames > 1);
+        check (option string) "no-store parts keep validator"
+          (get initial "etag") (get uncached_reply "etag");
+        check string "no-store part bytes" body
+          (Lwt_main.run (Cohttp_lwt.Body.to_string uncached_body));
+        let all_talk_req=Cohttp.Request.make
+          ~headers:(headers ["host","chat.example.com";"cookie",cookie;
+            "origin","https://chat.example.com";"accept","text/html";
+            "cache-control","no-store"])
+          (Uri.of_string "https://chat.example.com/rooms/486777696") in
+        let all_talk_reply,all_talk_body=Lwt_main.run
+          (Campfire.Http_app.handle ~runtime ~secret_key_base:secret
+             ~private_cache:cache ~now ~ssl:true
+             ~dispatch:Campfire.App_dispatch.endpoint all_talk_req
+             Cohttp_lwt.Body.empty) in
+        check int "seeded 40-message room 200" 200 (code all_talk_reply);
+        let all_talk_frames=match all_talk_body with
+          | `Strings parts -> List.length parts | _ -> 0 in
+        check bool (Printf.sprintf "seeded no-store room frames (%d)" all_talk_frames)
+          true (all_talk_frames > 40);
+        let all_talk_bytes=Lwt_main.run (Cohttp_lwt.Body.to_string all_talk_body) in
+        check (option string) "seeded part content length"
+          (Some (string_of_int (String.length all_talk_bytes)))
+          (get all_talk_reply "content-length");
+        let gzip_room,gzip_room_bytes=send ~path:"/rooms/486777696"
+          ~extra:["accept-encoding","gzip";"cache-control","no-store"] () in
+        check (option string) "seeded recorded room gzip"
+          (Some "gzip") (get gzip_room "content-encoding");
+        let inflate bytes expected =
+          let decoder=Campfire.Webhook_transport.inflater_create true in
+          match Campfire.Webhook_transport.inflater_feed decoder bytes expected true with
+          | Ok decoded -> decoded | Error why -> fail why in
+        check string "seeded room partwise gzip decodes to identity"
+          all_talk_bytes (inflate gzip_room_bytes (String.length all_talk_bytes));
+        let flush="\000\000\255\255" in
+        let rec sync_flushes body at count =
+          if at+4>String.length body then count
+          else if String.sub body at 4=flush then
+            sync_flushes body (at+4) (count+1)
+          else sync_flushes body (at+1) count in
+        check bool "seeded room gzip retains part boundaries" true
+          (sync_flushes gzip_room_bytes 10 0 > 40);
+        check int "no-store bypasses private admission" 1
+          (Hashtbl.length cache.store.items);
         let rec contains source wanted at =
           at+String.length wanted<=String.length source &&
           (String.sub source at (String.length wanted)=wanted ||
@@ -452,16 +630,59 @@ let private_route_invalidation () =
         let index_etag=Option.get (get index "etag") in
         check bool "messages index weak validator" true
           (String.starts_with ~prefix:"W/\"" index_etag);
-        check (option string) "messages body/template validator"
-          (Some (C.combined_etag ~template:"messages/index"
-            (Some (C.hex (C.sha256 index_body)))))
-          (get index "etag");
+        let flashed_index,flashed_index_body=send ~path:index_path
+          ~cookie_header:flashed_cookie () in
+        check int "flashed message index 200" 200 (code flashed_index);
+        check string "bare index body unaffected by flash" index_body
+          flashed_index_body;
+        check bool "flash etagger isolates bare index validator" true
+          (get flashed_index "etag" <> Some index_etag);
+        let all_talk_index_req=Cohttp.Request.make
+          ~headers:(headers ["host","chat.example.com";"cookie",cookie;
+            "origin","https://chat.example.com";"accept","text/html";
+            "cache-control","no-store"])
+          (Uri.of_string "https://chat.example.com/rooms/486777696/messages") in
+        let all_talk_index,all_talk_index_body=Lwt_main.run
+          (Campfire.Http_app.handle ~runtime ~secret_key_base:secret
+             ~private_cache:cache ~now ~ssl:true
+             ~dispatch:Campfire.App_dispatch.endpoint all_talk_index_req
+             Cohttp_lwt.Body.empty) in
+        check int "seeded no-store index 200" 200 (code all_talk_index);
+        let index_frames=match all_talk_index_body with
+          | `Strings parts -> List.length parts | _ -> 0 in
+        check bool (Printf.sprintf "seeded no-store index frames (%d)" index_frames)
+          true (index_frames > 40);
+        let all_talk_index_bytes=Lwt_main.run
+          (Cohttp_lwt.Body.to_string all_talk_index_body) in
+        check (option string) "seeded index part length"
+          (Some (string_of_int (String.length all_talk_index_bytes)))
+          (get all_talk_index "content-length");
+        let gzip_index,gzip_index_bytes=send
+          ~path:"/rooms/486777696/messages"
+          ~extra:["accept-encoding","gzip";"cache-control","no-store"] () in
+        check (option string) "seeded recorded index gzip"
+          (Some "gzip") (get gzip_index "content-encoding");
+        check string "seeded index partwise gzip decodes to identity"
+          all_talk_index_bytes
+          (inflate gzip_index_bytes (String.length all_talk_index_bytes));
+        check bool "seeded index gzip retains part boundaries" true
+          (sync_flushes gzip_index_bytes 10 0 > 40);
+        check bool "messages use page-part/template validator" true
+          (get index "etag" <>
+           Some (C.combined_etag ~template:"messages/index"
+             (Some (C.hex (C.sha256 index_body)))));
         check (option string) "messages index no Last-Modified" None
           (get index "last-modified");
         let index_fresh,index_fresh_body=send ~path:index_path
           ~extra:["if-none-match",index_etag] () in
         check int "messages index conditional GET" 304 (code index_fresh);
         check string "messages index 304 empty" "" index_fresh_body;
+        let index_uncached_fresh,_=send ~path:index_path
+          ~extra:["cache-control","no-store";"if-none-match",index_etag] () in
+        check int "uncached message index conditional 304" 304
+          (code index_uncached_fresh);
+        check (option string) "early fresh_when 304 varies only on encoding"
+          (Some "Accept-Encoding") (get index_uncached_fresh "vary");
         let index_head,index_head_body=send ~path:index_path ~meth:`HEAD () in
         check int "messages index HEAD" 200 (code index_head);
         check string "messages index HEAD empty" "" index_head_body;
@@ -529,6 +750,8 @@ let () = run "m3-t5-cache" [
     test_case "Rack ETag and conditional GET" `Quick rack_and_conditionals;
     test_case "large finite body preserves chunking and validator" `Quick large_finite_body;
     test_case "pinned Rust page-part ETag vectors" `Quick page_part_vectors;
+    test_case "page-part sync-flushed gzip wire framing" `Quick page_part_gzip_framing;
+    test_case "recorded page part transport and HEAD/gzip" `Quick recorded_part_transport;
     test_case "rendered Accept Vary rules" `Quick rendered_vary_rules;
     test_case "fresh_when and HTTP dates" `Quick explicit_freshness;
     test_case "message content and template validator" `Quick rendered_message_freshness;

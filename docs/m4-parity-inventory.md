@@ -5,13 +5,13 @@ submodule `90b330024dec3e757c79b6a7e6568f93da8e3148`.
 
 | Ticket | Source and executable evidence | Integration seam |
 | --- | --- | --- |
-| M4-T1 assets | `crates/assets/tests/reference.rs` and six reference files; preserve the Rails application assets, vendored assets, and Rust overrides by logical path. | `Assets.serve` is wired before route dispatch; the Dockerfile copies assets and sets their root. Verify the final packaged image and live static response/network layer. |
+| M4-T1 assets | `crates/assets/tests/reference.rs` and six reference files; preserve the Rails application assets, vendored assets, and Rust overrides by logical path. | `Assets.serve` is wired before route dispatch; the Dockerfile copies assets and sets their root. The clean patched image passed packaged-byte, valid static HTTP, and sampled browser network checks. |
 | M4-T2 views | `crates/views/templates/` has 80 templates; `crates/views/tests/golden/` has 123 source files across full pages, fragments, JSON and SVG. | The Tyxml renderer passes the corpus accounting matrix. Finish live controller adapters, raw body review, and browser screen parity. |
 | M4-T3 rich text | `crates/richtext/tests/reference_tests.rs`, `corpus/expected.json`, and `hardening.rs` cover parsing limits, safe attributes, attachments, mentions, autolinks, plain text, and editable values. | Production message writes, FTS, and presentation use `Rich_text` with signed/GID resolvers and request Host; direct pinned Rust corpus parity passes. |
 | M4-T4 browser | Shared `once-campfire-verification/browser/smoke.mjs` and Rust `parity/` browser matrix. | Needs complete views/assets plus M5 Cable and M6 media for the full gate. The smoke test checks first run, two-tab live messages, editing, search, settings, QR, and more. |
 
-M4-T3 is verified. M4-T1, T2, and T4 remain open until their packaged,
-live-page, and browser matrix gates pass.
+M4-T1 and T3 are verified. M4-T2 and T4 remain open until live-page and
+browser matrix gates pass.
 
 ## M4-T1 handoff
 
@@ -21,14 +21,20 @@ The asset agent delivered `Assets.serve ~method_ ~path ?accept_encoding ?range
 path helpers, stylesheet tags with a preload Link header, and import map tags.
 
 The packaged tree has 321 pinned static files and 315 manifest entries. The pinned Rust
-asset reference suite passed 8/8. The manager reran the OCaml fixture suite at 5/5;
-it checks 314 compiled asset hashes, 332 static response vectors, manifest/head tags,
-path traversal, ranges, `HEAD`, and conditional 304. M3 connected `Assets.serve`
-before route dispatch. The Dockerfile copies the corpus to `/rails/assets` and sets
-`CAMPFIRE_ASSETS_DIR=/rails/assets`, but the final release image and its live asset
-headers/network fetches have not been verified against the pinned Rails response.
-The four JavaScript overrides have intentionally different digests from Rails and
-must remain tied to the pinned Rust override bytes. M4-T1 stays open.
+asset reference suite passed 8/8, and the current OCaml focused suite passes 6/6:
+manifest, 310 unchanged compiled hashes plus four intentional Rust JS overrides,
+head tags, 332 response vectors, edge paths, and integrated static headers.
+M3 connected `Assets.serve` before route dispatch. A clean image plus the narrow
+source-controlled Caddy/static-header patch packaged all 325 asset and metadata
+files byte-identically. Live pinned Rust comparison matched 332/332 static fixtures,
+all 321 GET and 321 HEAD paths, ten conditional Range/304 cases, and 15 sampled
+single/multipart/416 ranges. A Chromium sign-in capture passed all six layers,
+including 129 exact successful asset GET network lines. The four JavaScript
+overrides retain their pinned Rust bytes and distinct Rails digests. M4-T1 is
+verified; [the asset audit](m4-t1-assets.md) records image IDs and evidence.
+Explicit gzip decodes to identical assets but raw compressed streams/framing differ;
+malformed `/assets/%GG` yields a Caddy 400 versus Rust 404. These stay in M3/M8
+full-response parity and do not close the overall M4 browser gate.
 
 ## M4-T2 audit
 

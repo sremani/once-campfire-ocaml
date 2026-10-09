@@ -115,6 +115,10 @@ let test_rooms_and_messages () = with_seed "default" (fun runtime ->
     ~body:"message%5Bbody%5D=OCaml+search+needle"
     runtime `POST "/rooms/654632876/messages" in
   Alcotest.(check int) "message create stream" 200 (status message);
+  check "Turbo create varies on Accept"
+    (Cohttp.Header.get_multi (Cohttp.Response.headers message) "vary"
+     |> List.concat_map (String.split_on_char ',')
+     |> List.exists (fun value -> String.trim value="Accept"));
   let id = Db_runtime.read runtime (fun db ->
     Db_messages.Message.last db |> Option.get |> fun m -> m.Db_messages.Message.id) in
   let denied,_ = send ~cookie:member ~body:"message%5Bbody%5D=Wrong"
@@ -147,9 +151,12 @@ let test_bot_and_search () = with_seed "default" (fun runtime ->
   Alcotest.(check int) "invalid bot key" 302 (status bad);
   let empty,_ = send ~content_type:"text/plain" runtime `POST room in
   Alcotest.(check int) "empty bot message" 422 (status empty);
-  let posted,_ = send ~content_type:"text/plain" ~body:"Bot API message"
+  let posted,body = send ~content_type:"text/plain" ~body:"Bot API message"
     runtime `POST room in
   Alcotest.(check int) "bot message created" 201 (status posted);
+  Alcotest.(check (option string)) "bot create head content type"
+    (Some "application/json") (header posted "content-type");
+  Alcotest.(check string) "bot create head body" "" body;
   check "bot location" (Option.is_some (header posted "location"));
   let admin = mint_session runtime 127326141L in
   let recorded,_ = send ~cookie:admin ~body:"q=Bot+API%21"

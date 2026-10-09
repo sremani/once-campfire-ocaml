@@ -132,7 +132,11 @@ let reverse_proxy c =
     "    header_up X-Campfire-Original-Forwarded-Host {http.request.header.X-Forwarded-Host}\n" ^
     "    header_up X-Campfire-Original-Forwarded-Proto {http.request.header.X-Forwarded-Proto}\n"
     else "" in
-  Printf.sprintf "reverse_proxy %s {\n    header_up -Forwarded\n    header_up X-Forwarded-For {remote_host}\n    header_up X-Forwarded-Host {host}\n    header_up X-Forwarded-Proto {scheme}\n    header_up X-Campfire-Front caddy\n    %s  }"
+  (* Go's proxy transport otherwise adds Accept-Encoding: gzip when the client
+     sent none, then transparently decodes the upstream body and drops its
+     Content-Length. The app already negotiates gzip, so pass the request's
+     encoding through unchanged. *)
+  Printf.sprintf "reverse_proxy %s {\n    header_up -Forwarded\n    header_up X-Forwarded-For {remote_host}\n    header_up X-Forwarded-Host {host}\n    header_up X-Forwarded-Proto {scheme}\n    header_up X-Campfire-Front caddy\n    transport http {\n      compression off\n    }\n    %s  }"
     target forwarding
 
 let caddyfile c =

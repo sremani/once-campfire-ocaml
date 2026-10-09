@@ -85,6 +85,8 @@ let config_text () =
   check bool "ACME directory" true (contains "https://acme.test/directory");
   check bool "EAB" true (contains "eab \"kid\" \"secret\"");
   check bool "no duplicate gzip" false (contains "encode gzip");
+  check bool "no implicit upstream gzip" true
+    (contains "transport http {\n      compression off\n    }");
   check bool "no duplicate cache" false (contains "cache {")
 
 let issuer_keys () =

@@ -161,6 +161,28 @@ let in_process () =
       (member "params" body |> member "action" |> to_string);
     Alcotest.(check string) "raw body" "_method=patch&b=body&id=body" (member "raw" body |> to_string))
 
+let malformed_raw_query () =
+  let path = Filename.temp_file "campfire-raw-query-" ".sqlite3" in
+  let runtime = Db_runtime.open_db path in
+  Fun.protect ~finally:(fun () -> Db_runtime.close runtime; Sys.remove path) (fun () ->
+    List.iter (fun target ->
+      let request = Cohttp.Request.make ~meth:`GET
+        ~headers:(Cohttp.Header.of_list ["host", "chat.example.com"])
+        (Uri.of_string "http://chat.example.com/session/new") in
+      let request = { request with Cohttp.Request.resource = target } in
+      let response, body = Lwt_main.run (Http_app.handle ~runtime
+        ~secret_key_base:"unused" ~dispatch:(fun _ -> None) request
+        Cohttp_lwt.Body.empty) in
+      Alcotest.(check int) (target ^ " status") 400
+        (Cohttp.Code.code_of_status (Cohttp.Response.status response));
+      Alcotest.(check (option string)) (target ^ " MIME")
+        (Some "text/html; charset=UTF-8")
+        (Cohttp.Header.get (Cohttp.Response.headers response) "content-type");
+      Alcotest.(check string) (target ^ " empty body") ""
+        (Lwt_main.run (Cohttp_lwt.Body.to_string body)))
+      ["/session/new?a=%"; "/session/new?a=%G0";
+       "/session/new?a=%FF"])
+
 let configured_body_limit () =
   let path = Filename.temp_file "campfire-http-limit-" ".sqlite3" in
   let runtime = Db_runtime.open_db path in
@@ -509,6 +531,7 @@ let () = Alcotest.run "M3 HTTP foundation" [
   ];
   "Cohttp", [
     Alcotest.test_case "route, body, query, method" `Quick in_process;
+    Alcotest.test_case "raw malformed query" `Quick malformed_raw_query;
     Alcotest.test_case "configured body limit" `Quick configured_body_limit;
     Alcotest.test_case "request temp lifetime" `Quick request_temp_lifetime;
     Alcotest.test_case "cancelled upload worker barrier" `Quick cancelled_upload_worker;
