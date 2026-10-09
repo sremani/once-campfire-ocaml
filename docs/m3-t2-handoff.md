@@ -1,7 +1,8 @@
 # M3-T2 controller handoff
 
-M3-T2 remains **open** pending exact rendered response bytes and broader live
-integration checks. `lib/controller_accounts.ml` maps all 73 pinned Rust route
+M3-T2 is **accepted** on the clean d6600ed five-seed gate described at the end;
+the f099059 gate below is historical evidence.
+`lib/controller_accounts.ml` maps all 73 pinned Rust route
 rows owned by this ticket. The 27 rows mapped by Rust to `action_not_found`
 return HTTP 404, including for anonymous requests. Implemented actions use
 asynchronous database access; password hashing runs off the Lwt event loop.
@@ -74,7 +75,7 @@ HTTP 200 with `content-transfer-encoding: binary`. This closes the three
 resource differences reported by the focused browser diagnostic; a rebuilt
 browser sweep remains M8-T3's gate.
 
-## Remaining dependencies
+## Earlier integration dependencies
 
 | Owner | Response or effect still requiring verification |
 | --- | --- |
@@ -83,5 +84,61 @@ browser sweep remains M8-T3's gate.
 | M6 attachments and assets | Account logo and user avatar assignment/purge effects in controller actions, beyond the earlier image-serving comparison. |
 | M8 live verification | Full account/onboarding route, method override, malformed input, and alternate-seed response/state coverage; positive push subscription creation and duplicate behavior under controlled DNS. |
 
-Do not mark M3-T2 complete from this focused matrix. The message-bot MIME and
-error cases at rows 83–89 and 135 belong to M3-T3.
+The historical 64/80 focused matrix above preceded the view-byte fixes and
+is superseded for ticket acceptance by the clean f099059 gate. The message-bot
+MIME and error cases at rows 83–89 and 135 belong to M3-T3.
+
+## Clean f099059 acceptance gate
+
+The pinned Rust candidate `9872c1d9541551c0889a60e3d49a14488bd1e403`
+and clean OCaml checkout `f0990591eb3d0dc232420f034a98085823708abb`
+were compared with fresh independent default-seed copies per request. The
+packaged OCaml executable SHA-256 is
+`1d5228d39f659c092b1881b8f6d50263178a9d08f8fff0cca22b604714753384`.
+All **292/292** T2 route/role cells match exact status, headers, body bytes,
+and SQLite state; this includes all 73 assigned rows for anonymous, signed,
+denied, and bot roles. The positive-write matrix passes **14/14** T2 cases,
+covering account roles/deactivation, bot create/rename/key reset, join-code
+reset, styles/name/profile, avatar deletion, ban/unban, push subscription
+deletion, and logout. The `_method` override matrix passes all **236/236**
+applicable role cases across application routes. The seeded T2 suite passes
+**12/12**, including first-run setup, permission paths, invalid push endpoint,
+transfer, stock logo cache, and signed/public exception handling. The safe
+reports are `/tmp/m8-t2-rc-f099-default.json`,
+`/tmp/m8-t2-rc-f099-positive.json`, and
+`/tmp/m8-t2-rc-f099-override.json`; their SHA-256 digests are recorded in
+`/tmp/m8-t2-f099-handoff.md`. Alternate-seed and malformed-path sweeps
+remain part of the shared M8/M3 integration gate, while T2's stated
+controller scope is complete.
+
+## Final d6600ed five-seed acceptance
+
+The clean packaged d6600ed executable (SHA-256
+`42a8df769a107df9e1ff6c48a071f861b45576b1684827dfaadefe3aafecd170`)
+was compared with pinned Rust `9872c1d9541551c0889a60e3d49a14488bd1e403`.
+The isolated route runner used a fresh copy of each Rails seed per case and
+compared exact status, response headers and body bytes plus every SQLite table
+before and after. All **1,314/1,314 eligible T2-owned route/role cells pass**:
+73 rows × four roles on each of `default`, `crowd`, `restricted` and
+`custom_styles`, plus 73 rows × anonymous/bot on `first_run`. That seed has no
+account or signed fixture; its 146 T2 signed/denied cells are **not run**, not
+counted as passes.
+
+The focused d6600ed first-run run passes **22/22** cases, including transfer
+PATCH/PUT invalid-token `head 400` MIME and join GET/POST missing-account
+public 500 behavior. The 500 is intentional in the account-free seed: Rails
+reads `Current.account.join_code` on nil and pinned Rust raises the matching
+internal error. On the `custom_styles` seed, logo DELETE row 38 passes **2/2**
+signed/denied cases, including exact transaction state: attachment removal,
+account timestamp touch, and source blob plus variant purge after commit.
+The seeded controller test also forces an account-touch failure and verifies
+rollback leaves the attachment and files intact; repeating a successful
+delete is idempotent.
+
+T2's account/onboarding controller scope is complete. Across the whole M3
+sweep, the only 16 response failures are M4-rendered signed/denied room-show
+rows 95/100 in the four populated seeds; no T2 response or state difference
+remains. The M3 milestone remains open for those room-view bytes and derived
+Content-Length/ETag. Full safe reports are
+`/tmp/m8-t2-d6600ed-{default,crowd,restricted,custom_styles,first_run}-full.json`;
+the scoped first-run and custom-styles reports have matching `-focused` names.

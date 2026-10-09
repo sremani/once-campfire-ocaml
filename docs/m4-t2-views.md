@@ -285,3 +285,39 @@ functional difference until a source-aligned replacement is validated in
 Chromium. The help renderer keeps the existing Tyxml fallback for other
 platforms. The 123-file view matrix still reports 121 rendered passes, zero
 failures, and two linked input metadata cases; focused M4 tests pass 9/9.
+
+## Packaged alternate-seed view checkpoint
+
+On clean packaged d6600ed, the crowd-seed account pagination frame and the
+open/closed room new/edit forms pass the pinned Rust/OCaml live comparison in
+all ten signed and denied cases: status, headers, full body, and SQLite state
+are exact. First-run row 3 passes anonymous and bot in the same comparison.
+`test/view_seeded_large_bytes.py` independently checks full Rust SHA-256
+digests for those six response bodies (five crowd, one first-run); all six
+pass. The first-run form follows the pinned Rails helper's whitespace and
+attribute order, with dynamic asset paths escaped at render time. Its three
+translation controls use Rails' fixed `TranslationsHelper::TRANSLATIONS`
+table, which does not depend on request locale.
+
+The 123-file view matrix remains 121 rendered passes and two semantic input
+links, and the focused M4 suite passes 11/11. Earlier clean browser captures
+match room pixels, live DOM, ARIA, and Cable while retaining the functional
+557-byte Lexxy readiness script and its derived server/network hash delta.
+That script is a narrow, reviewed exception; it does not mask other server
+bytes. The completed packaged five-seed sweep found no other view gap:
+default, custom_styles, crowd, and restricted each pass 704/708 role cases,
+with only four signed/denied room cells per seed carrying the script-derived
+body length and ETag difference. The first_run seed passes all 354 applicable
+cases; its other 354 signed/denied cases have no seeded session and are
+explicitly not run.
+
+A fresh packaged Chromium `rooms/show/designers` desktop-light capture at
+d6600ed has exact pixels, live DOM, ARIA, and Cable with zero retries. The
+strict cell still fails its server and network layers because the room page
+retains the 557-byte Lexxy readiness script and resulting document hash.
+This functional difference is limited to room pages and preserves the passing
+two-tab repeated-edit regression. With the pinned 123-view corpus, six full
+seeded Rust SHA-256 checks, focused M4 11/11, the five-seed HTTP sweep, and
+the fresh browser room sample, M4-T2 is verified. M4-T4 and the M4 milestone
+remain open for the full browser matrix across seeds, engines, schemes,
+viewports, and interactions.

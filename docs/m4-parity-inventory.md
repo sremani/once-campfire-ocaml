@@ -6,12 +6,12 @@ submodule `90b330024dec3e757c79b6a7e6568f93da8e3148`.
 | Ticket | Source and executable evidence | Integration seam |
 | --- | --- | --- |
 | M4-T1 assets | `crates/assets/tests/reference.rs` and six reference files; preserve the Rails application assets, vendored assets, and Rust overrides by logical path. | `Assets.serve` is wired before route dispatch; the Dockerfile copies assets and sets their root. The clean patched image passed packaged-byte, valid static HTTP, and sampled browser network checks. |
-| M4-T2 views | `crates/views/templates/` has 80 templates; `crates/views/tests/golden/` has 123 source files across full pages, fragments, JSON and SVG. | The Tyxml renderer passes the corpus accounting matrix. Finish live controller adapters, raw body review, and browser screen parity. |
+| M4-T2 views | `crates/views/templates/` has 80 templates; `crates/views/tests/golden/` has 123 source files across full pages, fragments, JSON and SVG. | Tyxml and source-aligned serializers pass all corpus cases and six full seeded Rust body digests. The packaged five-seed HTTP sweep and fresh room-browser capture support ticket acceptance with the scoped Lexxy script exception. |
 | M4-T3 rich text | `crates/richtext/tests/reference_tests.rs`, `corpus/expected.json`, and `hardening.rs` cover parsing limits, safe attributes, attachments, mentions, autolinks, plain text, and editable values. | Production message writes, FTS, and presentation use `Rich_text` with signed/GID resolvers and request Host; direct pinned Rust corpus parity passes. |
 | M4-T4 browser | Shared `once-campfire-verification/browser/smoke.mjs` and Rust `parity/` browser matrix. | Needs complete views/assets plus M5 Cable and M6 media for the full gate. The smoke test checks first run, two-tab live messages, editing, search, settings, QR, and more. |
 
-M4-T1 and T3 are verified. M4-T2 and T4 remain open until live-page and
-browser matrix gates pass.
+M4-T1, T2, and T3 are verified. M4-T4 and the milestone remain open until the
+full browser matrix gate passes.
 
 ## M4-T1 handoff
 
@@ -45,11 +45,21 @@ safety. The manager reran the executable `test/view_golden_matrix.py --require-a
 files have explicit semantic input-linkage checks. Of the rendered cases, 110 use
 structural DOM comparison and 11 compare exact bytes. The structural comparator
 ignores whitespace-only text and normalizes Rails CSRF fields, relative Copy-link
-URLs, and an OCaml Lexxy mount shim. Six focused view tests pass. This closes the
-pinned view corpus accounting, not live page byte or browser parity. M3's account,
-bot, join, and profile routes have matching structural tokens in focused live
-checks, but Askama/Tyxml whitespace and derived response headers still differ.
-M4-T2 stays open pending route-scoped byte review and the fresh browser matrix.
+URLs, and an OCaml Lexxy mount shim. The pinned corpus accounting closes. On
+packaged d6600ed, five crowd view rows pass all signed and denied Rust/OCaml
+HTTP and SQLite-state comparisons (10/10); first-run row 3 passes anonymous
+and bot (2/2). Six offline seeded full responses match pinned Rust SHA-256
+digests. The earlier clean browser captures match pixels, live DOM, ARIA, and
+Cable on room cells, where a 557-byte Lexxy readiness script required by the
+repeated-edit regression is the sole server/network difference. The completed
+packaged five-seed sweep passes 704/708 role cells on each of default,
+custom_styles, crowd, and restricted, and all 354 applicable first_run cells;
+the 16 residuals are exactly four signed/denied room cells per account seed,
+with only script-derived body length and ETag differences. A fresh packaged
+Chromium room capture has exact pixels, live DOM, ARIA, and Cable, with zero
+retries; strict server/network layers still flag that script and derived
+document hash. The manager accepts M4-T2 with this narrow functional exception.
+M4-T4 retains the broad browser matrix and the overall M4 gate stays open.
 
 ## Request and media integration checkpoint
 

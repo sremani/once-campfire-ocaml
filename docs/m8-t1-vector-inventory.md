@@ -2,8 +2,8 @@
 
 Audit against Rust `9872c1d9541551c0889a60e3d49a14488bd1e403` and Rails
 `90b330024dec3e757c79b6a7e6568f93da8e3148`, using the current OCaml
-source tree on 2026-10-09. This records source coverage; it is not a release or
-live differential pass.
+source revision `bcb440cec2760d0c116f37520585f2f24e663813` on 2026-10-09.
+This records source and focused wire coverage; it is not a final release pass.
 
 ## Copied top-level vector files
 
@@ -49,25 +49,32 @@ in-process HTTP boundary. Cohttp's synthetic request constructor normalizes a
 malformed `%` in a URI, so the malformed-query diagnostic is exercised by the
 parameter parser and logger directly; a raw-wire query check remains useful.
 
-**Concrete coverage still missing:**
+**Open front and release evidence:**
 
-- Rust `front.rs::http2_connections_close_after_the_idle_timeout` now has an
-  explicit Caddyfile configuration assertion for h2c plus the distinct two-second
-  idle and one-second read deadlines in `m8_t1_session_chain_test.ml`. The timed
-  HTTP/2 connection close still needs a live Caddy exchange. The bounded probe
-  is prepared in `scripts/m8_t1_wire_probe.py` but has not been run against
-  Caddy while M8-T2 owns the Docker interval.
-- Rust `front.rs::caches_streamed_responses_of_declared_length` and
-  `bypassed_requests_repeat_vary` have focused OCaml cache/stream unit tests,
-  but no matching live front exchange was found in the M7 handoff. Final
-  Caddy-front validation belongs with M8's live HTTP/release matrix.
-- Rust `http.rs::flash_survives_exactly_one_redirect` and
-  `session_cookie_is_written_only_when_the_session_changes` now have exact
-  synthetic action chains through `Http_app.handle` on a disposable pinned Rails
-  seed copy in `m8_t1_session_chain_test.ml`. The four cases cover unchanged
-  session writes, 32-character-ID continuity, reset/deletion, malformed encrypted and
-  signed cookies, flash crossing one redirect then being consumed, signed
-  authentication continuity and database revocation. They pass locally.
+- All six top-level vector JSON files and the 2,755-case kit parameter file are
+  byte-identical to pinned Rust. No concrete offline vector case remains
+  unported in this inventory. The kit suite has 45 source tests: one parameter
+  corpus, two Rails session tests, 28 HTTP tests, 13 front tests, and one log
+  test. The four M8-T1 seeded action-chain tests cover the formerly missing
+  flash/session behaviors.
+- The clean `rc-ff61768-amd64` packaged front passed the raw malformed-query
+  comparison: `%`, `%G0`, and `%FF` each matched pinned Rust's 400, same
+  content type, and zero-byte body. A malformed path `/%ZZ` or
+  `/session/new/%ZZ` remains a Caddy front limitation: Caddy returns 400
+  text/plain, while pinned Rust and the direct OCaml target return the same
+  404 HTML body.
+- The packaged OCaml H2C raw-frame probe saw a complete response, GOAWAY,
+  and TCP EOF 3.002 seconds after END_STREAM with a two-second idle setting,
+  inside the source test's 1.8–3.5-second window. The packaged Rust candidate
+  served H2C 200 but did not reach TCP EOF within this raw client's five-second
+  bound; the pinned Rust Hyper-client source test passes. This protocol-client
+  discrepancy remains to explain or record.
+- The older `rc-ff61768-amd64` image missed the second declared-length streamed
+  `/account/logo` identity cache request, whereas Rust hit. The clean
+  `bcb440c` packaged candidate passes the four pinned logo cases: miss, hit,
+  signed hit, and conditional 304. Bypassed Range `/account/logo` and POST `/session` match
+  Rust's duplicate `Vary: Accept-Encoding` fields; bypassed Range
+  `/session/new` retains a field-order difference.
 
 ## Packaged front wire evidence, 2026-10-09
 
@@ -106,10 +113,15 @@ matching the pinned Rust response fields above. A freshly packaged Caddy-front
 image still needs the same live check; the 7bd8 image in this section predates
 the source fix. The malformed path remains a separate Caddy boundary gap.
 
-These are evidence gaps. M8-T1 should remain open until the manager assigns or
-accepts precise equivalent
-checks; M8-T2's most recent frozen ordinary 708-cell route matrix has 34
-response mismatches and cannot be treated as a clean HTTP-family pass.
+The later clean `rc-ff61768-amd64` packaged rerun resolved the malformed-query
+check: all three raw query cases matched pinned Rust exactly. The same run
+confirmed the Caddy malformed-path limitation and the streamed-logo cache gap
+described above. The image predates the `f099059` stream-cache source fix.
+
+M8-T1 has no identified unported offline vector case at `bcb440c`; the final
+packaged stream-cache rerun passed 4/4. The Caddy malformed-path limitation,
+H2 packaged-client discrepancy, and broader route/release gates remain tracked
+under M8-T2 and M8-T5. M8-T1 is complete on its vector-coverage scope.
 
 ## Next quiet-interval wire probes
 
@@ -155,5 +167,7 @@ socket access before the logging patch; the focused M8-T1 suite now passes
 7/7 cases, including all 385
 agents, 44 versions, 352 comparisons, 40 bcrypt checks and the new request
 logging check. `dune build bin/main.exe @check` exited 0 after M3/M4 yielded.
-The additional `m8_t1_session_chain_test.exe` passes 4/4 cases. No Docker or
-browser run was performed during this audit.
+The additional `m8_t1_session_chain_test.exe` passes 4/4 cases. The clean
+packaged `rc-ff61768-amd64` front wire check ran subsequently; see the status
+above. No new Docker or test run was performed in the read-only `f099059`
+inventory.

@@ -37,16 +37,86 @@ those components, but the M3 milestone remains open until integrated responses s
 | Ticket | Focused evidence now available | Every-route gate still open |
 | --- | --- | --- |
 | M3-T1 | 16/16 HTTP foundation tests, 2,755 Rails params vectors, 129 MiB streamed multipart, request temp cleanup through cancellation, real TCP listener and 64 KiB header bound | **Accepted:** clean 674-case-pass matrix matches all 100 affected `Vary` role cells; packaged 65 KiB and 1 MiB front/target header probes reject oversized requests while normal requests pass. |
-| M3-T2 | 73 owned catalog rows dispatched, seeded controller suite 11/11, avatar/logo live corpus passed under M4/M6, scoped push-subscription subset lookup | Complete session/onboarding/account/profile/push response and state comparison for anonymous, signed, denied and bot roles; full HTML byte parity remains open. |
-| M3-T3 | 73 owned rows dispatched, seeded controller suite 9/9 including disk-backed browser and bot attachments, live Cable broadcast checks | Compare all room/message/search status, headers, HTML/JSON/Turbo bodies and persisted effects; page-part/cache response parity depends on the M4 view corpus. |
+| M3-T2 | 73 owned catalog rows dispatched; seeded permissions, first-run, transfer, logo purge, avatar, account and bot tests; positive account/session writes | **Accepted:** d6600ed passes 1,314/1,314 eligible five-seed route/role cells, including first-run's 146 anonymous/bot cells. |
+| M3-T3 | 73 owned rows dispatched; seeded room/message/search/attachment tests and live Cable broadcast checks | **Accepted controller scope:** d6600ed passes 1,298/1,314 eligible five-seed cells; the other 16 are four seeds × signed/denied room-show rows 95/100, differing only in M4 Lexxy view bytes and derived length/ETag. |
 | M3-T4 | 31 owned rows dispatched, 9/9 focused tests, 39 pinned QR matrices and 18 capacity vectors, M6's 256-case live storage corpus, M5's guarded integration tests | **Accepted:** latest immutable default-seed matrix passes all 124/124 assigned route/role cases; positive manifest, service-worker and unfurl checks pass 3/3 exact on the same binary. |
-| M3-T5 | 13/13 focused cache tests, public QR route, authenticated room and sidebar private-cache hits with SQLite invalidation and revoked-session bypass | Compare page-part and conditional/gzip/HEAD cache behavior on live routes; remaining fragment offsets and alternate scenarios need review. |
+| M3-T5 | Public and private cache admission, authorization, invalidation and limits; live identity/gzip/HEAD/conditional and frozen-Date checks | **Accepted cache semantics:** d6600ed public logo miss/hit/signed/304/Range passes 5/5 exact; rows 75/95/100 pass their own bounded cache, HEAD, ETag, no-store and write-invalidation checks. Room validators derive from M4 view bytes; libz and Rust zlib-rs produce different valid gzip wire bytes. |
 
 M8-T2 ran the 177-row, four-role live Rust/OCaml response and SQLite-state
 matrix. Its four isolated `GET /` role cases pass after the shared 404, header,
 cookie and session fixes. No M3 ticket is accepted from the focused suites alone.
 
 ## Current ticket acceptance, 2026-10-09
+
+The final clean packaged d6600ed sweep compared all 177 routes under four
+roles on fresh independent copies of `default`, `crowd`, `restricted`, and
+`custom_styles`, plus the available anonymous/bot roles on `first_run`.
+The executable SHA-256 is
+`42a8df769a107df9e1ff6c48a071f861b45576b1684827dfaadefe3aafecd170`;
+the pinned Rust source is `9872c1d9541551c0889a60e3d49a14488bd1e403`.
+Each populated seed passes **704/708**; `first_run` passes **354/354** eligible
+cells, with **354 signed/denied cells not run** because that seed has no
+account or signed fixture. In total, **3,170 pass, 16 fail, 354 not run**.
+Every failure is signed/denied row 95 or 100 on one of the four populated
+seeds: both responses are 200 with equal authorization, independent headers,
+and persisted state, while the OCaml room page includes an extra 557-byte
+Lexxy readiness script. Body bytes and their derived Content-Length/ETag
+therefore differ. M4 owns that remaining rendered-view difference; the M3
+every-route milestone remains open until it is resolved and reverified.
+
+T2's **1,314/1,314** eligible cells have no difference; T3's **1,298/1,314**
+include only those 16 M4 room-view cells. The d6600ed focused run separately
+passed **22/22** first-run cases, including missing-account join 500 and bare
+transfer 400 responses; custom-styles logo deletion row 38 passed **2/2** with
+exact SQLite attachment, account-touch, blob and variant purge effects.
+The crowd autocomplete JSON bodies, counts, and next-page Link headers pass
+**3/3** live. Restricted Kevin's open/closed room GET and POST paths all
+return 403, an empty body and unchanged rooms on both servers. A separate
+bcb440c direct two-port probe saw only OCaml's front-generated `Server: Caddy`
+header there;
+the isolated route comparator attributes no controller/header difference.
+
+T5's packaged public-logo cache sequence passes **5/5** exact Rust comparisons:
+miss, repeat hit, signed hit, conditional 304, and Range bypass. The
+conditional hit retains the same frozen Date, and neither server changes
+SQLite. Its bounded rows 75/95/100 probe passes identity/gzip GET, HEAD,
+own-validator 304, cache miss/hit, no-store and write invalidation on both
+servers. Row 75's identity body and ETag are byte-identical; rows 95/100
+inherit the M4 room-body residual. OCaml libz and Rust zlib-rs encode different
+gzip wire bytes, while both decode to their own exact identity bodies and
+expose matching cache/HEAD semantics. This documented compressor difference
+does not reopen T5's semantic cache ticket.
+
+Safe immutable reports are `/tmp/m8-t2-d6600ed-{default,crowd,restricted,custom_styles,first_run}-full.json`,
+`/tmp/m8-t2-d6600ed-logo-cache-summary.md`, and
+`/tmp/m8-t2-d6600ed-head-gzip.json`. The earlier f099059 checkpoint below is
+retained as historical evidence. M3-T2, T3, and T5 are accepted on the d6600ed
+ticket scope; the M3 milestone is not yet accepted.
+
+### Earlier f099059 checkpoint
+
+The clean packaged f099059 candidate (executable SHA-256
+`1d5228d39f659c092b1881b8f6d50263178a9d08f8fff0cca22b604714753384`)
+passes **704/708** ordinary default-seed role cases. T2 owns 73 rows and
+passes **292/292**; T3 passes **288/292**; T4 passes **124/124**. The four
+remaining failures are signed/denied room-show rows 95/100, with identical
+status and SQLite state; the OCaml room page contains an extra 557-byte
+Lexxy readiness script, so body bytes and derived Content-Length/ETag differ.
+The same f099059 binary passes **30/30** isolated valid writes, including
+**14/14** T2 and **16/16** T3 cases, and all **236/236** applicable method
+override role cases. T2's 12-case seeded permission/first-run suite and exact
+assigned role matrix satisfy its ticket. T1, T2 and T4 are checked; T3 and
+T5 remain open, as does the M3 every-route gate. Safe report hashes and paths
+are in `/tmp/m8-t2-f099-handoff.md`.
+
+T3's narrow remaining response gate is exact identity room HTML on rows
+95/100 after M4 removes the extra script, then a fresh shared role comparison.
+T5's live row 75 identity body, page-part ETag and conditional `Vary` match,
+and its offline suite passes 15/15. Its recorded PageParts gzip still differs
+in compressed bytes because the OCaml libz output differs from pinned Rust's
+`zlib-rs`; room validators also depend on the same M4 room body fix.
+
+### Earlier 674-case checkpoint
 
 The clean checkpoint `7bd8a4964603e3de3800c1edf45674be08dd3a9f`
 passes **674/708** default-seed route/role cases. All 34 failures are rendered
@@ -70,7 +140,7 @@ The earlier pinned, isolated default-seed matrix archived at
 `/tmp/m8-t2-default-661.json`
 passes **661/708** route/role cases. It reports no status, persisted-state,
 or independent header difference. The remaining 47 cases are page body bytes
-and derived Content-Length/ETag values across 24 rows. T4 owns rows 146–176;
+and derived Content-Length/ETag values across 24 rows. T4 owns row 51 and rows 147–176;
 all **124/124** of its route/role cases pass. The same OCaml binary passed
 the positive `.json` manifest, `.js` service-worker and signed missing-URL
 unfurl comparisons **3/3**, including exact headers, body, and SQLite state.

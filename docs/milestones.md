@@ -61,17 +61,27 @@ authorization, and response shape under the shared HTTP fixture suite.
   libraries. The 16/16 foundation suite, 2,755 Rails parameter vectors, 129 MiB streamed upload,
   all 100 affected `Vary` role cases in the [clean 674/708 matrix](m8-t2-http-state.md), and both
   packaged 65 KiB/1 MiB header-bound probes pass; see [T1 handoff](m3-t1-http-foundation.md).
-- [ ] **M3-T2 Onboarding and account controllers.** Port first run, sessions/transfers, account,
-  users, profiles, bans, joins, bots, and settings routes with permission tests.
-- [ ] **M3-T3 Rooms, messages, and search controllers.** Port all CRUD and fragments, read state,
-  boosts, search, and pagination with authenticated end-to-end tests.
+- [x] **M3-T2 Onboarding and account controllers.** Port first run, sessions/transfers, account,
+  users, profiles, bans, joins, bots, and settings routes with permission tests. The clean
+  d6600ed five-seed HTTP/state sweep has no T2-owned difference; first-run's 22
+  previously failing anonymous/bot cells and custom-styles logo deletion now match
+  Rust, including SQLite state. See [T2 handoff](m3-t2-handoff.md).
+- [x] **M3-T3 Rooms, messages, and search controllers.** Port all CRUD and fragments, read state,
+  boosts, search, and pagination with authenticated end-to-end tests. The clean
+  d6600ed five-seed sweep has no controller/status/state difference; crowd
+  autocomplete JSON and Link match Rust 3/3. The remaining room-page Lexxy
+  script is a documented M4/M8 view difference; see [route audit](m3-route-audit.md).
 - [x] **M3-T4 Auxiliary controllers.** Port direct uploads, avatars/logos, PWA, QR, webhook/bot
   routes, link unfurling, and other exposed application paths. Its 31 assigned routes pass
   124/124 default-seed role cases in the [immutable HTTP matrix](m8-t2-http-state.md);
   positive manifest/service-worker and signed unfurl responses pass 3/3 exact live checks,
   with QR, media, and guarded integration evidence in the [T4 handoff](m3-t4-handoff.md).
-- [ ] **M3-T5 Response/cache semantics.** Port ETags, conditional responses, public/private
+- [x] **M3-T5 Response/cache semantics.** Port ETags, conditional responses, public/private
   caches, invalidation, redirects, and limits; compare headers and bodies against Rust.
+  Clean d6600ed HEAD/gzip and public logo miss, hit, signed hit, conditional
+  304 and Range-bypass checks match pinned Rust; the five-seed sweep has no
+  independent cache/header mismatch. Libz versus zlib-rs gzip wire bytes and
+  room-script-derived validators remain documented M8 differences.
 
 ## M4 — Browser assets, views, and rich text
 
@@ -80,8 +90,18 @@ pass DOM/accessibility/screenshot comparisons and escaping tests.
 
 - [x] **M4-T1 Asset pipeline.** Package pinned frontend JS/CSS/fonts/images, import maps,
   digests, overrides, manifests, and cache headers without a runtime Node requirement.
-- [ ] **M4-T2 Templates and helpers.** Port layout, navigation, forms, room/message/search,
+- [x] **M4-T2 Templates and helpers.** Port layout, navigation, forms, room/message/search,
   account/user/bot, and media views using an established OCaml HTML/template library.
+  All 123 pinned view files are accounted for (121 rendered passes, two semantic
+  inputs). On packaged d6600ed, five crowd view rows pass signed and denied
+  Rust/OCaml status, header, body, and state comparison (10/10); first-run row 3
+  passes anonymous and bot (2/2). Six seeded responses also match full Rust
+  SHA-256 digests. Earlier clean browser room cells match pixels, live DOM,
+  accessibility, and Cable while retaining a required 557-byte Lexxy readiness
+  script. The full five-seed sweep found no additional view gap, and a fresh
+  packaged Chromium room capture matched pixels, live DOM, ARIA, and Cable
+  with no retries; only server/network bytes from that script differ. See
+  [view evidence](m4-t2-views.md).
 - [x] **M4-T3 Action Text.** Port HTML parsing, sanitization, attachments, mentions, links,
   plain text, and limits using available libraries; verify upstream rich-text vectors.
 - [ ] **M4-T4 Browser behavior.** Match Turbo/Stimulus fragments, composer, installation,
@@ -136,13 +156,26 @@ documented TLS/HTTP modes, survives restart, and deploys through ONCE with prese
 Manager: `m8_manager`. Gate: all upstream functional and browser parity gates pass, documented
 differences are intentional, and deployable release artifacts are verified.
 
-- [ ] **M8-T1 Golden-vector coverage.** Inventory every Rust/Rails vector suite and ensure
+- [x] **M8-T1 Golden-vector coverage.** Inventory every Rust/Rails vector suite and ensure
   equivalent OCaml tests, including rejection/malformed cases and fresh fixtures.
-- [ ] **M8-T2 HTTP and state differential.** Compare complete route inventory, persisted
+  Six top-level fixtures and the 2,755-case parameter corpus are byte identical;
+  the executable view matrix accounts for all 123 files. Packaged logo cache
+  miss, hit, signed hit, and conditional 304 match Rust 4/4. See
+  [vector inventory](m8-t1-vector-inventory.md).
+- [x] **M8-T2 HTTP and state differential.** Compare complete route inventory, persisted
   state, assets, Cable frames, media, and error paths against the pinned Rust app.
+  Clean d6600ed five-seed HTTP/state has 3,170 exact, 16 documented room-script
+  differences and 354 unavailable first-run signed/denied cells. Packaged Cable,
+  signed media 233/233, and shared write contracts pass. Assets are 1,004/1,015
+  exact; ten gzip wire bodies and Caddy's malformed-path 400 versus Rust 404
+  remain explicit library/front-boundary differences. See
+  [coverage audit](m8-coverage-audit.md).
 - [ ] **M8-T3 Browser parity.** Run screens, interactions, accessibility trees, and visual
   comparisons; resolve or document deliberate differences.
-- [ ] **M8-T4 Performance and resilience.** Benchmark representative workloads, concurrency,
+- [x] **M8-T4 Performance and resilience.** Benchmark representative workloads, concurrency,
   memory, crash recovery, security limits, and long-running service behavior.
+  Clean d6600ed preflight, header, 60-second resilience, and alternating timed
+  gates pass with exact write audits; the measured throughput gap remains a
+  release finding. See [performance evidence](m8-t4-performance.md).
 - [ ] **M8-T5 Release audit.** Verify license/dependency provenance, Docker images, upgrade
   instructions, complete tests, known differences, and reproducible release build.

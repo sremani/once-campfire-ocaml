@@ -129,3 +129,21 @@ Result: **40 fail, 0 pass, 0 errors** under strict comparison. This includes 10 
 The `auth/join`, account, bot, room-form, profile, search, and welcome markup gaps belong to M4-T2. The four Rust asset overrides should remain. M8-T3 can reuse the artifact to prioritize the full seed/form-factor/browser matrix; this sample did not cover `crowd`, `custom_styles`, `first_run`, or `restricted` seeds.
 
 Still required for M4-T4 closure: a stable smoke after M8-T2's Docker reset interval and M8-T3's full browser matrix across seeds/engines/breakpoints after M4-T2 view parity work.
+
+## Packaged d6600ed room recapture
+
+M8-T3 reran `rooms/show/designers` in Chromium desktop/light on the clean
+d6600ed packaged app after repairing the detached Rails submodule used by the
+browser harness. The one-cell report has zero retries and zero capture errors.
+Pixels (1440×900), live DOM, ARIA, and Cable are exact. The strict result is
+still a failure because the OCaml server has three added script lines and the
+document network hash differs: this is the 557-byte Lexxy readiness listener
+required by the passing two-tab repeated-edit regression. There are no other
+server or network differences in this cell. The report is at
+`/tmp/m8-t3-harness-wt/parity/out/m8-t3-d6600ed-room-desktop-light-rerun/report.json`.
+
+This fresh packaged sample, the complete five-seed HTTP view sweep, and the
+123-file view corpus close M4-T2 with the script documented as an intentional
+functional difference. M4-T4 remains open for the full browser matrix across
+seeds, engines, viewports, schemes, breakpoints, and interactions. The older
+captures above are retained as historical debugging evidence.
