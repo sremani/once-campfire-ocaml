@@ -297,9 +297,11 @@ let test_sidebar_response_mode () = with_seed "default" (fun runtime ->
   let frame_response,frame=send ~cookie_header:cookie
     ~turbo_frame:"user_sidebar" runtime `GET "/users/me/sidebar" in
   Alcotest.(check int) "Turbo sidebar frame" 200 (status frame_response);
-  check "Turbo sidebar has frame without document"
-    (not (String.starts_with ~prefix:"<!DOCTYPE html>" frame) &&
-     String.starts_with ~prefix:"<turbo-frame" frame);
+  check "Turbo sidebar uses the minimal frame document"
+    (String.starts_with
+       ~prefix:"<html>\n  <head>\n    \n  </head>\n  <body>\n    <turbo-frame"
+       frame &&
+     String.ends_with ~suffix:"</turbo-frame>\n  </body>\n</html>\n" frame);
   let _,empty_header=send ~cookie_header:cookie ~turbo_frame:"  "
     runtime `GET "/users/me/sidebar" in
   check "blank Turbo-Frame header keeps full document"

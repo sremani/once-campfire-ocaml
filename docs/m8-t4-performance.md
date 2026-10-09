@@ -165,6 +165,74 @@ If a source edit is required during exploratory work, add
 Use a unique output directory for each rerun; the benchmark refuses to
 overwrite results.
 
+## Clean `ff61768` candidate and body-timeout diagnosis
+
+The clean amd64 image `campfire-ocaml:rc-ff61768-amd64`
+(`sha256:0abeb89774d45a8cdd58dbe23d35ddedfd3867c87f7fe1c0960620ca0994051f`)
+passed two alternating Rust/OCaml shared preflight rounds. All eight route
+contracts and zero-write audits passed in each isolated run. The OCaml source
+was clean, its HEAD matched the image's `GIT_REVISION`, and the summary marked
+the run `release_comparable: true`. The packaged header probe passed: both
+listeners redirected an ordinary anonymous room request, the front rejected a
+65 KiB header with 431, the target closed it, and the target was private to
+loopback. Raw results are in
+`once-campfire-verification/tmp/bench/m8-t4-ff61768-preflight-clean/` and
+`m8-t4-resilience-1791543801-680639/`.
+
+The full resilience script reached its slow-body check twice after validated
+concurrent reads, searches and exact writes in two rooms, plus complete Cable
+fanout. Both runs failed because an incomplete `POST /up` returned **HTTP 200
+with an empty body**. A separate raw-wire probe showed the failure was generic:
+incomplete POSTs to `/up`, `/session` and `/messages` all received Caddy's
+`Server`, `Date`, `Content-Length: 0` and `Connection: close` headers with 200;
+the direct OCaml target closed without a response. See
+`/tmp/campfire_m8_t4_diag/route-wire.json` and the stopped run at
+`once-campfire-verification/tmp/bench/m8-t4-resilience-1791544655-1193770/`.
+Caddy 2.6.2 rejected `reverse_proxy request_buffers 1MiB`; a route fallback,
+`handle_errors`, `request_body max_size`, and disabling upstream keepalive did
+not prevent the empty 200 under the warmed workload. A disposable Caddy with
+no front `read_body` deadline avoided the false 200, but the unmodified target
+could leave an incomplete request unanswered. The target therefore needs to
+send a response on its own per-read timeout.
+
+In an isolated `ff61768` worktree, `Front_target` was changed to return an
+empty 408 and close the connection when a body read times out, including
+timeouts while draining a body. The Caddy `read_body` deadline was removed;
+the target retains the full configured `HTTP_READ_TIMEOUT` for **each** body
+read. The experimental image `campfire-ocaml:target408-noread-exp`
+(`sha256:228249fed4b77261d44d12ca1385bee790a0777d7f053c30b43be222d9bc6e2a`)
+returned 408 through its packaged Caddy and directly on all three incomplete
+POST routes. Its header probe and full resilience run passed. The full run
+recorded 39 room reads, 57 searches and 39 plus 40 acknowledged writes with
+zero errors or invalid responses; both Cable subscribers received all five
+paced and 333 saturated posts. Other request probes returned 400 for malformed
+JSON, 413 for an oversized body and 431 for a large header. The 60-second
+sample completed 11,707 validated reads with peak memory 50,090,476 bytes and
+79 PIDs. SIGKILL/restart, backup/restore, SQLite integrity and exact write
+audits passed; the restored database held 586 messages. Raw results are in
+`once-campfire-verification/tmp/bench/m8-t4-resilience-1791546000-1531405/`
+and `m8-t4-resilience-1791546005-1533737/`.
+
+The same experimental image accepted a progressing 135,266,441-byte multipart
+body over 25.86 seconds through Caddy and 25.85 seconds directly; both returned
+the expected 404 after parsing the complete request. The payload was sent in
+129 one-MiB chunks with a 0.2-second interval, under ordinary 60-second idle
+and 300-second write settings. With Caddy's old absolute `read_body 2s`, the
+front instead broke the transfer at 10 MiB after two seconds and returned the
+empty 200. Raw results: `/tmp/campfire_m8_t4_diag/upload129-target408-noread.json`
+and `/tmp/campfire_m8_t4_diag/upload129.json`. Under deliberately shortened
+two-second idle and five-second write settings, the full body could be sent
+but the front closed without a final response; those settings do not establish
+the long-upload gate.
+
+Only `lib/front_target.ml` and `lib/front_config.ml` were copied from the
+proven worktree into the main checkout. `dune build bin/main.exe bin/front.exe @check`,
+eight focused M7-T1 tests, direct stalled-body and progressing-upload
+checks, and `git diff --check` passed after integration. The experimental image
+was built from an uncommitted worktree and is **not** a release comparison.
+The integrated changes still need a clean committed image, repeat preflight
+and resilience, then the timed alternating benchmark.
+
 ## Remaining gate
 
 Build one fresh packaged OCaml image after M3/M4 source edits settle. Repeat

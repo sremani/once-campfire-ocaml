@@ -160,6 +160,40 @@ The search accessibility spacing is also a real remaining difference despite
 equal normalized HTML. The final image must be recaptured after current source
 changes; no result here is counted toward the 874-cell default lean sweep.
 
+### Clean `ff61768` candidate diagnostic
+
+The next bounded capture used clean source revision
+`ff617683b4fa64be34c8c20b454877820a4b8431`, amd64 image
+`sha256:0abeb89774d45a8cdd58dbe23d35ddedfd3867c87f7fe1c0960620ca0994051f`,
+and a parity wrapper built directly on that image. Both pinned default-seed
+inventories passed 198/0. The same ten-state Chromium desktop/phone,
+light/dark, six-layer comparison passed **28 of 40** cells, failed 12, and
+had zero capture errors. The 40-cell report is in the Rust checkout at
+`parity/out/m8-t3-default-40-ff61768/report.json`. Search results now pass
+all four cells, including pixels and accessible text. Sign-in, join, admin
+edit, bots, new room, and profile remain four-for-four passes each.
+
+The 12 failures are the four cells each for `rooms/show/designers`,
+`rooms/show/direct`, and `welcome/no_rooms`. All 12 have equal pixels, live
+DOM, accessibility tree, and Cable transcript. Both room states have one
+three-line extra Lexxy readiness script in the normalized server document;
+the script is retained because the two-tab repeated-edit regression submits
+stale editor state without it. Its document body hash differs accordingly.
+Room refresh responses, including the empty `\n` body, are exact. The only
+other differing network response is `GET /users/me/sidebar`: headers now
+match, including `Vary: accept, accept-encoding`, while the normalized body
+hash differs for both David and Loner.
+
+The sidebar body cause was traced to Rust's
+`layouts/turbo_rails/frame.html` envelope for `Turbo-Frame` requests. OCaml
+returned the inner `<turbo-frame>` by itself. A corrected isolated live
+fixture capture verified the inner bytes are identical for David and Loner;
+Rust adds exactly 63 bytes around them: a 44-byte
+`<html><head>…</head><body>` prefix and a 19-byte closing suffix. The
+targeted `Views.frame_page`/sidebar controller fix is now in the working
+tree and passes M3-T2's seeded 12-test suite, but this clean-image browser
+report predates that fix. Rebuild and recapture before claiming closure.
+
 ### Full release sweep
 
 Run each seed in both matrices using the pinned Playwright image and frozen

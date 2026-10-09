@@ -115,16 +115,33 @@ let serve ?stop ~socket ~read_timeout ~write_timeout ~idle_timeout ~callback () 
                 Cohttp_lwt.Body.of_stream
                   (Cohttp_lwt.Body.create_stream Request.read_body_chunk reader)
             | `No | `Unknown -> Cohttp_lwt.Body.empty in
-          Lwt.catch (fun () -> callback conn request body)
-            (fun _ -> Cohttp_lwt_unix.Server.respond_error
-              ~body:"Internal Server Error" () >|= fun response -> `Response response)
+          let timed_out () =
+            let headers = Cohttp.Header.of_list
+              ["content-length", "0"; "connection", "close"] in
+            let response = Cohttp.Response.make ~status:`Request_timeout
+              ~headers () in
+            Lwt.return (`Response (response, Cohttp_lwt.Body.empty)) in
+          Lwt.catch
+            (fun () ->
+              Lwt.catch (fun () -> callback conn request body)
+                (function Deadline as error -> Lwt.fail error
+                | _ -> Cohttp_lwt_unix.Server.respond_error
+                    ~body:"Internal Server Error" () >|= fun response ->
+                    `Response response)
+              >>= fun action ->
+              let too_large = match action with
+                | `Response (response,_) ->
+                    Cohttp.Code.code_of_status (Cohttp.Response.status response) = 413
+                | `Expert _ -> false in
+              (if too_large then Lwt.return_unit
+               else Cohttp_lwt.Body.drain_body body) >|= fun () -> action)
+            (function Deadline -> timed_out () | error -> Lwt.fail error)
           >>= fun action ->
-          let too_large = match action with
+          let close_after_response = match action with
             | `Response (response,_) ->
-                Cohttp.Code.code_of_status (Cohttp.Response.status response) = 413
+                List.mem (Cohttp.Code.code_of_status (Cohttp.Response.status response))
+                  [408; 413]
             | `Expert _ -> false in
-          (if too_large then Lwt.return_unit else Cohttp_lwt.Body.drain_body body)
-          >>= fun () ->
           clock.phase <- Response;
           (match action with
            | `Response (response,response_body) ->
@@ -133,7 +150,7 @@ let serve ?stop ~socket ~read_timeout ~write_timeout ~idle_timeout ~callback () 
                    Cohttp_lwt.Body.write_body
                      (Response.write_body writer) response_body)
                  response oc >>= fun () ->
-               if Cohttp.Request.is_keep_alive request && not too_large then (
+               if Cohttp.Request.is_keep_alive request && not close_after_response then (
                  clock.phase <- Idle;
                  clock.header_deadline <- None;
                  serve_one ())

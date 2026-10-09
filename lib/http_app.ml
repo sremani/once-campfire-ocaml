@@ -692,10 +692,24 @@ let handle ~runtime ~secret_key_base ?cable ?event_sink ?front_cache
               else headers in
             let headers = Cohttp.Header.replace headers "x-cache" "miss" in
             let response = {response with headers} in
-            (if cacheable then match body with
-             | `Stream _ -> Lwt.return body
-             | _ -> Cohttp_lwt.Body.length body >>= fun (length, body) ->
-                 if length > Int64.of_int cache.max_item_size then Lwt.return body
+            (if cacheable then
+               let declared = Option.bind
+                 (Cohttp.Header.get headers "content-length") Int64.of_string_opt in
+               (* A send_file response is streamed even when it has a known,
+                  bounded length. Record those bytes for the public cache as
+                  the Rust front does. Leave unknown and large streams alone. *)
+               let was_stream = match body with `Stream _ -> true | _ -> false in
+               let recordable = match body with
+                 | `Stream _ -> (match declared with
+                     | Some length -> length >= 0L &&
+                         length <= Int64.of_int cache.max_item_size
+                     | None -> false)
+                 | _ -> true in
+               if not recordable then Lwt.return body
+               else Cohttp_lwt.Body.length body >>= fun (length, body) ->
+                 if length > Int64.of_int cache.max_item_size ||
+                    (was_stream && Some length <> declared)
+                 then Lwt.return body
                  else Cohttp_lwt.Body.to_string body >|= fun bytes ->
                    ignore (Http_cache.Front.store cache ~now ~generation request
                      ~status ~headers ~body:bytes);

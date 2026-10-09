@@ -284,6 +284,13 @@
 
 (rule
  (alias runtest)
+ (deps view_room_form_bytes.py fixtures/views_rooms_opens_new.json
+  fixtures/views_rooms_opens_edit.json fixtures/views_rooms_closeds_new.json
+  fixtures/views_rooms_closeds_edit.json)
+ (action (run python3 view_room_form_bytes.py %{exe:m4_t2_test.exe})))
+
+(rule
+ (alias runtest)
  (deps view_search_bytes.py fixtures/views_searches_index.json
   fixtures/views_searches_index_empty.json)
  (action (run python3 view_search_bytes.py %{exe:m4_t2_test.exe})))

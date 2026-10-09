@@ -261,3 +261,27 @@ session. They do not validate Caddy response headers or the remaining route
 families. The 123-file golden matrix remains 121 rendered passes, 2 linked
 input metadata cases, and no failures. Room-show rows 95/100 still need a
 fresh view/browser gate with the required Lexxy readiness script retained.
+
+The later room-form pass reproduced Askama navigation and main content bytes
+for all four pinned open/closed new/edit goldens. The byte fixture
+`test/view_room_form_bytes.py` checks both sections for each case (eight
+sections, 255 nav bytes and 7,287–8,820 main bytes). Offline default-seed
+probes for HTTP rows 106/107/114/115 now match the pinned Rust body lengths
+29,387/30,025/30,377/31,224; their full live hashes still need an integrated
+HTTP rerun. The direct-new and search index leading block newlines now match
+the pinned source, and their seeded probes match Rust report lengths and SHA
+prefixes at rows 122 and 145.
+
+The room-show navigation, notification dialog, Chrome desktop help partial,
+main wrapper, composer, and sidebar frame now reproduce the pinned Rust byte
+layout. On the default seed, rows 95 and 100 render 416,906 bytes each. Removing
+only the 557-byte Lexxy readiness `<script>` from the response yields the
+**exact 416,349-byte pinned Rust body**, SHA-256
+`aaa9305357de289a4cc1b53a71b8dab8003c13634fb01eaae6fd3ee6c105cc54`.
+`test/view_seeded_bytes.py` checks both rows with this narrowly scoped script
+normalization; it does not mask any other bytes. Browser repeated edits depend
+on that script, so the full HTTP byte gate will retain a 557-byte room-only
+functional difference until a source-aligned replacement is validated in
+Chromium. The help renderer keeps the existing Tyxml fallback for other
+platforms. The 123-file view matrix still reports 121 rendered passes, zero
+failures, and two linked input metadata cases; focused M4 tests pass 9/9.

@@ -557,7 +557,7 @@ let sidebar_show c = match current_id c with
       let body=if frame_request then
         Views.sidebar_frame ~context ~rooms ~entries ~placeholders
           ~can_create_rooms ~rooms_stream_name ~user_rooms_stream_name ()
-        |> Views.render
+        |> Views.frame_page
       else Views.sidebar_page ~context ~rooms ~entries ~placeholders
           ~can_create_rooms ~rooms_stream_name ~user_rooms_stream_name () in
       H.html ~status:200 body

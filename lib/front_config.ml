@@ -150,9 +150,9 @@ let caddyfile c =
      slack. Set the Caddy value lower so a 65 KiB field is rejected at the
      front before the 64 KiB target closes the upstream connection. *)
   let global = Printf.sprintf
-    "{\n  admin off\n  http_port %d\n  https_port %d\n  storage file_system %s\n  auto_https disable_redirects\n  servers {\n    max_header_size 60KiB\n%s    timeouts {\n      read_header %ds\n      read_body %ds\n      write %ds\n      idle %ds\n    }\n  }\n}\n\n"
+    "{\n  admin off\n  http_port %d\n  https_port %d\n  storage file_system %s\n  auto_https disable_redirects\n  servers {\n    max_header_size 60KiB\n%s    timeouts {\n      read_header %ds\n      write %ds\n      idle %ds\n    }\n  }\n}\n\n"
     c.http_port c.https_port (quote (Filename.concat c.storage_path "caddy"))
-    protocols c.http_read_timeout c.http_read_timeout c.http_write_timeout c.http_idle_timeout in
+    protocols c.http_read_timeout c.http_write_timeout c.http_idle_timeout in
   let proxy = reverse_proxy c in
   if not (tls_enabled c) then
     (* No encode directive: Http_gzip has already negotiated content coding. *)

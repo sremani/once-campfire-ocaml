@@ -234,6 +234,12 @@ let page ?title ?(body_class="") ?(head=concat []) ?(nav=concat [])
     ~content:(render content) ~footer:(render footer)
     ~sidebar:(render sidebar)
 
+let frame_page ?(head=concat []) content =
+  String.concat "" [
+    "<html>\n  <head>\n    ";render head;
+    "\n  </head>\n  <body>\n    ";render content;
+    "\n  </body>\n</html>\n"]
+
 let legacy_session_page ~context ~content =
   legacy_page ~context ~title:"Sign in" ~body_class:""
     ~head:{|<meta name="turbo-visit-control" content="reload">|}
@@ -2251,7 +2257,205 @@ let room_form_page ~context ?last_room_id (data:room_form_data) =
     | None -> "New chat room"
     | Some _ -> "Edit settings for " ^
       Option.value data.form_room_name ~default:"" in
-  page ~title ~context ~nav (concat [first;delete])
+  let source_user ~selected (user:user) =
+    let control=if not data.can_administer then "" else if not is_closed then
+      "\n    " ^ legacy_img ~size:(Some 20) context "check.svg"
+        ["class","colorize--black flex-item-no-shrink";
+         "aria-hidden","true"]
+    else if data.form_room_id=None &&
+      data.form_current_user_id=Some user.id then String.concat "" [
+        {|
+      <input type="hidden" name="user_ids[]" value="|};
+        i64 user.id;{|" />
+      |};legacy_img ~size:(Some 20) context "check.svg"
+        ["class","colorize--black flex-item-no-shrink";
+         "aria-hidden","true"]]
+    else String.concat "" [
+      {|
+      <label class="switch flex-item-no-shrink">
+        <input type="checkbox" name="user_ids[]" value="|};
+      i64 user.id;{|" class="switch__input"|};
+      (if selected then {| checked="checked"|} else "");
+      {| />
+        <span class="switch__btn round"></span>
+        <span class="for-screen-reader">Give |};legacy_text user.name;
+      {| access to this room</span>
+      </label>|}] in
+    String.concat "" [
+      {|<li class="flex align-center gap margin-none" data-value="|};
+      legacy_attribute (String.lowercase_ascii user.name);
+      {|">
+  <figure class="avatar flex-item-no-shrink" style="--avatar-size: 4ch;">
+    <a title="|};legacy_attribute user.title;
+      {|" class="btn avatar" data-turbo-frame="_top" href="|};
+      legacy_attribute (relative_user user.id);
+      {|"><img aria-hidden="true" loading="lazy" src="|};
+      legacy_attribute user.avatar_url;
+      {|" width="48" height="48" /></a>
+  </figure>
+
+  <div class="min-width">
+    <div class="overflow-ellipsis fill-shade"><strong>|};
+      legacy_text user.name;
+      {|</strong></div>
+  </div>
+
+  <hr class="separator" aria-hidden="true">|};control;
+      {|
+</li>|}] in
+  let source_everyone=String.concat "" [
+    {|<li class="flex align-center gap margin-none">
+      <figure class="avatar flex-item-no-shrink" style="--avatar-border-radius: 0; --avatar-size: 4ch;">
+        |};legacy_img context "everyone.svg"
+      ["aria-hidden","true";"class","colorize--black";
+       "style","background-color: transparent"];
+    {|
+        <span class="for-screen-reader">Everyone</span>
+      </figure>
+
+      <div class="min-width">
+        <div class="overflow-ellipsis fill-shade"><strong>Everyone</strong></div>
+      </div>
+
+      <hr class="separator" aria-hidden="true">
+        <a class="btn--faux flex-inline" tabindex="-1" data-turbo-action="replace" href="|};
+    legacy_attribute type_change;
+    {|">
+          <label for="room_type" class="switch">
+            <input type="checkbox" id="room_type" class="switch__input"|};
+    (if is_closed then "" else {| checked="checked"|});
+    {|>
+            <span class="switch__btn round"></span>
+            <span class="for-screen-reader">|};
+    (if is_closed then "Give everyone access to this room"
+      else "Give only some access to this room");
+    {|</span>
+          </label>
+</a>
+    </li>|}] in
+  let source_everyone=if is_closed then String.concat "" [
+    {|<li class="flex align-center gap margin-none">
+        <figure class="avatar flex-item-no-shrink" style="--avatar-border-radius: 0; --avatar-size: 4ch;">
+          |};legacy_img context "everyone.svg"
+      ["aria-hidden","true";"class","colorize--black";
+       "style","background-color: transparent"];
+    {|
+          <span class="for-screen-reader">Everyone</span>
+        </figure>
+
+        <div class="min-width">
+          <div class="overflow-ellipsis fill-shade"><strong>Everyone</strong></div>
+        </div>
+
+        <hr class="separator" aria-hidden="true">
+
+        <a class="btn--faux flex-inline" tabindex="-1" data-turbo-action="replace" href="|};
+    legacy_attribute type_change;
+    {|">
+          <label for="room_type" class="switch">
+            <input type="checkbox" id="room_type" class="switch__input">
+            <span class="switch__btn round"></span>
+            <span class="for-screen-reader">Give everyone access to this room</span>
+          </label>
+</a>
+      </li>|}]
+    else source_everyone in
+  let source_nav=raw (Trusted_html (String.concat "" [
+    {|
+  <div class="flex-item-justify-start">
+    <a class="btn" href="|};legacy_attribute back_path;{|">|};
+    legacy_img ~size:(Some 20) context "arrow-left.svg"
+      ["aria-hidden","true"];
+    {|<span class="for-screen-reader">Go Back</span></a>
+  </div>|}])) in
+  let source_rows users ~selected=String.concat "\n      "
+    (List.map (source_user ~selected) users) in
+  let source_menu=String.concat "" [
+    {|<menu class="flex flex-column gap margin-none pad overflow-y constrain-height" data-controller="filter" data-filter-active-class="filter--active" data-filter-selected-class="selected">
+    |};(if is_closed then "  " else "");
+    (if data.can_administer || not is_closed then source_everyone ^
+      (if is_closed then {|
+
+      <hr class="separator full-width" style="--border-style: solid">
+
+    |} else {|
+
+    <hr class="separator full-width" style="--border-style: solid">
+
+    |}) else "");
+    (if member_count>20 then render search else "");
+    {|<div data-filter-target="list" contents>
+      |};
+    (if is_closed then String.concat "" [
+      source_rows data.selected_users ~selected:true;
+      (if data.selected_users<>[] && data.unselected_users<>[] then
+        {|
+        <hr class="separator full-width" style="--border-style: solid">
+      |} else "");
+      (if data.selected_users<>[] && data.unselected_users<>[] then "" else
+        if data.selected_users<>[] then "\n      " else "");
+      source_rows data.unselected_users ~selected:false]
+    else source_rows data.form_users ~selected:true);
+    {|
+    </div>
+</menu>|}] in
+  let source_form=String.concat "" [
+    {|<form action="|};legacy_attribute action;
+    {|" accept-charset="UTF-8" method="post">|};
+    (match data.form_room_id with None -> "" | Some _ ->
+      {|<input type="hidden" name="_method" value="patch" />|});
+    {|
+  <div class="flex align-center gap">
+      |};legacy_translation_button context "room_name";
+    {|
+
+      <label class="flex-item-grow txt-large">
+        <input name="room[name]" id="room_name" class="input full-width" required="required" autofocus="autofocus" placeholder="Name the room" data-turbo-permanent="true" data-action="keydown.enter-&gt;form#submit:prevent" type="text"|};
+    (match data.form_room_name with None -> "" | Some name ->
+      " value=\"" ^ legacy_attribute name ^ "\"");
+    {| />
+        <span class="for-screen-reader">Name this room</span>
+      </label>
+  </div>
+
+  <hr class="margin-block borderless">
+
+  <section class="room-access margin-block pad-inline fill-shade border-radius">
+    |};source_menu;
+    {|
+  </section>
+  <button name="button" type="submit" class="btn btn--reversed txt-large center">|};
+    legacy_img ~size:(Some 20) context "check.svg"
+      ["aria-hidden","true"];
+    {|<span class="for-screen-reader">Save</span></button>
+</form>|}] in
+  let source_content=String.concat "" [
+    {|
+<section class="panel txt-align-center" style="view-transition-name: |};
+    (match data.form_room_id with None -> "new-room" | Some id ->
+      "edit-room-" ^ i64 id);
+    {|">
+  |};source_form;
+    {|
+</section>|};
+    (match data.form_room_id with None -> "" | Some id ->
+      let display_name=Option.value data.form_room_name ~default:"" in
+      String.concat "" [
+        {|
+  <section class="panel txt-align-center">
+    <form class="button_to" method="post" action="|};
+        legacy_attribute (context.base_url ^ relative_room id);
+        {|"><input type="hidden" name="_method" value="delete" /><button class="btn btn--negative max-width" aria-label="Delete |};
+        legacy_attribute display_name;
+        {|" data-turbo-confirm="Are you sure you want to delete this room and all messages in it? This can’t be undone." type="submit">|};
+        legacy_img ~size:(Some 20) context "trash.svg"
+          ["aria-hidden","true"];
+        {|<span class="overflow-ellipsis">|};legacy_text display_name;
+        {|</span></button></form>
+  </section>|}]) ] in
+  page ~title ~context ~nav:(if data.can_administer then source_nav else nav)
+    (if data.can_administer then raw (Trusted_html source_content)
+     else concat [first;delete])
 let autocomplete_picker_template context =
   elt "template" ["id","autocompletable-user"] [
     elt "div" ["class","autocomplete__pill max-width";
@@ -2333,7 +2537,7 @@ let direct_new ~context =
   in
   let frame=List.fold_left (fun html (needle,value) ->
     replace_literal html needle value) source substitutions in
-  page ~context (raw (Trusted_html frame))
+  page ~context (raw (Trusted_html ("\n" ^ frame)))
 
 let direct_edit_page ~context ?last_room_id ~room_id ~display_name
     ~(users:user list) () =
@@ -3448,40 +3652,121 @@ let profile_show_page ~context ?(back_url="/") ~(user:user)
 let notification_help context =
   let browser,system,install=notification_parts context in
   cls "div" "txt-align-start margin-block-start" ([browser;system] @ install)
+let room_notification_help (context:context) =
+  if not (context.platform.chrome && context.platform.desktop &&
+      not context.platform.windows) then render (notification_help context)
+  else
+    let replace source needle value =
+      let output=Buffer.create (String.length source) in
+      let length=String.length source and width=String.length needle in
+      let rec copy index = if index>=length then () else
+        if index+width<=length && String.sub source index width=needle then
+          (Buffer.add_string output value; copy (index+width))
+        else (Buffer.add_char output source.[index]; copy (index+1)) in
+      copy 0;Buffer.contents output in
+    let source={room_notification_help_source|<div class="txt-align-start margin-block-start">
+              <details class="notifications-help" data-notifications-target="details">
+    <summary class="btn">
+      <img aria-hidden="true" src="@web@" width="20" height="20" />
+      <strong>Check your @browser@ settings</strong>
+      <img aria-hidden="true" class="disclosure" src="@disclosure@" width="10" height="10" />
+    </summary>
+
+        <h2 class="txt-normal txt-medium margin-block-start">Turn on notifications for this website.</h2>
+        <ol>
+          <li>Click the <em><img alt="View site information" src="@sliders@" width="20" height="20" /></em> icon in the address bar.</li>
+          <li>Click <em>Site Settings</em>.</li>
+          <li>Ensure notifications are <em>Allowed</em>.</li>
+        </ol>
+
+        <h2 class="txt-normal txt-medium margin-block-start">Turn on notifications for @browser@.</h2>
+        <ol>
+            <li>Click <em aria-label="the Apple menu"></em> in the top left.</li>
+            <li>Click <em>System Settings…</em>.</li>
+            <li>Click <em>Notifications</em>.</li>
+            <li>Click <em>@browser@</em>.</li>
+            <li>Click <em><img alt="the switch" src="@switch@" width="22" height="22" /></em> to <em>Allow notifications</em>.</li>
+        </ol>
+  </details>
+
+            <details class="notifications-help hide-in-browser" data-notifications-target="details">
+  <summary class="btn">
+    <img aria-hidden="true" src="@gear@" width="20" height="20" />
+    <strong>Check your @system@ settings</strong>
+    <img aria-hidden="true" class="disclosure" src="@disclosure@" width="10" height="10" />
+  </summary>
+
+      <ol>
+          <li>Click <em aria-label="the Apple menu"></em> in the top left.</li>
+          <li>Click <em>System Settings…</em>.</li>
+          <li>Click <em>Notifications</em>.</li>
+          <li>Click <em>Campfire</em>.</li>
+          <li>Click <em><img alt="the allow notifications switch" src="@switch@" width="22" height="22" /></em> to <em>Allow notifications</em>.</li>
+      </ol>
+</details>
+
+@trailing@
+          </div>|room_notification_help_source} in
+    let substitutions=[
+      "@web@",legacy_attribute (asset context "external/web.svg");
+      "@disclosure@",legacy_attribute (asset context "disclosure.svg");
+      "@sliders@",legacy_attribute (asset context "external/sliders.svg");
+      "@switch@",legacy_attribute (asset context "external/switch.svg");
+      "@gear@",legacy_attribute (asset context "external/gear.svg");
+      "@trailing@","            ";
+      "@browser@",legacy_text (String.capitalize_ascii context.platform.browser);
+      "@system@",legacy_text context.platform.operating_system] in
+    List.fold_left (fun source (needle,value) -> replace source needle value)
+      source substitutions
 let room_bell context (room:room) =
-  let icon ?(hidden=false) ?(size=20) name =
-    void "img" (["aria-hidden","true";"src",asset context name;
-      "width",string_of_int size;"height",string_of_int size] @
-      if hidden then ["hidden","hidden"] else []) in
-  let frame = elt "turbo-frame" ["data-controller","turbo-frame";
-    "data-action","notifications:ready@window->turbo-frame#load";
-    "data-turbo-frame-url-param",Route_helpers.room_involvement (i64 room.id);
-    "id",room_dom_id room "involvement"] [
-    elt "button" ["class","btn";
-      "data-action","click->notifications#attemptToSubscribe";
-      "data-notifications-target","bell"] [
-      icon "notification-bell-loading.svg";
-      icon ~hidden:true "notification-bell-alert.svg";
-      cls "span" "for-screen-reader"
-        [text ("Notification settings for this " ^ room_noun room)]]] in
-  let notice = elt "dialog" ["data-notifications-target","notAllowedNotice";
-    "class","dialog pad center center-block border-radius border shadow";
-    "style","--inline-space: var(--block-space)"] [
-    cls "div" "flex flex-column txt-align-center" [
-      cls "span" "btn btn--faux center txt-x-large" [
-        icon ~size:48 "notification-bell-alert.svg";
-        cls "span" "for-screen-reader" [text "Notifications alert"]];
-      elt "section" [] [
-        cls "h1" "txt-large margin-none" [text "Notifications aren’t allowed"];
-        notification_help context];
-      elt "form" ["method","dialog";"class","flex align-center gap center"] [
-        elt "button" ["class","btn dialog__close";"autofocus","true"] [
-          cls "span" "for-screen-reader" [text "Close"];
-          icon "remove.svg"]]]] in
-  elt "span" [] [elt "span" ["class","button_to_change_notifying";
-    "data-controller","notifications";
-    "data-notifications-subscriptions-url-value",Route_helpers.user_push_subscriptions ();
-    "data-notifications-attention-class","btn--pulsing"] [frame;notice]]
+  raw (Trusted_html (String.concat "" [
+    {|<span>
+  <span class="button_to_change_notifying"
+      data-controller="notifications" data-notifications-subscriptions-url-value="|};
+    legacy_attribute (Route_helpers.user_push_subscriptions ());
+    {|" data-notifications-attention-class="btn--pulsing">
+    <turbo-frame data-controller="turbo-frame" data-action="notifications:ready@window-&gt;turbo-frame#load" data-turbo-frame-url-param="|};
+    legacy_attribute (Route_helpers.room_involvement (i64 room.id));
+    {|" id="|};legacy_attribute (room_dom_id room "involvement");
+    {|">
+      <button class="btn" data-action="click->notifications#attemptToSubscribe" data-notifications-target="bell">
+        |};legacy_img ~size:(Some 20) context "notification-bell-loading.svg"
+      ["aria-hidden","true"];
+    {|
+        |};legacy_img ~size:(Some 20) context "notification-bell-alert.svg"
+      ["aria-hidden","true";"hidden","hidden"];
+    {|
+        <span class="for-screen-reader">Notification settings for this |};
+    legacy_text (room_noun room);{|</span>
+      </button>
+</turbo-frame>
+    <dialog data-notifications-target="notAllowedNotice" class="dialog pad center center-block border-radius border shadow" style="--inline-space: var(--block-space)">
+      <div class="flex flex-column txt-align-center">
+        <span class="btn btn--faux center txt-x-large">
+          |};legacy_img ~size:(Some 48) context "notification-bell-alert.svg"
+      ["aria-hidden","true"];
+    {|
+          <span class="for-screen-reader">Notifications alert</span>
+        </span>
+
+        <section>
+          <h1 class="txt-large margin-none">Notifications aren’t allowed</h1>
+          |};room_notification_help context;
+    {|
+        </section>
+
+        <form method="dialog" class="flex align-center gap center">
+          <button class="btn dialog__close" autofocus="true">
+            <span class="for-screen-reader">Close</span>
+            |};legacy_img ~size:(Some 20) context "remove.svg"
+      ["aria-hidden","true"];
+    {|
+          </button>
+        </form>
+      </div>
+    </dialog>
+  </span>
+</span>|}]))
 let room_involvement_frame ~context ~(room:room) ~involvement =
   let order=if room.kind=Direct then ["everything";"nothing"]
     else ["mentions";"everything";"nothing";"invisible"] in
@@ -3515,21 +3800,32 @@ let room_involvement_frame ~context ~(room:room) ~involvement =
     {|</span></button></form>
 </turbo-frame>|}]))
 let room_nav context (room:room) =
-  let settings_icon=void "img" ["aria-hidden","true";
-    "src",asset context "menu-dots-horizontal.svg";"width","20";"height","20"] in
-  let name = elt "span" ["class","btn btn--reversed btn--faux room--current"] [
-    cls "h1" "room__contents txt-medium overflow-ellipsis"
-      ((if room.kind=Direct then
-          [cls "span" "for-screen-reader" [text "Ping with"]] else []) @
-       [text room.name])] in
-  concat [name;
-    elt "a" ["class","btn";
-      "style","view-transition-name: edit-room-" ^ i64 room.id;
-      "data-room-id",i64 room.id;"href",room_edit_path room] [
-      settings_icon;
-      cls "span" "for-screen-reader"
-        [text ("Settings for this " ^ room_noun room)]];
-    room_bell context room]
+  raw (Trusted_html (String.concat "" [
+    {|
+
+  <span class="btn btn--reversed btn--faux room--current">
+    <h1 class="room__contents txt-medium overflow-ellipsis">|};
+    (if room.kind=Direct then
+      {|<span class="for-screen-reader">Ping with</span>|} else "");
+    {|
+
+      |};legacy_text room.name;
+    {|
+    </h1>
+</span>
+
+  <a class="btn" style="view-transition-name: edit-room-|};
+    i64 room.id;{|" data-room-id="|};i64 room.id;{|" href="|};
+    legacy_attribute (room_edit_path room);
+    {|">
+    |};legacy_img ~size:(Some 20) context "menu-dots-horizontal.svg"
+      ["aria-hidden","true"];
+    {|
+    <span class="for-screen-reader">Settings for this |};
+    legacy_text (room_noun room);{|</span>
+</a>
+
+  |};render (room_bell context room)]))
 let room_invitation context join_code =
   elt "div" ["id","system_welcome";
     "class","message message--formatted txt-align-center center"] [
@@ -3547,10 +3843,11 @@ let room_invitation context join_code =
         invite_fragment context join_code]]]
 let room_show_with_content ~context ~(room:room) ~message_content ~messages_stream_name
     ?invitation_join_code () =
-  let head = concat [
-    lexxy_ready_head;
-    void "meta" ["name","turbo-cache-control";"content","no-preview"];
-    void "meta" ["name","current-room-id";"content",i64 room.id]] in
+  let head=raw (Trusted_html (String.concat "" [
+    render lexxy_ready_head;
+    {|
+  <meta name="turbo-cache-control" content="no-preview">
+  <meta name="current-room-id" content="|};i64 room.id;{|">|}])) in
   let nav = room_nav context room in
   let invitation = match invitation_join_code with None -> concat [] |
     Some code -> room_invitation context code in
@@ -3590,7 +3887,7 @@ let room_show_with_content ~context ~(room:room) ~message_content ~messages_stre
         loop (offset+needle_length))
       else (Buffer.add_char output source.[offset]; loop (offset+1)) in
     loop 0 in
-  let footer_source = {mcomposer|  <div class="composer flex align-end gap position-relative"
+  let footer_source = {mcomposer|<div class="composer flex align-end gap position-relative"
       data-controller="typing-notifications" data-typing-notifications-active-class="typing-indicator--active">
     <a class="btn flex-item-no-shrink margin-block-end composer__context-btn" style="view-transition-name: input-switcher" href="{{ h::routes::searches() }}">
       <img aria-hidden="true" src="{{ ctx.asset("search.svg") }}" width="20" height="20" />
@@ -3655,12 +3952,28 @@ let room_show_with_content ~context ~(room:room) ~message_content ~messages_stre
   let footer = raw (Trusted_html (List.fold_left (fun html (needle,value) ->
     replace_literal html needle (legacy_attribute value))
     footer_source substitutions)) in
-  let sidebar = elt "turbo-frame" ["id","user_sidebar";
-    "src",Route_helpers.user_sidebar ();
-    "target","_top";"data-turbo-permanent","true";
-    "data-controller","rooms-list read-rooms turbo-frame";
-    "data-rooms-list-unread-class","unread";
-    "data-action","presence:present@window->rooms-list#read read-rooms:read->rooms-list#read turbo:frame-load->rooms-list#loaded refresh-room:visible@window->turbo-frame#reload"] [] in
+  let content=raw (Trusted_html (List.fold_left (fun html (needle,value) ->
+    replace_literal html needle value) ("\n" ^ render content) [
+    {|messages"><script type="text/template"|},
+      "messages\">\n  <script type=\"text/template\"";
+    {|</script><div id="messages_|},
+      "</script>\n\n  <div id=\"messages_";
+    {|</div></div><turbo-cable-stream-source|},
+      "</div>\n  </div>\n\n  <turbo-cable-stream-source";
+    {|</div><turbo-cable-stream-source|},
+      "\n  </div>\n\n  <turbo-cable-stream-source";
+    {|</turbo-cable-stream-source><button class="message-area__return-to-latest|},
+      "</turbo-cable-stream-source>\n  <button class=\"message-area__return-to-latest";
+    {|Jump to newest message</span></button></div>|},
+      "Jump to newest message</span></button>\n</div>";
+    ("src=\"" ^ legacy_attribute (asset context "arrow-down.svg") ^
+      "\" width=\"20\" height=\"20\"/>") ,
+      ("src=\"" ^ legacy_attribute (asset context "arrow-down.svg") ^
+      "\" width=\"20\" height=\"20\" />")])) in
+  let sidebar=raw (Trusted_html (String.concat "" [
+    {|<turbo-frame data-turbo-permanent="true" data-controller="rooms-list read-rooms turbo-frame" data-rooms-list-unread-class="unread" data-action="presence:present@window->rooms-list#read read-rooms:read->rooms-list#read turbo:frame-load->rooms-list#loaded refresh-room:visible@window->turbo-frame#reload" id="user_sidebar" src="|};
+    legacy_attribute (Route_helpers.user_sidebar ());
+    {|" target="_top"></turbo-frame>|}])) in
   page ~title:room.name ~body_class:"sidebar" ~head ~nav ~sidebar ~footer
     ~context content
 let room_show ~context ~room ~messages ~messages_stream_name
@@ -3750,7 +4063,8 @@ let search_index_with ~context ~query ?q ?(recent_searches=[])
         loop (offset+needle_length))
       else (Buffer.add_char output source.[offset]; loop (offset+1)) in
     loop 0 in
-  let footer_source={msearchfooter|  <div class="composer flex align-end gap">
+  let footer_source={msearchfooter|
+  <div class="composer flex align-end gap">
     <a class="btn flex-item-no-shrink margin-block-end" style="view-transition-name: input-switcher; --btn-border-radius: 0.5em" href="{{ h::routes::room(index.return_to_room_id) }}">
       <img aria-hidden="true" src="{{ ctx.asset("arrow-left.svg") }}" />
       <span class="for-screen-reader">Exit search </span>
@@ -3784,7 +4098,8 @@ let search_index_with ~context ~query ?q ?(recent_searches=[])
   let footer=raw (Trusted_html (List.fold_left (fun html (needle,value) ->
     replace_literal html needle value) footer_source substitutions)) in
   let content=raw (Trusted_html (String.concat "" [
-    {|<div id="message-area" class="message-area">
+    {|
+<div id="message-area" class="message-area">
   <div class="message-area--empty min-width center">
     <figure class="center pad">
       <img aria-hidden="true" class="colorize--black translucent" src="|};

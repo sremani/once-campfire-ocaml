@@ -40,6 +40,7 @@ val asset : context -> string -> string
 val page : ?title:string -> ?body_class:string -> ?head:fragment ->
   ?nav:fragment -> ?sidebar:fragment -> ?footer:fragment ->
   context:context -> fragment -> string
+val frame_page : ?head:fragment -> fragment -> string
 
 val session_new : context:context -> ?email_address:string -> ?help_contact:(string * string) -> unit -> string
 val session_transfer : context:context -> transfer_id:string -> string

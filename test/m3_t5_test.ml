@@ -426,7 +426,24 @@ let public_route_cache () =
     check int "front conditional hit" 304 (code fresh);
     check string "front 304 body" "" fresh_body;
     let range,_=send ~extra:["range","bytes=0-1"] () in
-    check (option string) "range bypass" (Some "bypass") (get range "x-cache"))
+    check (option string) "range bypass" (Some "bypass") (get range "x-cache");
+    let logo () =
+      let request=Cohttp.Request.make
+        ~headers:(headers ["host","chat.example.com"])
+        (Uri.of_string "/account/logo") in
+      let result=Lwt_main.run (Campfire.Http_app.handle ~runtime
+        ~secret_key_base:(String.make 64 'q') ~front_cache:cache
+        ~dispatch:Campfire.App_dispatch.endpoint request Cohttp_lwt.Body.empty) in
+      fst result,body_text result in
+    let first_logo,logo_bytes=logo () in
+    check int "streamed stock logo 200" 200 (code first_logo);
+    check bool "streamed stock logo has bytes" true (String.length logo_bytes>100);
+    check (option string) "streamed logo first miss" (Some "miss")
+      (get first_logo "x-cache");
+    let second_logo,cached_logo=logo () in
+    check (option string) "streamed logo cache hit" (Some "hit")
+      (get second_logo "x-cache");
+    check string "cached streamed logo bytes" logo_bytes cached_logo)
 
 let rec reference_root path remaining =
   if remaining=0 then failwith "pinned Rails seed not found" else
