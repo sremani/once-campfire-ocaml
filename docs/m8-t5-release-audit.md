@@ -4,7 +4,13 @@
 
 The current code source is `2a511ac6f74fc3689f72bd039bc11d286e71d1c4`.
 `/tmp/campfire-source-2a511ac.json` records a clean checkout, 321 pinned
-assets and zero local Gumbo checksum errors. The forced OCaml suite passes
+assets and zero local Gumbo checksum errors. An independent offline audit
+at `/tmp/campfire-2a511ac-upstream-provenance.json` verifies the pinned
+Nokogiri archive SHA-256 and all 46 Gumbo files present in that archive,
+plus the exact clean upstream OCaml WebSocket Git commit and identical ISC
+license. `LICENSE-DEPENDENCIES.md` is a local notice, absent from the
+Nokogiri archive; three of seven vendored WebSocket files differ from
+upstream as the documented local fork. The forced OCaml suite passes
 41 suites and 297 cases. Group direct-room naming and avatar uploads pass
 eight focused browser cells in all six layers, with zero retries or errors.
 The 2a511ac five-seed shared HTTP gate passes 3,186/3,186 eligible cases
@@ -257,7 +263,7 @@ that label on any pushed image rather than inferring it from this local build.
 
 | Check | Current evidence |
 | --- | --- |
-| Source and native tests | `/tmp/campfire-source-2a511ac.json` records a clean source, 321 exact assets and zero local Gumbo errors. `dune runtest --force` passes 41 suites and 297 cases; see `/tmp/campfire-runtest-group-avatar-escalated.log`. The upstream Gumbo archive and Cable commit have not been independently refetched. |
+| Source and native tests | `/tmp/campfire-source-2a511ac.json` records a clean source, 321 exact assets and zero local Gumbo errors. `dune runtest --force` passes 41 suites and 297 cases; see `/tmp/campfire-runtest-group-avatar-escalated.log`. `/tmp/campfire-2a511ac-upstream-provenance.json` independently checks the locally retained Nokogiri archive hash, 46 archived Gumbo source files, clean WebSocket Git commit and ISC license; the separate local Gumbo notice is absent from the upstream archive. |
 | HTTP/state | `/tmp/m3-2a511ac-five-seed-audit.md` records 3,186/3,186 exact eligible route/state cases and 354 unavailable first-run signed/denied cells. `/tmp/m3-2a511ac-positive-writes.json` records 30/30 exact writes. The historical Lexxy room-script difference is fixed on this source. |
 | Browser | Focused group-name and avatar-upload recapture passes 8/8 cells across six layers; attachment-edit and involvement-frame recaptures passed on preceding code revisions carried into `2a511ac`. The final five-seed lean/full run is active at `/tmp/m8-t3-harness-wt/parity/out/m8-t3-2a511ac-final-all/summary.json`. |
 | Images and copied installation | `/tmp/campfire-image-2a511ac-{amd64,arm64}.json` reports 321 exact assets and zero issues in each image. `/tmp/campfire-lifecycle-2a511ac-{amd64,arm64}.log` records upgrade, restart, backup/restore, rollback, stable 169 messages and 14 blobs, SQLite integrity and clean shutdown. |
