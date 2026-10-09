@@ -351,6 +351,12 @@ let test_content_pages () = with_seed "default" (fun runtime ->
   Alcotest.(check int) "group direct edit" 200 (status group_edit);
   check "group direct edit uses Rails sentence title"
     (contains group_edit_body "Edit settings for Jason, Kevin, and JZ");
+  let broken_room,broken_body = send ~cookie:admin runtime `GET
+    "/rooms/699448328" in
+  Alcotest.(check int) "missing-creator room" 200 (status broken_room);
+  check "missing creator renders the pinned failed-message placeholder"
+    (contains broken_body "Failed to load message content"
+     && not (contains broken_body "data-message-id=\"933434637\""));
   let autocomplete,body = send ~cookie:admin runtime `GET
     "/autocompletable/users" in
   Alcotest.(check int) "autocomplete HTML" 200 (status autocomplete);

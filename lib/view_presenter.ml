@@ -171,17 +171,20 @@ let message_room_name db (room_row : R.Room.t) =
 
 let message (ctx : Http_app.context) db (room_row : R.Room.t)
     (row : M.Message.t) : V.message =
-  let creator = match U.find_by_id db row.creator_id with
+  let creator_row=U.find_by_id db row.creator_id in
+  let unrenderable=Option.is_none creator_row in
+  let creator = match creator_row with
     | None -> missing_user | Some row -> user ctx row in
-  let boosts = M.Boost.for_message_ordered db row.id |> List.map (boost ctx db) in
+  let boosts = if unrenderable then [] else
+    M.Boost.for_message_ordered db row.id |> List.map (boost ctx db) in
   let raw_body = Option.value ~default:"" (M.Message.body_html db row) in
-  let editable_body = match Rich_text.editable_value
+  let editable_body = if unrenderable then "" else match Rich_text.editable_value
       ~resolve_sgid:(mention_resolver ctx db)
       ~resolve_gid:(gid_resolver ctx db)
       ?request_host:(request_host ctx) raw_body with
     | Ok (Some body) -> body
     | _ -> raw_body in
-  let content =
+  let content = if unrenderable then V.Unrenderable else
     match M.Message.attachment_blob_id db row with
     | Some blob_id ->
         let blob=Db_remaining.Blob.find db blob_id in
@@ -229,5 +232,6 @@ let message (ctx : Http_app.context) db (room_row : R.Room.t)
     creator; created_at_iso=iso_time row.created_at;
     created_at_ms=milliseconds row.created_at;
     updated_at_ms=milliseconds row.updated_at;
-    all_emoji=all_emoji (M.Message.plain_text_body ~rich_text:(rich_text ctx) db row);
+    all_emoji=(not unrenderable &&
+      all_emoji (M.Message.plain_text_body ~rich_text:(rich_text ctx) db row));
     content; editable_body; boosts }
