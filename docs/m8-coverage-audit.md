@@ -1,6 +1,6 @@
 # M8 differential and release coverage audit
 
-Audit input: Rust `9872c1d9541551c0889a60e3d49a14488bd1e403`, its Rails submodule
+Historical audit input: Rust `9872c1d9541551c0889a60e3d49a14488bd1e403`, its Rails submodule
 `90b330024dec3e757c79b6a7e6568f93da8e3148`, and shared verification
 `6f71d70b5e1f17507404ad06cac134aa453a04a6`. This is an inventory and
 worklist, not a release pass. **Pass (focused)** below means a previous milestone
@@ -21,14 +21,14 @@ benchmark/resilience evidence. M8-T2 is complete as a comparison with its
 Lexxy, gzip-wire and Caddy-parser differences retained as failures;
 M8-T3, M8-T5 and the release milestone remain open.
 
-Current source `e4b71e6` removes the retained Lexxy room-script difference.
-The pinned seeded room bodies match Rust directly at rows 95/100, and ten
-focused default-seed browser cells are exact across server, live DOM,
-accessibility, network, Cable and pixels. The 16 previously failing HTTP/state
-cells pass exactly across four populated seeds. Other changed paths still need
-a current-revision M3 gate check; the
-historical `d6600ed` results below remain their original evidence. The full
-M8-T3 browser matrix and final-image release audit remain open.
+Current clean executable source `d223a0f` removes the retained Lexxy room-script
+difference and matches both text and attachment edit responses. The pinned
+seeded room bodies match Rust directly at rows 95/100; the 16 previously failing
+HTTP/state cells pass exactly across four populated seeds on `e4b71e6`. Focused
+`d223a0f` attachment-edit browser cells pass 4/4 across server, live DOM,
+accessibility, network, Cable and pixels. The full current-revision M3 route
+gate, M8-T3 browser matrix, and final-image release audit remain open. The
+historical `d6600ed` results below retain their original evidence scope.
 
 ## Golden corpus coverage (M8-T1)
 
@@ -221,8 +221,9 @@ step. Compare disposable seed copies only.
 
 No benchmark or browser result is inferred from local module tests. M8-T1's
 golden coverage and M8-T4's clean packaged benchmark/resilience tickets are
-complete. M8-T2 awaits owner signoff on the three scoped differences above;
-M8-T3, M8-T5 and the milestone gate remain open.
+complete. M8-T2 is accepted as a completed historical comparison with its
+scoped differences recorded above; M8-T3, M8-T5 and the milestone gate remain
+open.
 
 ### Harness audit commands and results
 
