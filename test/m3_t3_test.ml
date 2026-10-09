@@ -370,6 +370,13 @@ let test_content_pages () = with_seed "default" (fun runtime ->
   Alcotest.(check int) "group direct edit" 200 (status group_edit);
   check "group direct edit uses Rails sentence title"
     (contains group_edit_body "Edit settings for Jason, Kevin, and JZ");
+  let group_show,group_show_body = send ~cookie:admin runtime `GET
+    "/rooms/699448329" in
+  Alcotest.(check int) "group direct show" 200 (status group_show);
+  check "group direct show uses Rails sentence title and heading"
+    (contains group_show_body "<title>Jason, Kevin, and JZ</title>"
+     && contains group_show_body "Jason, Kevin, and JZ\n    </h1>"
+     && not (contains group_show_body "Jason, Kevin, JZ"));
   let broken_room,broken_body = send ~cookie:admin runtime `GET
     "/rooms/699448328" in
   Alcotest.(check int) "missing-creator room" 200 (status broken_room);

@@ -156,11 +156,10 @@ let room_show c = room_or_root c (fun room ->
   >>= fun (account, context, messages, direct_names, invitation) ->
   let room_view = View_presenter.room room in
   let room_view = if room.R.Room.room_type=R.Direct then
-    {room_view with Views.name=(match direct_names with
-      | [] -> (match context.Views.current_user with
-          | Some user -> user.Views.name | None -> "")
-      | [name] -> name
-      | names -> String.concat ", " names)}
+    {room_view with Views.name=Views.room_display_name
+      ?self_name:(Option.map (fun (user:Views.user) -> user.name)
+        context.Views.current_user)
+      ~name:room.R.Room.name ~direct:true ~other_names:direct_names ()}
     else room_view in
   let messages_stream_name = Turbo_stream.signed_stream_name
     ~secret_key_base:c.H.secret_key_base
