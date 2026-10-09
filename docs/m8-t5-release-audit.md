@@ -34,7 +34,7 @@ Signed media is 233/233 exact per architecture in
 `/tmp/m8-t5-2a511ac-{amd64,arm64}-signed-media.json`.
 The final all-seed browser matrix is running against the frozen source; all
 five lean seeds are 956/956 exact across six layers with zero retries or
-errors. Its first three default-seed full batches are 1,344/1,344 exact,
+errors. Its first four default-seed full batches are 1,801/1,801 exact,
 with zero flaky cases, retries, or errors; the remaining full matrix is in
 progress.
 An uncached repeat-build comparison is prepared at

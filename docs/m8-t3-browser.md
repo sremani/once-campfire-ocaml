@@ -7,11 +7,11 @@ The final lean/full five-seed matrix is running against the immutable source
 at `/tmp/m8-t3-harness-wt/parity/out/m8-t3-2a511ac-final-all/summary.json`.
 All five lean seed matrices have completed: **956/956 exact** across the six
 comparison layers, with zero errors or retries (default 874, crowd 25,
-custom styles 33, first run 16, restricted 8). The first three default-seed
-full batches also pass 1,344/1,344 exact (416, 496, and 432 cells), with zero
-flaky cases, retries, or errors; their reports are under the same run
-directory at `default-full-shared-{01,02,03}/report.json`. The rest of the
-full matrix is running.
+custom styles 33, first run 16, restricted 8). The first four default-seed
+full batches also pass 1,801/1,801 exact (416, 496, 432, and 457 cells),
+with zero flaky cases, retries, or errors; their reports are under the same
+run directory at `default-full-shared-{01,02,03,04}/report.json`. The rest
+of the full matrix is running.
 The earlier diagnostics below are historical checkpoints.
 
 ## Pinned sources and local images
