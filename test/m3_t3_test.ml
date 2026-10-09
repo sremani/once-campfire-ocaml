@@ -389,6 +389,17 @@ let test_content_pages () = with_seed "default" (fun runtime ->
   check "involvement notification control"
     (contains body "data-turbo-frame-url-param=\"/rooms/486777696/involvement\""
      && contains body "notification-bell-");
+  check "full involvement page preloads styles" (header involvement "link" <> None);
+  let involvement_frame,frame_body = send ~cookie:admin
+    ~turbo_frame:"involvement_rooms_closed_486777696" runtime `GET
+    "/rooms/486777696/involvement" in
+  Alcotest.(check int) "involvement Turbo frame" 200 (status involvement_frame);
+  check "involvement Turbo frame uses pinned frame layout"
+    (String.starts_with ~prefix:"<html>\n  <head>\n    \n  </head>\n  <body>\n    <turbo-frame"
+       frame_body &&
+     String.ends_with ~suffix:"</turbo-frame>\n  </body>\n</html>\n" frame_body);
+  check "involvement Turbo frame omits stylesheet preload"
+    (header involvement_frame "link" = None);
   let boosts,body = send ~cookie:admin runtime `GET
     "/messages/309456473/boosts" in
   Alcotest.(check int) "boost list page" 200 (status boosts);

@@ -338,7 +338,10 @@ let involvement_show c = scope_or_404 c (fun membership room ->
     (Option.map R.involvement_name membership.R.Membership.involvement) ~default:"" in
   let body=Views.room_involvement_frame ~context
     ~room:(View_presenter.room room) ~involvement in
-  response (H.html ~status:200 (Views.page ~context body)))
+  let page=match H.header c "turbo-frame" with
+    | Some value when String.trim value<>"" -> Views.frame_page body
+    | _ -> Views.page ~context body in
+  response (H.html ~status:200 page))
 let involvement_update c = scope_or_404 c (fun membership room ->
   let involvement = match H.param_string c "involvement" with
     | None | Some "" -> Some None
