@@ -1,6 +1,31 @@
 # M8-T5 release candidate audit (in progress)
 
-## Current local candidate: `bb49e1e`
+## Current clean source target: `e4b71e6`
+
+The frozen code source is `e4b71e6c922438649df873682884fb1423d9b31b`.
+`/tmp/campfire-source-e4b71e6.json` records a clean worktree, 321 pinned
+assets, and zero local Gumbo checksum errors. The forced Dune suite passes
+41 suites and 296 cases; the 123-file view accounting passes 121 rendered
+cases and two input metadata cases. The original 16 room HTTP differences
+now pass byte-for-byte across four populated seeds. Ten focused default-seed
+browser cells are exact in all six comparison layers. The all-seed lean/full
+browser run is active at
+`/tmp/m8-t3-harness-wt/parity/out/m8-t3-e4b71e6-all/summary.json`.
+
+The earlier `963e39c` images passed both architecture inventories, copied
+installation lifecycle, local Pebble/TLS/HTTP2/Cable checks, and arm64
+signed media 233/233. Those image results do not clear `e4b71e6`: no
+amd64/arm64 release images, inventories, lifecycle, protocol, or signed-media
+reports have yet been produced from this corrected source. Once the browser
+run releases Docker, rebuild both architectures from the frozen e4 worktree
+with the full revision in `GIT_REVISION` and `APP_VERSION`, then rerun those
+local gates. The current main HEAD may include later documentation-only
+commits; record the exact build source revision separately. M3 also needs a
+current-revision check of other changed routes before its literal gate closes.
+External publication and ONCE deployment still need a Git remote, registry
+identity/credentials, target host and CLI.
+
+## Earlier local candidate: `bb49e1e`
 
 The frozen source is `bb49e1ed3d318d482a376ae5a12d6def957f7e06`.
 `/tmp/campfire-source-bb49e1e.json` records a clean checkout, 321 pinned
