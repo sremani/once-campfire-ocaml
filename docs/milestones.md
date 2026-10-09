@@ -69,8 +69,10 @@ authorization, and response shape under the shared HTTP fixture suite.
 - [x] **M3-T3 Rooms, messages, and search controllers.** Port all CRUD and fragments, read state,
   boosts, search, and pagination with authenticated end-to-end tests. The clean
   d6600ed five-seed sweep has no controller/status/state difference; crowd
-  autocomplete JSON and Link match Rust 3/3. The remaining room-page Lexxy
-  script is a documented M4/M8 view difference; see [route audit](m3-route-audit.md).
+  autocomplete JSON and Link match Rust 3/3. Source `e4b71e6` removes the
+  former room-page Lexxy script difference; its 16 affected role/seed cells
+  now pass exactly. Other paths changed since the prior full sweep still need
+  a current-revision check for the literal milestone gate. See [route audit](m3-route-audit.md).
 - [x] **M3-T4 Auxiliary controllers.** Port direct uploads, avatars/logos, PWA, QR, webhook/bot
   routes, link unfurling, and other exposed application paths. Its 31 assigned routes pass
   124/124 default-seed role cases in the [immutable HTTP matrix](m8-t2-http-state.md);
@@ -96,12 +98,10 @@ pass DOM/accessibility/screenshot comparisons and escaping tests.
   inputs). On packaged d6600ed, five crowd view rows pass signed and denied
   Rust/OCaml status, header, body, and state comparison (10/10); first-run row 3
   passes anonymous and bot (2/2). Six seeded responses also match full Rust
-  SHA-256 digests. Earlier clean browser room cells match pixels, live DOM,
-  accessibility, and Cable while retaining a required 557-byte Lexxy readiness
-  script. The full five-seed sweep found no additional view gap, and a fresh
-  packaged Chromium room capture matched pixels, live DOM, ARIA, and Cable
-  with no retries; only server/network bytes from that script differ. See
-  [view evidence](m4-t2-views.md).
+  SHA-256 digests. Current source `e4b71e6` renders the room body directly
+  against the pinned Rust hash and passes the full 123-file view inventory.
+  Ten focused browser cells match all six comparison layers after the edit
+  frame copied Rust's raw template serialization. See [view evidence](m4-t2-views.md).
 - [x] **M4-T3 Action Text.** Port HTML parsing, sanitization, attachments, mentions, links,
   plain text, and limits using available libraries; verify upstream rich-text vectors.
 - [ ] **M4-T4 Browser behavior.** Match Turbo/Stimulus fragments, composer, installation,

@@ -48,6 +48,29 @@ cookie and session fixes. No M3 ticket is accepted from the focused suites alone
 
 ## Current ticket acceptance, 2026-10-09
 
+### Current source correction at `e4b71e6`
+
+The extra room Lexxy script is removed. The pinned seeded byte test now
+checks rows 95 and 100 directly against the 416,349-byte Rust SHA-256,
+without stripping content. A fresh isolated live rerun of the original
+16 failing cases (rows 95/100, signed/denied roles across `default`, `crowd`,
+`restricted`, and `custom_styles`) passes **16/16 exact** on status, all
+response headers including Content-Length and ETag, body bytes and SHA-256,
+and all-table SQLite effects. The tested OCaml binary SHA-256 is
+`809a3d3b4143c7aa856473c217879edc92d02fb1a3cc2fa69b32a0169fa34fc5`.
+Credential-free reports and their hashes are in
+`/tmp/m3-route-gate-e4b71e6-summary.md`; per-seed safe JSON and Markdown
+reports use `/tmp/m3-route-gate-e4b71e6-wire-{default,crowd,restricted,custom_styles}`.
+
+This closes the observed room-response difference. The literal every-route
+gate still needs current-revision coverage of other controller and view paths
+changed since the `d6600ed` five-seed sweep. The earlier results below remain
+their original immutable evidence; no failing M3 response is currently known.
+The source-impact map at `/tmp/m3-route-impact-e4b71e6.md` identifies 112 new
+ordinary route/role/seed cases and positive branches that ordinary fixtures
+cannot reach. A full current-revision five-seed sweep is the clearest final
+gate check.
+
 The final clean packaged d6600ed sweep compared all 177 routes under four
 roles on fresh independent copies of `default`, `crowd`, `restricted`, and
 `custom_styles`, plus the available anonymous/bot roles on `first_run`.

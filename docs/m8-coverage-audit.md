@@ -21,6 +21,15 @@ benchmark/resilience evidence. M8-T2 is complete as a comparison with its
 Lexxy, gzip-wire and Caddy-parser differences retained as failures;
 M8-T3, M8-T5 and the release milestone remain open.
 
+Current source `e4b71e6` removes the retained Lexxy room-script difference.
+The pinned seeded room bodies match Rust directly at rows 95/100, and ten
+focused default-seed browser cells are exact across server, live DOM,
+accessibility, network, Cable and pixels. The 16 previously failing HTTP/state
+cells pass exactly across four populated seeds. Other changed paths still need
+a current-revision M3 gate check; the
+historical `d6600ed` results below remain their original evidence. The full
+M8-T3 browser matrix and final-image release audit remain open.
+
 ## Golden corpus coverage (M8-T1)
 
 | Pinned source | OCaml evidence now | Status and missing artifact |

@@ -321,3 +321,17 @@ seeded Rust SHA-256 checks, focused M4 11/11, the five-seed HTTP sweep, and
 the fresh browser room sample, M4-T2 is verified. M4-T4 and the M4 milestone
 remain open for the full browser matrix across seeds, engines, schemes,
 viewports, and interactions.
+
+## Current exact-response correction
+
+Source `e4b71e6` removes the 557-byte room script and renders the Rust room
+body directly. `test/view_seeded_bytes.py` now checks rows 95 and 100 against
+the full 416,349-byte Rust SHA-256 without removing any bytes. The view DOM
+test no longer strips a Lexxy script or hidden editor attributes. The pinned
+123-file view matrix passes 121 rendered cases with two linked input metadata
+cases. A focused packaged browser capture passed six busy-room pagination
+cells in all six layers. The two text-edit cells also passed after the edit
+frame copied Rust's raw Askama whitespace, attribute order, and no-block
+delete-form serialization. The shared Chromium smoke and two-tab repeated-edit
+regression pass after their test actions wait for Lexxy's mounted editing
+root; see [browser evidence](m4-t4-browser.md).

@@ -147,3 +147,21 @@ This fresh packaged sample, the complete five-seed HTTP view sweep, and the
 functional difference. M4-T4 remains open for the full browser matrix across
 seeds, engines, viewports, schemes, breakpoints, and interactions. The older
 captures above are retained as historical debugging evidence.
+
+## Script-free Lexxy regression, 2026-10-09
+
+The current source `e4b71e6` removes the extra room script and hidden edit
+field attributes. The shared verification checkout `b7647b4` waits for
+`lexxy-editor.editor.getRootElement()` before entering edit text. This wait
+matches the real readiness condition: an earlier diagnostic filled a visible
+contenteditable element while Lexxy's value still held the old body. On fresh
+disposable storage, both `browser/repeated-edit.mjs` and the complete
+`browser/smoke.mjs` pass in Chromium with the script-free OCaml build.
+
+The pinned view inventory passes 121 rendered cases and two input metadata
+cases. The strict room response check matches Rust byte for byte for seeded
+rows 95 and 100. A ten-state packaged browser diagnostic has eight exact
+cells on the first script-free image; its only remaining differences were raw
+edit-frame response hashes. The edit serializer was aligned with Rust's
+Askama/ERB bytes, and those two cells then passed exactly with no errors or
+retries. M4-T4 still awaits the complete all-seed browser matrix.

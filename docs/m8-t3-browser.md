@@ -196,6 +196,28 @@ report predates that fix. Rebuild and recapture before claiming closure.
 
 ### Full release sweep
 
+The script-free source at `e4b71e6` passed the shared two-tab repeated-edit
+regression and the complete shared Chromium smoke on fresh disposable OCaml
+storage. The shared verification checkout is `b7647b4`: both flows now wait
+for Lexxy's actual editing root before typing, because the visible
+contenteditable element can precede the mounted editor by one animation
+frame. A diagnostic without that wait showed visible new text while Lexxy's
+value still contained the old message; the save therefore sent the old value.
+
+The pinned Rust/OCaml focused comparison first captured ten Chromium
+desktop/light cells on the script-free image: eight were exact in all six
+layers, including six busy-room pagination states. The two edit cells differed
+only in the raw GET edit-frame body hash. Their pixels, server document, live
+DOM, accessibility and Cable were exact. The captured edit response showed
+compact OCaml HTML versus Rust's multiline Askama output, including Rust's
+unclosed no-block delete form. After `Views.message_edit` matched that wire
+format, the two edit cells passed **2/2 exact**, zero errors or retries, at
+`/tmp/m8-t3-harness-wt/parity/out/m8-t3-exact-edit-focused/report.json`.
+The earlier eight exact cells are at
+`/tmp/m8-t3-harness-wt/parity/out/m8-t3-lexxy-no-shim-focused/report.json`.
+Together they resolve all ten focused states; the full matrix below remains
+the M8-T3 gate.
+
 Run each seed in both matrices using the pinned Playwright image and frozen
 clock, for example:
 
