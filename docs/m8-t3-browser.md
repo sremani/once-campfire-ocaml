@@ -5,6 +5,9 @@ passes focused recaptures for the earlier attachment-edit, involvement-frame,
 group-name, and avatar-upload differences across all six browser layers.
 The final lean/full five-seed matrix is running against the immutable source
 at `/tmp/m8-t3-harness-wt/parity/out/m8-t3-2a511ac-final-all/summary.json`.
+Its default-seed lean matrix has completed all 14 disjoint batches:
+**874/874 exact** across the six comparison layers, with zero errors or retries.
+The remaining seeds and full matrix are still in progress.
 The earlier diagnostics below are historical checkpoints.
 
 ## Pinned sources and local images
