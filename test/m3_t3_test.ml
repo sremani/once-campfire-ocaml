@@ -70,6 +70,20 @@ let test_form_and_search_presenter_inputs () = with_seed "default" (fun runtime 
   check "recent query supplied to view" (contains body "Controller Recent");
   check "return room supplied to view" (contains body "href=\"/rooms/654632876\""))
 
+let test_custom_logo_page_context () = with_seed "custom_styles" (fun runtime ->
+  let cookie = mint_session runtime 127326141L in
+  let pages = [
+    "room show", "/rooms/654632876";
+    "room form", "/rooms/opens/new";
+    "message edit", "/rooms/654632876/messages/908005739/edit";
+    "search", "/searches";
+  ] in
+  List.iter (fun (label,path) ->
+    let response,body = send ~cookie runtime `GET path in
+    Alcotest.(check int) (label ^ " status") 200 (status response);
+    check (label ^ " custom logo class")
+      (contains body "account-has-logo")) pages)
+
 let test_inventory () =
   Alcotest.(check string) "Ruby Unicode search word classes"
     "héllo wörld_1 ２ 日本語 ‿ a b ️   é"
@@ -174,9 +188,19 @@ let test_restricted_autocomplete_and_paging () =
   with_seed "restricted" (fun runtime ->
     let member = mint_session runtime 712064548L in
     let admin = mint_session runtime 127326141L in
-    let blocked,_ = send ~cookie:member ~body:"room%5Bname%5D=Nope"
+    List.iter (fun path ->
+      let blocked,body = send ~cookie:member runtime `GET path in
+      Alcotest.(check int) "restricted room form" 403 (status blocked);
+      Alcotest.(check string) "restricted room form body" "" body;
+      Alcotest.(check (option string)) "restricted room form bare MIME"
+        (Some "text/html") (header blocked "content-type"))
+      ["/rooms/opens/new";"/rooms/closeds/new"];
+    let blocked,body = send ~cookie:member ~body:"room%5Bname%5D=Nope"
       runtime `POST "/rooms/opens" in
     Alcotest.(check int) "restricted member room creation" 403 (status blocked);
+    Alcotest.(check string) "restricted creation body" "" body;
+    Alcotest.(check (option string)) "restricted creation bare MIME"
+      (Some "text/html") (header blocked "content-type");
     let allowed,_ = send ~cookie:admin ~body:"room%5Bname%5D=Yes"
       runtime `POST "/rooms/opens" in
     Alcotest.(check int) "restricted administrator creates" 302 (status allowed));
@@ -384,6 +408,7 @@ let () = Alcotest.run "M3 room and message controllers" [
     Alcotest.test_case "restricted, autocomplete, paging" `Quick test_restricted_autocomplete_and_paging;
     Alcotest.test_case "bot lifecycle" `Quick test_bot_lifecycle;
     Alcotest.test_case "form and search presenter inputs" `Quick test_form_and_search_presenter_inputs;
+    Alcotest.test_case "custom logo page context" `Quick test_custom_logo_page_context;
     Alcotest.test_case "exception response shapes" `Quick test_http_exception_shapes;
     Alcotest.test_case "content pages" `Quick test_content_pages;
     Alcotest.test_case "multipart attachment" `Quick test_multipart_attachment]]

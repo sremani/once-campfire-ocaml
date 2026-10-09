@@ -15,6 +15,35 @@ let check_contains title haystack needle =
   Alcotest.(check bool) title true (contains haystack needle)
 let check_absent title haystack needle =
   Alcotest.(check bool) title false (contains haystack needle)
+let test_system_settings_desktop_platforms () =
+  let base=Views.default_context.platform in
+  let render platform =
+    Views.pwa_system_settings {Views.default_context with platform}
+    |> Views.render in
+  let linux_firefox=render {base with firefox=true;desktop=true;
+    browser="Firefox";operating_system="Linux"} in
+  check_contains "desktop Firefox uses pinned Apple instructions"
+    linux_firefox "the Apple menu";
+  check_absent "desktop Firefox does not use generic fallback"
+    linux_firefox "Ensure notifications are allowed for Firefox";
+  let linux_chrome=render {base with chrome=true;desktop=true;
+    browser="Chrome";operating_system="Linux"} in
+  check_contains "desktop Chrome uses pinned Apple instructions"
+    linux_chrome "the Apple menu";
+  let linux_safari=render {base with safari=true;desktop=true;
+    browser="Safari";operating_system="Linux"} in
+  check_contains "desktop Safari uses pinned Apple instructions"
+    linux_safari "the Apple menu";
+  let windows_firefox=render {base with firefox=true;desktop=true;
+    windows=true;browser="Firefox";operating_system="Windows"} in
+  check_contains "Windows Firefox keeps Start instructions"
+    windows_firefox "System &gt; Notification";
+  check_absent "Windows Firefox has no Apple instructions"
+    windows_firefox "the Apple menu";
+  let phone_firefox=render {base with firefox=true;mobile=true;desktop=false;
+    browser="Firefox";operating_system="Linux"} in
+  check_contains "Firefox non-Android phone keeps generic instructions"
+    phone_firefox "Ensure notifications are allowed for Firefox"
 let fixture_json path =
   Yojson.Safe.from_file (if Sys.file_exists path then path else "test/" ^ path)
 
@@ -1279,7 +1308,9 @@ else Alcotest.run "M4 views" [
   "pages", [Alcotest.test_case "layout, forms, escaping" `Quick
     test_pages_escape_and_structure;
     Alcotest.test_case "Askama application shell whitespace" `Quick
-      test_application_layout_bytes];
+      test_application_layout_bytes;
+    Alcotest.test_case "system settings desktop platforms" `Quick
+      test_system_settings_desktop_platforms];
   "messages", [Alcotest.test_case "golden stream anchors and cache safety"
     `Quick test_message_stream_goldens;
     Alcotest.test_case "message permalink room names from pinned memberships"

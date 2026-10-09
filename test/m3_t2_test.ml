@@ -128,9 +128,19 @@ let test_session_account_and_join () = with_seed "default" (fun runtime ->
   let missing,_ = send runtime `GET "/session/edit" in
   Alcotest.(check int) "declared but missing action" 404 (status missing);
 
-  let bad,bad_body = send ~body:"email_address=david%4037signals.com&password=nope"
+  let bad,bad_body = send ~accept:"text/html"
+    ~body:"email_address=david%4037signals.com&password=nope"
     runtime `POST "/session" in
   Alcotest.(check int) "wrong password" 401 (status bad);
+  let vary response =
+    Cohttp.Header.get_multi (Cohttp.Response.headers response) "vary"
+    |> List.concat_map (String.split_on_char ',')
+    |> List.map (fun value -> String.trim value |> String.lowercase_ascii) in
+  Alcotest.(check (list string)) "rendered 401 varies by Accept and encoding"
+    ["accept"; "accept-encoding"] (vary bad);
+  let empty_forbidden,_ = send ~accept:"text/html" runtime `GET "/session/edit" in
+  Alcotest.(check (list string)) "empty response does not vary by Accept"
+    ["accept-encoding"] (vary empty_forbidden);
   check "rejected login renders the sign-in view" (
     String.length bad_body > 10_000 &&
     String.contains bad_body '<' &&
@@ -358,6 +368,12 @@ let contains haystack needle =
   let rec scan at = at + String.length needle <= String.length haystack &&
     (String.sub haystack at (String.length needle) = needle || scan (at + 1)) in
   scan 0
+
+let test_custom_logo_sidebar () = with_seed "custom_styles" (fun runtime ->
+  let cookie=mint_session runtime 127326141L in
+  let response,body=send ~cookie_header:cookie runtime `GET "/users/me/sidebar" in
+  Alcotest.(check int) "custom logo sidebar page" 200 (status response);
+  check "custom logo body class" (contains body "account-has-logo"))
 
 let test_join_and_bot_presenter_data () = with_seed "default" (fun runtime ->
   let code=Db_runtime.read runtime (fun db ->
@@ -621,6 +637,7 @@ let () = Alcotest.run "M3-T2 onboarding and account controllers" [
     Alcotest.test_case "first-run stock logo cache" `Quick test_first_run_stock_logo_cache;
     Alcotest.test_case "roles, bots, profile, bans" `Quick test_roles_bots_profile_and_bans;
     Alcotest.test_case "sidebar page or frame" `Quick test_sidebar_response_mode;
+    Alcotest.test_case "custom logo sidebar" `Quick test_custom_logo_sidebar;
     Alcotest.test_case "transfer and push" `Quick test_transfer_and_push;
     Alcotest.test_case "join and bot presenter data" `Quick test_join_and_bot_presenter_data;
     Alcotest.test_case "account role presenter" `Quick test_account_presenter_roles;

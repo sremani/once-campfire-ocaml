@@ -363,7 +363,7 @@ let commit ctx (response, body) =
       let host = Option.value (header ctx "host") ~default:"localhost" in
       Cookie_http.set_cookie_headers ctx.cookies ~ssl:ctx.ssl ~host in
     let headers = Cohttp.Response.headers response in
-    let rendered_with_accept = Cohttp.Response.status response = `OK &&
+    let rendered_with_accept =
       (match Cohttp.Header.get headers "content-type" with
        | Some content_type ->
            String.starts_with ~prefix:"text/html" content_type ||

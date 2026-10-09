@@ -113,13 +113,16 @@ let context ?(has_custom_logo=false) (ctx : Http_app.context)
       | _, Some revision when revision <> "" -> revision
       | _ -> "0") }
 
+let has_custom_logo db (account : A.Account.t option) = match account with
+  | None -> false
+  | Some account ->
+      Db_remaining.Attachment.find_for db ~record_type:"Account"
+        ~record_id:account.id ~name:"logo" <> None
+
 let load_context ctx =
   Db_runtime.read_async ctx.Http_app.runtime (fun db ->
     let account=A.Account.first db in
-    let has_custom_logo=match account with None -> false | Some account ->
-      Db_remaining.Attachment.find_for db ~record_type:"Account"
-        ~record_id:account.id ~name:"logo" <> None in
-    account,has_custom_logo)
+    account,has_custom_logo db account)
   |> Lwt.map (fun (account,has_custom_logo) ->
     context ~has_custom_logo ctx account)
 

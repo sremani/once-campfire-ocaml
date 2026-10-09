@@ -126,6 +126,9 @@ let rooms_index c = match user_id c with
   | Some uid -> read c (fun db -> R.Room.last_for_user db uid) >>= function
       | None -> error 500
       | Some room -> redirect c (room_path room.R.Room.id)
+let context_for_account c db account =
+  View_presenter.context ~has_custom_logo:(View_presenter.has_custom_logo db account)
+    c account
 let room_show c = room_or_root c (fun room ->
   remember_room c room.R.Room.id;
   if not (accepts c Http_format.Html) then error 406 else
@@ -144,8 +147,8 @@ let room_show c = room_or_root c (fun room ->
       | Some original when original.R.Room.id=room.R.Room.id ->
           not (M.Message.paged db room.R.Room.id)
       | _ -> false in
-    account, messages, direct_names, invitation) >>= fun (account, messages, direct_names, invitation) ->
-  let context = View_presenter.context c account in
+    account, context_for_account c db account, messages, direct_names, invitation)
+  >>= fun (account, context, messages, direct_names, invitation) ->
   let room_view = View_presenter.room room in
   let room_view = if room.R.Room.room_type=R.Direct then
     {room_view with Views.name=(match direct_names with
@@ -195,9 +198,8 @@ let render_room_form c ?room kind =
     let selected,unselected=List.partition
       (fun (user:U.t) -> List.mem user.id selected_ids) users in
     let last_room_id=Option.bind (user_id c) (last_room_for_user c db) in
-    account,users,selected,unselected,last_room_id)
-  >>= fun (account,users,selected,unselected,last_room_id) ->
-  let context = View_presenter.context c account in
+    context_for_account c db account,users,selected,unselected,last_room_id)
+  >>= fun (context,users,selected,unselected,last_room_id) ->
   let kind = match kind with
     | R.Open -> Views.Open | R.Closed -> Views.Closed | R.Direct -> Views.Direct in
   let form : Views.room_form_data = {
@@ -216,12 +218,12 @@ let render_room_form c ?room kind =
     (Views.room_form_page ~context ?last_room_id form))
 let room_type_form kind c =
   check_creation c >>= fun allowed ->
-  if not allowed then head 403 else render_room_form c kind
+  if not allowed then action_head c 403 else render_room_form c kind
 let room_type_edit kind c = room_or_root c ~kind:`No_direct (fun room ->
   render_room_form c ~room kind)
 let room_type_create kind c =
   check_creation c >>= fun allowed ->
-  if not allowed then head 403 else match room_name c,user_id c with
+  if not allowed then action_head c 403 else match room_name c,user_id c with
   | Error (),_ -> public_error c 400 | _,None -> error 500
   | Ok name,Some uid ->
       let ids = ids_from_param c in
@@ -456,8 +458,8 @@ let message_edit c = scope_or_404 c (fun _ room ->
     if not (can_admin c message.M.Message.creator_id) then head 403
     else if not (accepts c Http_format.Html) then error 406 else
     read c (fun db -> View_presenter.message c db room message,
-      Db_accounts.Account.first db) >>= fun (message,account) ->
-    let context = View_presenter.context c account in
+      context_for_account c db (Db_accounts.Account.first db))
+    >>= fun (message,context) ->
     response (H.html ~status:200 (Views.message_edit ~context message))))
 let message_update c = scope_or_404 c (fun _ room ->
   message_or_404 c room "id" (fun message ->
@@ -742,9 +744,8 @@ let search_index c = match search_query c,user_id c with
         let recent_searches=M.Search.ordered_for_user db uid
           |> List.map (fun (search:M.Search.t) -> search.query) in
         let return_to_room_id=last_room_for_user c db uid in
-        account,rendered,recent_searches,return_to_room_id)
-      >>= fun (account,rendered,recent_searches,return_to_room_id) ->
-      let context = View_presenter.context c account in
+        context_for_account c db account,rendered,recent_searches,return_to_room_id)
+      >>= fun (context,rendered,recent_searches,return_to_room_id) ->
       response (H.html ~status:200
         (Views.search_index_with ~context ~query:(Option.value q ~default:"")
           ?q:(H.param_string c "q") ~recent_searches ?return_to_room_id

@@ -3296,7 +3296,8 @@ let notification_parts (context:context) =
             "external/switch.svg"];text " to ";
             em [text "Allow Notifications"];text "."]])
     else if chrome_mac || safari_mac ||
-        (platform.firefox && platform.desktop && mac_desktop) then
+        ((platform.firefox || platform.chrome || platform.safari) &&
+          platform.desktop) then
     detail ~class_name:"notifications-help hide-in-browser"
       "external/gear.svg"
       ("Check your " ^ platform.operating_system ^ " settings") (elt "ol" [] [

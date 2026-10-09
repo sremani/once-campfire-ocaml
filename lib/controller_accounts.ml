@@ -543,9 +543,10 @@ let sidebar_show c = match current_id c with
           | Some user,Some account -> U.is_administrator user ||
               not (Db_accounts.Account.restrict_room_creation_to_administrators account)
           | _ -> false in
-        account,entries,placeholders,can_create_rooms)
-      >|= fun (account,entries,placeholders,can_create_rooms) ->
-      let context = View_presenter.context c account in
+        View_presenter.context
+          ~has_custom_logo:(View_presenter.has_custom_logo db account)
+          c account,entries,placeholders,can_create_rooms)
+      >|= fun (context,entries,placeholders,can_create_rooms) ->
       let secret_key_base = c.H.secret_key_base in
       let rooms_stream_name = Turbo_stream.signed_stream_name
         ~secret_key_base ["rooms"] in
