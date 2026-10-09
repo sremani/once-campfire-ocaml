@@ -177,3 +177,8 @@ room involvement differences because OCaml used the full page layout for a
 Turbo Frame request. Source `7352f48` uses the pinned frame layout; a clean
 16-cell recapture passes all six layers with zero retries or errors. The broad
 matrix restarted on this source and M4-T4 remains open until it completes.
+The `7352f48` default lean matrix completed 874 cells with 866 exact and
+eight failures: four group Ping title/heading conjunction differences and
+four ignored profile avatar uploads. Source `2a511ac` fixes both; a clean
+eight-cell browser recapture passes all six layers with zero retries or
+errors. The complete all-seed browser matrix remains the M4-T4 gate.

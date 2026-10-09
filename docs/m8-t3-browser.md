@@ -241,9 +241,22 @@ requests to room involvement. Its controller regression and forced Dune suite
 pass, and a clean image recapture passes **16/16 exact** cells across all six
 layers, with zero retries or errors, at
 `/tmp/m8-t3-harness-wt/parity/out/m8-t3-7352-involvement-16/report.json`.
-The full all-seed lean/full matrix has restarted on the clean `7352f48`
-image under
+The clean `7352f48` default lean matrix completed all 14 disjoint batches:
+**866 pass, eight fail, zero errors or retries** across 874 cells. Four
+group direct-room cells differed because OCaml omitted the final “and” in
+the room title and heading; four profile avatar-upload cells differed because
+the upload was ignored, leaving the old avatar URL and no Delete button.
+The run stopped at the default-seed boundary, with no crowd cells, at
 `/tmp/m8-t3-harness-wt/parity/out/m8-t3-7352f48-all/summary.json`.
+
+Current clean source `2a511ac` uses the existing Rails-style sentence
+formatter for group direct-room names and persists profile avatar uploads,
+touching the user cache version and replacing old attachments. The forced
+OCaml suite passes 41 suites and 297 cases. A fresh eight-cell Chromium
+desktop/phone light/dark recapture passes **8/8 exact** across server, live
+DOM, ARIA, network, Cable and pixels, with zero retries or errors, at
+`/tmp/m8-t3-harness-wt/parity/out/m8-t3-2a511ac-group-avatar-8/report.json`.
+The full all-seed lean/full matrix remains open for this source.
 
 Run each seed in both matrices using the pinned Playwright image and frozen
 clock, for example:

@@ -1,13 +1,25 @@
 # M8-T5 release candidate audit (in progress)
 
-## Current clean source target: `7352f48`
+## Current clean source target: `2a511ac`
 
-The current code source is `7352f480e79e6aaef52f9044838f23b6ed48b0cb`.
+The current code source is `2a511ac6f74fc3689f72bd039bc11d286e71d1c4`.
+`/tmp/campfire-source-2a511ac.json` records a clean checkout, 321 pinned
+assets and zero local Gumbo checksum errors. The forced OCaml suite passes
+41 suites and 297 cases. Group direct-room naming and avatar uploads pass
+eight focused browser cells in all six layers, with zero retries or errors.
+The 2a511ac full five-seed HTTP sweep is running; the all-seed browser and
+current-source image release gates remain open. The offline release runner
+`/tmp/m8-t5-2a511ac-release-verify.sh` passes both architecture preflights.
+
+### Earlier involvement-frame source checkpoint: `7352f48`
+
+The earlier code source is `7352f480e79e6aaef52f9044838f23b6ed48b0cb`.
 `/tmp/campfire-source-7352f48.json` records a clean checkout, 321 pinned
 assets and zero local Gumbo checksum errors. The forced OCaml suite passes
 41 suites and 296 cases. Its involvement Turbo-frame fix passes 16/16 focused
 browser cells in all six layers, including raw GET response headers and body
-hashes, with zero retries or errors. The five-seed browser matrix is active at
+hashes, with zero retries or errors. Its default lean browser matrix stopped
+after 874 cases, with eight group-name/avatar-upload differences, at
 `/tmp/m8-t3-harness-wt/parity/out/m8-t3-7352f48-all/summary.json`.
 The offline release runner `/tmp/m8-t5-7352f48-release-verify.sh` passes
 preflight for both architectures; current-source release image gates remain

@@ -74,9 +74,11 @@ Source `d223a0f` changes only the attachment edit-frame serializer after
 this rerun; its four focused Rust/OCaml attachment browser cells are exact.
 Source `7352f48` additionally changes room involvement `Turbo-Frame` layout.
 Its 16 focused browser cells are exact on raw network response, including
-headers and body hashes. The final current-revision ordinary sweep should
-use the 7352 binary; `/tmp/m3-7352-full-http-sweep.sh` is prepared and passes
-its offline source/binary/fixture preflight.
+headers and body hashes. Current source `2a511ac` also fixes the group
+direct-room sentence and profile avatar upload; its eight focused browser
+cells are exact. The final ordinary sweep is running against its pinned binary
+through `/tmp/m3-2a51-full-http-sweep.sh`. Offline source, binary and fixture
+preflight passed; the complete route result is pending.
 
 The final clean packaged d6600ed sweep compared all 177 routes under four
 roles on fresh independent copies of `default`, `crowd`, `restricted`, and
