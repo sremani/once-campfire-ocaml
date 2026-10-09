@@ -66,6 +66,21 @@ let test_firefox_windows_browser_settings () =
   check_contains "Mac Firefox keeps Apple instructions" mac "the Apple menu";
   check_absent "Mac Firefox omits Windows Start steps"
     mac "Click <em>Start</em>"
+let test_install_instructions_platform_gate () =
+  let base=Views.default_context.platform in
+  let render platform =
+    Views.pwa_install_instructions {Views.default_context with platform}
+    |> Views.render in
+  let opera=render {base with chrome=false;firefox=false;safari=false;
+    edge=false;desktop=true;browser="Opera";operating_system="Linux"} in
+  check_contains "Opera receives install instructions" opera
+    "<details class=\"notifications-help pwa__instructions hide-in-pwa\"";
+  check_contains "unknown platform uses Rails fallback" opera
+    "Some platforms require you to install Campfire as a web app to receive push notifications.";
+  let chrome_ios=render {base with chrome=true;ios=true;mobile=true;
+    desktop=false;browser="Chrome";operating_system="iOS"} in
+  Alcotest.(check string) "Chrome on iOS has no install instructions"
+    "" chrome_ios
 let fixture_json path =
   Yojson.Safe.from_file (if Sys.file_exists path then path else "test/" ^ path)
 
@@ -1333,6 +1348,8 @@ else Alcotest.run "M4 views" [
       test_application_layout_bytes;
     Alcotest.test_case "system settings desktop platforms" `Quick
       test_system_settings_desktop_platforms;
+    Alcotest.test_case "install instructions platform gate" `Quick
+      test_install_instructions_platform_gate;
     Alcotest.test_case "Firefox Windows browser settings" `Quick
       test_firefox_windows_browser_settings];
   "messages", [Alcotest.test_case "golden stream anchors and cache safety"

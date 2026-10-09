@@ -3362,9 +3362,8 @@ let notification_parts (context:context) =
       ("Check your " ^ platform.operating_system ^ " settings")
       (elt "p" [] [text ("Ensure notifications are allowed for " ^
         platform.browser ^ " in your system settings.")]) in
-  let install = if safari_mac ||
-      (platform.firefox && platform.android) ||
-      ((platform.safari || platform.chrome) && platform.ios) then
+  let install = if not platform.chrome &&
+      not (platform.firefox && not platform.android) then
     [elt "details" ["class","notifications-help pwa__instructions hide-in-pwa";
       "data-controller","pwa-install";
       "data-pwa-install-prompting-class","pwa--can-install";
@@ -3386,9 +3385,10 @@ let notification_parts (context:context) =
           li [text "Tap ";em [icon ~alt:"the share button"
             "external/share.svg"]];
           li [text "Tap ";em [text "Add to Home Screen"];text "."]]]
-      else elt "ol" [] [
+      else if platform.safari && platform.desktop then elt "ol" [] [
         li [text "Click ";em [text "File"];text " in the top left."];
-        li [text "Click ";em [text "Add to Dock…"];text "."]]);
+        li [text "Click ";em [text "Add to Dock…"];text "."]]
+      else elt "p" [] [text "Some platforms require you to install Campfire as a web app to receive push notifications."]);
       cls "div" "margin-block-start txt-align-center pwa__installer" [
         void "hr" ["class","separator margin-block"];
         elt "button" ["class","btn btn--reversed center";
