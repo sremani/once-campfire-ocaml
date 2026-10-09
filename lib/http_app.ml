@@ -730,9 +730,13 @@ let handle ~runtime ~secret_key_base ?cable ?event_sink ?front_cache
     let headers = if not empty_public_exception && Option.is_some front_cache &&
        not (Http_cache.Front.request_allowed request) &&
        Cohttp.Header.mem headers "vary" then
-      (* Rust's front compression appends its Vary to the application's Vary
-         when the front cache is bypassed. Both fields are wire observable. *)
-      Cohttp.Header.add headers "vary" "Accept-Encoding"
+      (* The front writes its own Vary field before the app's fields on a
+         bypassed request. Their order is observable on the wire. *)
+      let application_vary = Cohttp.Header.get_multi headers "vary" in
+      let headers = Cohttp.Header.remove headers "vary"
+        |> fun h -> Cohttp.Header.add h "vary" "Accept-Encoding" in
+      List.fold_left (fun h value -> Cohttp.Header.add h "vary" value)
+        headers application_vary
     else headers in
     (* Thruster's front compression adds one Vary even when Rack::Deflater
        skipped an empty PublicExceptions response. *)

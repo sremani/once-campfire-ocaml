@@ -80,12 +80,6 @@ let add_vary headers =
 
 let apply ?parts request (response, body) =
   if not (should_deflate response) then Lwt.return (response, body)
-  else if Cohttp.Request.meth request = `HEAD then
-    (* The pinned front selects no encoding for HEAD, but still varies the
-       representation on Accept-Encoding. Compressing the dropped body would
-       send a spurious gzip member and lose the GET representation length. *)
-    let headers = Cohttp.Response.headers response |> add_vary in
-    Lwt.return ({response with headers}, body)
   else
     let headers = Cohttp.Response.headers response |> add_vary in
     let accept = Cohttp.Header.get (Cohttp.Request.headers request) "accept-encoding"
@@ -100,6 +94,13 @@ let apply ?parts request (response, body) =
           "content-length", string_of_int (String.length message)] in
         Lwt.return (Cohttp.Response.make ~status:`Not_acceptable ~headers (),
           Cohttp_lwt.Body.of_string message)
+    | Gzip when Cohttp.Request.meth request = `HEAD ->
+        (* Rack::Deflater still selects the representation for HEAD. The
+           adapter has already dropped its body; only the gzip headers remain. *)
+        let headers = headers
+          |> fun h -> Cohttp.Header.replace h "content-encoding" "gzip"
+          |> fun h -> Cohttp.Header.remove h "content-length" in
+        Lwt.return ({response with headers}, Cohttp_lwt.Body.empty)
     | Gzip ->
         let wrap encoded =
           let headers = headers

@@ -236,10 +236,20 @@ let test_restricted_autocomplete_and_paging () =
     let admin = mint_session runtime 127326141L in
     let first,_ = send ~cookie:admin runtime `GET "/autocompletable/users.json" in
     Alcotest.(check int) "crowd autocomplete" 200 (status first);
-    check "crowd paginates" (Option.is_some (header first "link"));
+    Alcotest.(check (option string)) "absolute next link without duplicate host"
+      (Some "<https://chat.example.com/autocompletable/users.json?page=2>; rel=\"next\"")
+      (header first "link");
     let second,_ = send ~cookie:admin runtime `GET
       "/autocompletable/users.json?page=2" in
-    Alcotest.(check int) "second crowd page" 200 (status second))
+    Alcotest.(check int) "second crowd page" 200 (status second);
+    Alcotest.(check (option string)) "next link replaces page"
+      (Some "<https://chat.example.com/autocompletable/users.json?page=3>; rel=\"next\"")
+      (header second "link");
+    let filtered,_ = send ~cookie:admin runtime `GET
+      "/autocompletable/users.json?query=j" in
+    Alcotest.(check (option string)) "next link preserves query"
+      (Some "<https://chat.example.com/autocompletable/users.json?page=2&query=j>; rel=\"next\"")
+      (header filtered "link"))
 
 let test_bot_lifecycle () = with_seed "default" (fun runtime ->
   let key = "394959859-BenderBot123" in

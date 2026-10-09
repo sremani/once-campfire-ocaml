@@ -180,6 +180,18 @@ let recorded_part_transport () =
     (get (fst head) "etag");
   check (option string) "part HEAD length" (Some (string_of_int (String.length page.body)))
     (get (fst head) "content-length");
+  let head_gzip_req=request ~meth:`HEAD
+    ~headers:["accept-encoding","gzip"] "/rooms/1" in
+  let head_gzip=Lwt_main.run (C.finish ~request:head_gzip_req
+    (Campfire.Controller_rooms.recorded_html page |> fun (reply,body,_) -> reply,body)
+    >>= Campfire.Http_gzip.apply head_gzip_req) in
+  check string "part gzip HEAD body empty" "" (body_text head_gzip);
+  check (option string) "part gzip HEAD encoding" (Some "gzip")
+    (get (fst head_gzip) "content-encoding");
+  check (option string) "part gzip HEAD has no length" None
+    (get (fst head_gzip) "content-length");
+  check (option string) "part gzip HEAD validator" (get reply "etag")
+    (get (fst head_gzip) "etag");
   let gzip_req=request ~headers:["accept-encoding","gzip"] "/rooms/1" in
   let gzip=Lwt_main.run (C.finish ~request:gzip_req
     (Campfire.Controller_rooms.recorded_html page |> fun (reply,body,_) -> reply,body)
@@ -383,19 +395,29 @@ let streamed_head_length () =
     let response=Cohttp.Response.make
       ~status:(Cohttp.Code.status_of_code served.status)
       ~headers:(headers served.headers) () in
-    let request=request ~meth:`HEAD
+    let gzip_request=request ~meth:`HEAD
       ~headers:["accept-encoding","gzip"] "/rails/active_storage/disk/test" in
-    let result=Lwt_main.run (C.finish ~digestible:false ~request
+    let result=Lwt_main.run (C.finish ~digestible:false ~request:gzip_request
       (response,Campfire.Storage_file_server.stream served.body)
-      >>= Campfire.Http_gzip.apply request) in
+      >>= Campfire.Http_gzip.apply gzip_request) in
     check int "streamed HEAD status" 200 (code (fst result));
     check string "streamed HEAD body" "" (body_text result);
-    check (option string) "streamed HEAD file length" (Some "8193")
+    check (option string) "streamed gzip HEAD has no identity length" None
       (get (fst result) "content-length");
-    check (option string) "streamed HEAD no encoding" None
+    check (option string) "streamed gzip HEAD encoding" (Some "gzip")
       (get (fst result) "content-encoding");
     check bool "streamed HEAD retains Last-Modified" true
-      (Option.is_some (get (fst result) "last-modified")))
+      (Option.is_some (get (fst result) "last-modified"));
+    let identity_request=request ~meth:`HEAD
+      ~headers:["accept-encoding","identity"] "/rails/active_storage/disk/test" in
+    let identity=Lwt_main.run (C.finish ~digestible:false ~request:identity_request
+      (response,Campfire.Storage_file_server.stream served.body)
+      >>= Campfire.Http_gzip.apply identity_request) in
+    check string "streamed identity HEAD body empty" "" (body_text identity);
+    check (option string) "streamed identity HEAD file length" (Some "8193")
+      (get (fst identity) "content-length");
+    check (option string) "streamed identity HEAD no encoding" None
+      (get (fst identity) "content-encoding"))
 
 let public_route_cache () =
   let path=Filename.temp_file "campfire-public-cache-" ".sqlite3" in
@@ -444,6 +466,33 @@ let public_route_cache () =
     check (option string) "streamed logo cache hit" (Some "hit")
       (get second_logo "x-cache");
     check string "cached streamed logo bytes" logo_bytes cached_logo)
+
+let bypassed_write_vary_order () =
+  let path=Filename.temp_file "campfire-vary-order-" ".sqlite3" in
+  let runtime=Campfire.Db_runtime.open_db path in
+  Fun.protect ~finally:(fun () ->
+    Campfire.Db_runtime.close runtime;
+    List.iter (fun file -> if Sys.file_exists file then Sys.remove file)
+      [path;path^"-wal";path^"-shm"]) (fun () ->
+    let cache=C.Front.create ~capacity:4096 ~max_item_size:1024 in
+    let action _ = Lwt.return (Campfire.Http_app.respond ~status:200
+      ~content_type:"text/vnd.turbo-stream.html; charset=utf-8"
+      ~headers:["vary","Accept,Accept-Encoding"] "<turbo-stream></turbo-stream>") in
+    let dispatch endpoint = if endpoint="sessions#create" then
+      Some Campfire.Http_app.{ before_action=(fun _ -> Lwt.return (Ok ()));
+        action } else None in
+    let req=request ~meth:`POST ~headers:["host","chat.example.com";
+      "accept","text/vnd.turbo-stream.html";
+      "content-type","application/x-www-form-urlencoded";
+      "origin","http://chat.example.com";"sec-fetch-site","same-origin"]
+      "/session" in
+    let reply,_=Lwt_main.run (Campfire.Http_app.handle ~runtime
+      ~secret_key_base:"unused" ~front_cache:cache ~dispatch req
+      Cohttp_lwt.Body.empty) in
+    check int "bypassed write 200" 200 (code reply);
+    check (list string) "front Vary precedes app Vary on POST"
+      ["Accept-Encoding";"Accept,Accept-Encoding"]
+      (Cohttp.Header.get_multi (Cohttp.Response.headers reply) "vary"))
 
 let rec reference_root path remaining =
   if remaining=0 then failwith "pinned Rails seed not found" else
@@ -653,10 +702,10 @@ let private_route_invalidation () =
           ~extra:["accept-encoding","gzip";"cache-control","no-store"] () in
         check int "gzip advertised HEAD" 200 (code gzip_head);
         check string "gzip advertised HEAD body" "" gzip_head_body;
-        check (option string) "HEAD does not encode" None
+        check (option string) "gzip HEAD selects representation" (Some "gzip")
           (get gzip_head "content-encoding");
-        check (option string) "HEAD length is identity length"
-          (get initial "content-length") (get gzip_head "content-length");
+        check (option string) "gzip HEAD omits identity length" None
+          (get gzip_head "content-length");
         let fresh_head,fresh_head_body=send ~meth:`HEAD
           ~extra:["accept-encoding","gzip";"cache-control","no-store";
             "if-none-match",etag] () in
@@ -822,6 +871,7 @@ let () = run "m3-t5-cache" [
   ];
   "front", [
     test_case "eligibility and request bypass" `Quick front_eligibility;
+    test_case "bypassed write Vary field order" `Quick bypassed_write_vary_order;
     test_case "variant, limits and invalidation" `Quick front_store;
     test_case "public QR route cache" `Quick public_route_cache;
     test_case "cached media preserves application Date" `Quick public_media_cache_date;

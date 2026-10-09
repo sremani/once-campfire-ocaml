@@ -304,6 +304,13 @@
 
 (rule
  (alias runtest)
+ (deps view_seeded_large_bytes.py fixtures/campfire_routes.json
+  fixtures/campfire_sessions.json fixtures/rails_compat.json
+  ../scripts/m8_t2_http_state.py)
+ (action (run python3 view_seeded_large_bytes.py %{exe:m4_t2_probe.exe})))
+
+(rule
+ (alias runtest)
  (deps view_dom_compare.py fixtures/views_a_onboarding.json
   fixtures/views_custom_styles_edit.html fixtures/views_custom_styles_layout.html)
  (action

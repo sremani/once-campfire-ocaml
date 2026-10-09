@@ -804,9 +804,11 @@ let autocomplete c = match user_id c with
           if accepts c Http_format.Json then (
             H.set_header c "x-total-count" (string_of_int count);
             if page*20 < count then (
-              let uri = Uri.with_query' (Cohttp.Request.uri c.H.request)
+              let request_uri = Cohttp.Request.uri c.H.request in
+              let uri = Uri.make ~path:(Uri.path request_uri) () in
+              let uri = Uri.with_query' uri
                 ([("page",string_of_int (page+1))] @
-                 (Uri.query (Cohttp.Request.uri c.H.request) |>
+                 (Uri.query request_uri |>
                   List.filter (fun (k,_) -> k<>"page") |>
                   List.concat_map (fun (k,values) -> List.map (fun value -> k,value) values))) in
               H.set_header c "link" ("<" ^ H.base_url c ^ Uri.to_string uri ^ ">; rel=\"next\""));

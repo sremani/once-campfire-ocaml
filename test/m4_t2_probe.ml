@@ -14,7 +14,11 @@ let string key json = member key json |> Yojson.Safe.Util.to_string
 
 let with_seed f =
   let root = reference_root (Sys.getcwd ()) 8 in
-  let seed = Filename.concat root "parity/.seed/default" in
+  let variant = Option.value (Sys.getenv_opt "M4_T2_PROBE_SEED")
+    ~default:"default" in
+  if not (List.mem variant ["default";"crowd";"first_run"]) then
+    failwith "unsupported seeded view probe variant";
+  let seed = Filename.concat root ("parity/.seed/" ^ variant) in
   let source = Sqlite3.db_open ~mode:`READONLY
     (Filename.concat seed "db/production.sqlite3") in
   let temporary = Filename.temp_file "campfire-m4-t2-probe-" ".sqlite3" in

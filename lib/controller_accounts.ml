@@ -17,7 +17,11 @@ let response value = Lwt.return value
 let empty status = H.respond ~status ~content_type:"text/html; charset=utf-8" ""
 let not_found () = response (empty 404)
 let record_not_found () = response (H.error ~status:404)
-let bad_request () = response (empty 400)
+let bad_request c =
+  let format=match c.H.format with
+    | [] | Http_format.All :: _ -> Http_format.Html
+    | format :: _ -> format in
+  response (H.respond ~status:400 ~content_type:(Http_format.mime format) "")
 let parameter_missing c =
   (* params.require raises before rendering. PublicExceptions bypasses app
      headers and cookies; Http_cache.finish removes this internal marker. *)
@@ -183,7 +187,7 @@ let session_destroy c =
   redirect c "/"
 
 let session_transfer_show c = match H.param_string c "id" with
-  | None -> bad_request ()
+  | None -> bad_request c
   | Some transfer_id -> View_presenter.load_context c >|= fun context ->
       H.html ~status:200 (Views.session_transfer ~context ~transfer_id)
 let session_transfer_update c =
@@ -191,19 +195,21 @@ let session_transfer_update c =
     Signed_id.verify ~secret_key_base:c.H.secret_key_base ~model:"User" ~raw
       ~purpose:(Some "transfer") ~now:c.H.now ()) in
   match user_id with
-  | None -> bad_request ()
+  | None -> bad_request c
   | Some id -> read c (fun db ->
       match U.find_by_id db (Int64.of_int id) with
       | Some user when U.is_active user -> Some user | _ -> None) >>= function
-      | None -> bad_request ()
+      | None -> bad_request c
       | Some user -> start_session c user >>= fun () -> redirect_raw (post_auth_path c)
 
 let join_code c = read c A.Account.first >|= function
-  | Some account when H.param_string c "join_code" = Some account.A.Account.join_code -> true
-  | _ -> false
+  | None -> `Missing_account
+  | Some account when H.param_string c "join_code" = Some account.A.Account.join_code -> `Valid
+  | Some _ -> `Invalid
 let join_new c = join_code c >>= function
-  | false -> not_found ()
-  | true ->
+  | `Missing_account -> response (H.error ~status:500)
+  | `Invalid -> not_found ()
+  | `Valid ->
       read c (fun db -> Db_runtime.query_one db
         "SELECT name,email_address FROM users WHERE role=1 ORDER BY id ASC LIMIT 1" []
         (fun row -> Sqlite3.column_text row 0,
@@ -214,8 +220,9 @@ let join_new c = join_code c >>= function
         ~join_code:(Option.value (H.param_string c "join_code") ~default:"")
         ?help_contact ())
 let join_create c = join_code c >>= function
-  | false -> not_found ()
-  | true -> match object_param c "user" with
+  | `Missing_account -> response (H.error ~status:500)
+  | `Invalid -> not_found ()
+  | `Valid -> match object_param c "user" with
     | None -> parameter_missing c
     | Some fields -> match field fields "name" with
       | None -> response (H.error ~status:500)
@@ -800,9 +807,30 @@ let account_logo_destroy c =
   | None -> response (H.error ~status:500)
   | Some account ->
       write c (fun tx ->
-        match Db_remaining.Attachment.find_for (Db_runtime.conn tx)
+        let db=Db_runtime.conn tx in
+        match Db_remaining.Attachment.find_for db
           ~record_type:"Account" ~record_id:account.id ~name:"logo" with
-        | None -> () | Some attachment -> Db_remaining.Attachment.delete tx attachment)
+        | None -> None
+        | Some attachment ->
+            Db_remaining.Attachment.delete tx attachment;
+            ignore (Db_runtime.execute db
+              "UPDATE accounts SET updated_at=? WHERE id=?"
+              [Sqlite3.Data.TEXT (Db_time.of_rfc3339 c.H.now);
+               Sqlite3.Data.INT account.id]);
+            Some attachment.blob_id)
+      >>= (function
+        | None -> Lwt.return_unit
+        | Some blob_id -> match !storage_service with
+          | None ->
+              c.H.event_sink (Db_remaining.Event.PurgeBlob {blob_id});
+              Lwt.return_unit
+          | Some service -> Lwt_preemptive.detach (fun () ->
+              match Db_runtime.read c.H.runtime (fun db ->
+                Db_runtime.query_one db
+                  (Db_remaining.Blob.select ^ " WHERE id=? LIMIT 1")
+                  [Sqlite3.Data.INT blob_id] Db_remaining.Blob.decode) with
+              | None -> ()
+              | Some blob -> Storage_blob.purge c.H.runtime service blob) ())
       >>= fun () -> redirect c "/account/edit"
 let avatar_show c =
   let id=Option.bind (H.param_string c "user_id") (fun raw ->

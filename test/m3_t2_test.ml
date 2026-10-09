@@ -206,6 +206,37 @@ let test_first_run () = with_seed "first_run" (fun runtime ->
   let repeated,_ = send runtime `GET "/first_run" in
   Alcotest.(check int) "setup cannot repeat" 302 (status repeated))
 
+let test_first_run_join_and_transfer_errors () =
+  with_seed "first_run" (fun runtime ->
+    Alcotest.(check int) "first-run seed has no account" 0
+      (Db_runtime.read runtime Db_accounts.Account.count);
+    List.iter (fun meth ->
+      let transfer,_=send runtime meth "/session/transfers/invalid" in
+      Alcotest.(check int) "invalid transfer is bad request" 400
+        (status transfer);
+      Alcotest.(check (option string)) "transfer head has bare HTML MIME"
+        (Some "text/html")
+        (Cohttp.Header.get (Cohttp.Response.headers transfer) "content-type"))
+      [`PATCH;`PUT];
+    let json,_=send ~accept:"application/json" runtime `PATCH
+      "/session/transfers/invalid" in
+    Alcotest.(check (option string)) "transfer head uses request format"
+      (Some "application/json")
+      (Cohttp.Header.get (Cohttp.Response.headers json) "content-type");
+    List.iter (fun meth ->
+      let joined,body=send runtime meth "/join/invalid" in
+      Alcotest.(check int) "missing account raises 500" 500 (status joined);
+      Alcotest.(check int) "pinned public 500 page" 4887
+        (String.length body);
+      Alcotest.(check (option string)) "public exception MIME"
+        (Some "text/html; charset=UTF-8")
+        (Cohttp.Header.get (Cohttp.Response.headers joined) "content-type");
+      check "public exception omits session cookie"
+        (not (Cohttp.Header.mem (Cohttp.Response.headers joined) "set-cookie")))
+      [`GET;`POST];
+    Alcotest.(check int) "error requests do not create account" 0
+      (Db_runtime.read runtime Db_accounts.Account.count))
+
 let test_first_run_stock_logo_cache () =
   with_seed "first_run" (fun runtime ->
     Alcotest.(check int) "first-run seed has no account" 0
@@ -629,11 +660,100 @@ let test_avatar_file_headers () = with_seed "default" (fun runtime ->
         (Db_time.of_rfc3339 now)
         (Db_accounts.User.find db 149087659L).updated_at)))
 
+let test_account_logo_destroy () = with_seed "custom_styles" (fun runtime ->
+  let source=Storage_disk.create
+    ~root:(Filename.concat reference "parity/.seed/custom_styles/storage")
+    ~name:"local" in
+  let temporary=Filename.temp_file "campfire-m3-t2-logo-" "" in
+  Sys.remove temporary;
+  Unix.mkdir temporary 0o700;
+  let rec remove path =
+    if Sys.is_directory path then (
+      Array.iter (fun name -> remove (Filename.concat path name))
+        (Sys.readdir path);
+      Unix.rmdir path)
+    else Sys.remove path in
+  let old_service = !(Controller_accounts.storage_service) in
+  Fun.protect ~finally:(fun () ->
+    Controller_accounts.storage_service := old_service;
+    remove temporary) (fun () ->
+    let service=Storage_disk.create ~root:temporary ~name:"local" in
+    let account,attachment,blob,variants=Db_runtime.read runtime (fun db ->
+      let account=Option.get (Db_accounts.Account.first db) in
+      let attachment=Option.get (Db_remaining.Attachment.find_for db
+        ~record_type:"Account" ~record_id:account.id ~name:"logo") in
+      let blob=Db_remaining.Attachment.blob db attachment in
+      let variants=Db_remaining.Blob.variant_records db blob
+        |> List.map (fun id ->
+          let record=Db_remaining.Variant_record.find db id in
+          let attachment=Option.get (Db_remaining.Attachment.find_for db
+            ~record_type:"ActiveStorage::VariantRecord" ~record_id:id
+            ~name:"image") in
+          record,attachment,Db_remaining.Attachment.blob db attachment) in
+      account,attachment,blob,variants) in
+    Alcotest.(check int) "two seeded logo variants" 2 (List.length variants);
+    let blobs=blob::List.map (fun (_,_,image) -> image) variants in
+    let paths=List.map (fun image ->
+      let from=Storage_disk.path_for source image.Db_remaining.Blob.key in
+      let target=Storage_disk.path_for service image.key in
+      Storage_disk.mkdir_p (Filename.dirname target);
+      Storage_disk.copy_file ~source:from ~target;
+      target) blobs in
+    Controller_accounts.register_storage service;
+    let admin=mint_session runtime 127326141L in
+    Db_runtime.write runtime (fun tx ->
+      ignore (Db_runtime.execute (Db_runtime.conn tx)
+        "CREATE TRIGGER logo_touch_fail BEFORE UPDATE OF updated_at ON accounts BEGIN SELECT RAISE(ABORT, 'touch failed'); END" []));
+    let rolled_back,_=send ~cookie_header:admin runtime `DELETE "/account/logo" in
+    Alcotest.(check int) "failed account touch rolls back delete" 500
+      (status rolled_back);
+    Db_runtime.read runtime (fun db ->
+      check "logo attachment retained after rollback"
+        (Option.is_some (Db_remaining.Attachment.find_for db
+          ~record_type:"Account" ~record_id:account.id ~name:"logo"));
+      Alcotest.(check string) "rollback preserves account timestamp"
+        account.updated_at (Db_accounts.Account.find db account.id).updated_at);
+    List.iter (fun path -> check "rollback retains file" (Sys.file_exists path)) paths;
+    Db_runtime.write runtime (fun tx ->
+      ignore (Db_runtime.execute (Db_runtime.conn tx)
+        "DROP TRIGGER logo_touch_fail" []));
+    let deleted,_=send ~cookie_header:admin runtime `DELETE "/account/logo" in
+    Alcotest.(check int) "logo delete redirects" 302 (status deleted);
+    Db_runtime.read runtime (fun db ->
+      let absent table id = Db_runtime.query_one db
+        ("SELECT 1 FROM " ^ table ^ " WHERE id=? LIMIT 1")
+        [Sqlite3.Data.INT id] (fun _ -> ()) = None in
+      check "logo attachment removed"
+        (absent "active_storage_attachments" attachment.id);
+      List.iter (fun ((record:Db_remaining.Variant_record.t),
+        (image_attachment:Db_remaining.Attachment.t),
+        (image:Db_remaining.Blob.t)) ->
+        check "variant record removed"
+          (absent "active_storage_variant_records" record.id);
+        check "variant attachment removed"
+          (absent "active_storage_attachments" image_attachment.id);
+        check "variant image blob removed"
+          (absent "active_storage_blobs" image.id)) variants;
+      check "source logo blob removed" (absent "active_storage_blobs" blob.id);
+      Alcotest.(check string) "logo deletion touches account"
+        (Db_time.of_rfc3339 now)
+        (Db_accounts.Account.find db account.id).updated_at);
+    List.iter (fun path -> check "purge removes file" (not (Sys.file_exists path))) paths;
+    let again,_=send ~cookie_header:admin ~at:"2026-10-08T12:05:00Z"
+      runtime `DELETE "/account/logo" in
+    Alcotest.(check int) "missing logo still redirects" 302 (status again);
+    Db_runtime.read runtime (fun db ->
+      Alcotest.(check string) "missing logo does not touch account"
+        (Db_time.of_rfc3339 now)
+        (Db_accounts.Account.find db account.id).updated_at)))
+
 let () = Alcotest.run "M3-T2 onboarding and account controllers" [
   "routes",[Alcotest.test_case "all 73 route rows" `Quick test_route_inventory];
   "fixture HTTP",[
     Alcotest.test_case "session, administration, join" `Quick test_session_account_and_join;
     Alcotest.test_case "first run" `Quick test_first_run;
+    Alcotest.test_case "first-run join and transfer errors" `Quick
+      test_first_run_join_and_transfer_errors;
     Alcotest.test_case "first-run stock logo cache" `Quick test_first_run_stock_logo_cache;
     Alcotest.test_case "roles, bots, profile, bans" `Quick test_roles_bots_profile_and_bans;
     Alcotest.test_case "sidebar page or frame" `Quick test_sidebar_response_mode;
@@ -643,4 +763,5 @@ let () = Alcotest.run "M3-T2 onboarding and account controllers" [
     Alcotest.test_case "account role presenter" `Quick test_account_presenter_roles;
     Alcotest.test_case "profile and user presenters" `Quick test_profile_and_user_presenters;
     Alcotest.test_case "public exceptions" `Quick test_public_exception_headers;
-    Alcotest.test_case "avatar file headers" `Quick test_avatar_file_headers]]
+    Alcotest.test_case "avatar file headers" `Quick test_avatar_file_headers;
+    Alcotest.test_case "account logo destroy" `Quick test_account_logo_destroy]]

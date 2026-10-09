@@ -382,8 +382,46 @@ let signed_http_routes () =
       let bad,_=request runtime bad_path in
       Alcotest.(check int) "malformed representation URL" 404 (status bad)) samples)
 
+let missing_signed_blob_public_error () = with_seed (fun runtime service ->
+  Storage_http.register service;
+  let existing=Db_runtime.read runtime (fun db ->
+    Db_runtime.query_one db
+      (Db_remaining.Blob.select ^ " LIMIT 1") [] Db_remaining.Blob.decode
+      |> Option.get) in
+  let missing={ existing with Db_remaining.Blob.id=999999999L;
+    filename="missing.png" } in
+  let secret_key_base=Lazy.force secret in
+  let blob_redirect=B.blob_path "redirect" ~secret_key_base missing () in
+  let blob_proxy=B.blob_path "proxy" ~secret_key_base missing () in
+  let blob_alias=String.concat "/" (List.filteri (fun index _ -> index<>4)
+    (String.split_on_char '/' blob_redirect)) in
+  let representation_redirect=B.representation_path "redirect"
+    ~secret_key_base missing [] in
+  let representation_proxy=B.representation_path "proxy"
+    ~secret_key_base missing [] in
+  let representation_alias=String.concat "/"
+    (List.filteri (fun index _ -> index<>4)
+      (String.split_on_char '/' representation_redirect)) in
+  let expected=Assets.file "/404.html" |> Option.get in
+  List.iter (fun (label,path) ->
+    let response,body=request runtime path in
+    Alcotest.(check int) (label ^ " public 404") 404 (status response);
+    check (label ^ " public exception body") expected body;
+    Alcotest.(check (option string)) (label ^ " public MIME")
+      (Some "text/html; charset=UTF-8") (header response "content-type"))
+    ["blob redirect",blob_redirect;"blob proxy",blob_proxy;
+     "blob alias",blob_alias;
+     "representation redirect",representation_redirect;
+     "representation proxy",representation_proxy;
+     "representation alias",representation_alias];
+  let invalid,body=request runtime
+    "/rails/active_storage/blobs/redirect/invalid/missing.png" in
+  Alcotest.(check int) "bad signature remains 404" 404 (status invalid);
+  check "bad signature remains empty" "" body)
+
 let () =
-  let cases=["pinned corpus inventory",`Quick,corpus_inventory] in
+  let cases=["pinned corpus inventory",`Quick,corpus_inventory;
+    "valid signed missing blob public error",`Quick,missing_signed_blob_public_error] in
   let cases=if Sys.getenv_opt "CAMPFIRE_REQUIRE_MEDIA_VECTORS"=Some "1" then
     cases @ ["complete pinned storage pipeline",`Slow,full_pipeline;
              "signed storage HTTP",`Slow,signed_http_routes] else cases in

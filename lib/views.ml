@@ -475,54 +475,86 @@ let session_new ~context ?email_address ?help_contact:contact () =
   legacy_session_page ~context
     ~content:(legacy_session_content ~context ?email_address ?contact ())
 
+(* The first-run form follows the Rails helper output byte for byte.  The
+   pinned view fixture is the source of this whitespace and attribute order;
+   asset paths still come from the packaged manifest. *)
 let first_run ~context () =
-  let icon name = void "img" ["aria-hidden","true";
-    "src",asset context (name ^ ".svg")] in
-  let field ?translation key kind placeholder attrs icon_name =
-    cls "div" "flex align-center gap" [
-      translation_button context (Option.value translation ~default:key);
-      cls "label" "flex align-center gap flex-item-grow txt-large input input--actor" [
-        input ~required:true ~name:("user[" ^ key ^ "]") ~kind
-          ~attrs:(["id","user_" ^ key;"class","input";
-            "placeholder",placeholder] @ attrs) ();
-        void "img" ["aria-hidden","true";"class","colorize--black";
-          "src",asset context (icon_name ^ ".svg");
-          "width","24";"height","24"]]] in
-  let content = form ~attrs:["class","center max-width";
-    "enctype","multipart/form-data";"accept-charset","UTF-8"] "/first_run"
-    (cls "section" "nametag u-relative" [
-      cls "div" "flex justify-center align-center pad-block" [
-        void "img" ["class","nametag__lanyard";"aria-hidden","true";
-          "src",asset context "lanyard.svg"]];
-      cls "div" "nametag__inner flex flex-column gap" [
-        cls "fieldset" "flex flex-column center-block" [
-          elt "legend" ["class","txt-large txt-align-center"] [
-            elt "strong" [] [text "Set up Campfire"]];
-          elt "label" ["class","align-center center avatar__form gap";
-            "data-controller","upload-preview"] [
-            cls "div" "btn input--file" [icon "camera";
-              input ~name:"user[avatar]" ~kind:"file"
-                ~attrs:["id","user_avatar";"class","input";"accept","image/*";
-                  "data-upload-preview-target","input";
-                  "data-action","upload-preview#previewImage"] ();
-              cls "span" "for-screen-reader" [text "Add your avatar"]];
-            cls "div" "btn avatar input--file txt-xx-large" [
-              void "img" ["aria-hidden","true";
-                "data-upload-preview-target","image";
-                "alt","Add your avatar";
-                "src",asset context "default-avatar.svg"];
-              cls "span" "for-screen-reader" [text "Avatar"]]]];
-        field ~translation:"user_name" "name" "text" "Name"
-          ["autocomplete","name";"autofocus","autofocus";
-            "data-1p-ignore","true"] "person";
-        field "email_address" "email" "Email address"
-          ["autocomplete","username"] "email";
-        field "password" "password" "Password"
-          ["autocomplete","new-password";"maxlength","72";"size","72"]
-          "password";
-        elt "button" ["name","button";"type","submit";
-          "class","btn btn--reversed center txt-large"] [icon "arrow-right";
-          cls "span" "for-screen-reader" [text "Save"]]]]) in
+  let content = raw (Trusted_html (String.concat "" [
+    {|<form class="center max-width" enctype="multipart/form-data" action="/first_run" accept-charset="UTF-8" method="post">
+  <section class="nametag u-relative">
+    <div class="flex justify-center align-center pad-block">
+      <img class="nametag__lanyard" aria-hidden="true" src="|};
+    legacy_attribute (asset context "lanyard.svg");
+    {|" />
+    </div>
+
+    <div class="nametag__inner flex flex-column gap">
+      <fieldset class="flex flex-column center-block">
+        <legend class="txt-large txt-align-center"><strong>Set up Campfire</strong></legend>
+
+        <label class="align-center center avatar__form gap" data-controller="upload-preview">
+          <div class="btn input--file">
+            <img aria-hidden="true" src="|};
+    legacy_attribute (asset context "camera.svg");
+    {|" />
+            <input class="input" accept="image/*" data-upload-preview-target="input" data-action="upload-preview#previewImage" type="file" name="user[avatar]" id="user_avatar" />
+            <span class="for-screen-reader">Add your avatar</span>
+          </div>
+
+          <div class="btn avatar input--file txt-xx-large">
+            <img aria-hidden="true" data-upload-preview-target="image" alt="Add your avatar" src="|};
+    legacy_attribute (asset context "default-avatar.svg");
+    {|" />
+            <span class="for-screen-reader">Avatar</span>
+          </div>
+        </label>
+      </fieldset>
+
+      <div class="flex align-center gap">
+        <details class="position-relative" data-controller="popup" data-action="keydown.esc-&gt;popup#close toggle-&gt;popup#toggle click@document-&gt;popup#closeOnClickOutside" data-popup-orientation-top-class="popup-orientation-top"><summary class="btn" tabindex="-1"><img aria-hidden="true" class="color-icon" src="|};
+    legacy_attribute (asset context "globe.svg");
+    {|" width="20" height="20" /><span class="for-screen-reader">Translate</span></summary><div class="language-list-menu shadow" data-popup-target="menu"><dl class="language-list"><dt>🇺🇸</dt><dd class="margin-none">Enter your name</dd><dt>🇪🇸</dt><dd class="margin-none">Introduce tu nombre</dd><dt>🇫🇷</dt><dd class="margin-none">Entrez votre nom</dd><dt>🇮🇳</dt><dd class="margin-none">अपना नाम दर्ज करें</dd><dt>🇩🇪</dt><dd class="margin-none">Geben Sie Ihren Namen ein</dd><dt>🇧🇷</dt><dd class="margin-none">Insira seu nome</dd><dt>🇯🇵</dt><dd class="margin-none">お名前を入力してください</dd></dl></div></details>
+        <label class="flex align-center gap flex-item-grow txt-large input input--actor">
+          <input class="input" autocomplete="name" placeholder="Name" autofocus="autofocus" required="required" data-1p-ignore="true" type="text" name="user[name]" id="user_name" />
+          <img aria-hidden="true" class="colorize--black" src="|};
+    legacy_attribute (asset context "person.svg");
+    {|" width="24" height="24" />
+        </label>
+      </div>
+
+      <div class="flex align-center gap">
+        <details class="position-relative" data-controller="popup" data-action="keydown.esc-&gt;popup#close toggle-&gt;popup#toggle click@document-&gt;popup#closeOnClickOutside" data-popup-orientation-top-class="popup-orientation-top"><summary class="btn" tabindex="-1"><img aria-hidden="true" class="color-icon" src="|};
+    legacy_attribute (asset context "globe.svg");
+    {|" width="20" height="20" /><span class="for-screen-reader">Translate</span></summary><div class="language-list-menu shadow" data-popup-target="menu"><dl class="language-list"><dt>🇺🇸</dt><dd class="margin-none">Enter your email address</dd><dt>🇪🇸</dt><dd class="margin-none">Introduce tu correo electrónico</dd><dt>🇫🇷</dt><dd class="margin-none">Entrez votre adresse courriel</dd><dt>🇮🇳</dt><dd class="margin-none">अपना ईमेल पता दर्ज करें</dd><dt>🇩🇪</dt><dd class="margin-none">Geben Sie Ihre E-Mail-Adresse ein</dd><dt>🇧🇷</dt><dd class="margin-none">Insira seu endereço de email</dd><dt>🇯🇵</dt><dd class="margin-none">メールアドレスを入力してください</dd></dl></div></details>
+        <label class="flex align-center gap flex-item-grow txt-large input input--actor">
+          <input class="input" autocomplete="username" placeholder="Email address" required="required" type="email" name="user[email_address]" id="user_email_address" />
+          <img aria-hidden="true" class="colorize--black" src="|};
+    legacy_attribute (asset context "email.svg");
+    {|" width="24" height="24" />
+        </label>
+      </div>
+
+      <div class="flex align-center gap">
+        <details class="position-relative" data-controller="popup" data-action="keydown.esc-&gt;popup#close toggle-&gt;popup#toggle click@document-&gt;popup#closeOnClickOutside" data-popup-orientation-top-class="popup-orientation-top"><summary class="btn" tabindex="-1"><img aria-hidden="true" class="color-icon" src="|};
+    legacy_attribute (asset context "globe.svg");
+    {|" width="20" height="20" /><span class="for-screen-reader">Translate</span></summary><div class="language-list-menu shadow" data-popup-target="menu"><dl class="language-list"><dt>🇺🇸</dt><dd class="margin-none">Enter your password</dd><dt>🇪🇸</dt><dd class="margin-none">Introduce tu contraseña</dd><dt>🇫🇷</dt><dd class="margin-none">Saisissez votre mot de passe</dd><dt>🇮🇳</dt><dd class="margin-none">अपना पासवर्ड दर्ज करें</dd><dt>🇩🇪</dt><dd class="margin-none">Geben Sie Ihr Passwort ein</dd><dt>🇧🇷</dt><dd class="margin-none">Insira sua senha</dd><dt>🇯🇵</dt><dd class="margin-none">パスワードを入力してください</dd></dl></div></details>
+        <label class="flex align-center gap flex-item-grow txt-large input input--actor">
+          <input class="input" autocomplete="new-password" placeholder="Password" required="required" maxlength="72" size="72" type="password" name="user[password]" id="user_password" />
+          <img aria-hidden="true" class="colorize--black" src="|};
+    legacy_attribute (asset context "password.svg");
+    {|" width="24" height="24" />
+        </label>
+      </div>
+
+      <button name="button" type="submit" class="btn btn--reversed center txt-large">
+        <img aria-hidden="true" src="|};
+    legacy_attribute (asset context "arrow-right.svg");
+    {|" />
+        <span class="for-screen-reader">Save</span>
+</button>    </div>
+  </section>
+</form>|}
+  ])) in
   page ~title:"Set up Campfire" ~body_class:"signup" ~context content
 
 let welcome ~context () =
@@ -702,9 +734,12 @@ let account_user_item ~context ({user;status}:account_member) =
 |}]))
 
 let account_next_page page =
-  elt "turbo-frame" ["id","next_page_container";"loading","lazy";
-    "src","/account/users.turbo_stream?page=" ^ Uri.pct_encode page;
-    "class","flex center"] [cls "div" "spinner center" []]
+  raw (Trusted_html (String.concat "" [
+    {|<turbo-frame loading="lazy" class="flex center" id="next_page_container" src="|};
+    legacy_attribute ("/account/users.turbo_stream?page=" ^ Uri.pct_encode page);
+    {|">
+  <div class="spinner center"></div>
+</turbo-frame>|}]))
 
 let account_users_page_stream ~context ~users ?next_page () =
   render (concat [
@@ -1011,8 +1046,8 @@ let account_edit_page ~context ?last_room_id ~account_id ~join_code
         |} else "");
       String.concat "" (List.map user_item members);
       (match next_page with None -> "" | Some page ->
-        render (account_next_page page));
-      "        \n      ";
+        "        " ^ render (account_next_page page));
+      (if next_page=None then "        \n      " else "\n      ");
       {|</turbo-frame>
     </menu>
   </div>
@@ -2376,14 +2411,17 @@ let room_form_page ~context ?last_room_id (data:room_form_data) =
     (if data.can_administer || not is_closed then source_everyone ^
       (if is_closed then {|
 
-      <hr class="separator full-width" style="--border-style: solid">
+      <hr class="separator full-width" style="--border-style: solid">|}
+       else {|
 
-    |} else {|
-
-    <hr class="separator full-width" style="--border-style: solid">
-
-    |}) else "");
-    (if member_count>20 then render search else "");
+    <hr class="separator full-width" style="--border-style: solid">|}) ^
+      (if member_count>20 then "\n    " else "\n\n    ") else "");
+    (if member_count>20 then
+      let html=render search in
+      if not (String.ends_with ~suffix:"/>" html) then
+        failwith "room-form search input serialization changed";
+      String.sub html 0 (String.length html - 2) ^ ">\n\n    "
+     else "");
     {|<div data-filter-target="list" contents>
       |};
     (if is_closed then String.concat "" [

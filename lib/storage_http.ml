@@ -27,8 +27,10 @@ let set_blob c =
     | Some _ as value -> value | None -> H.param_string c "signed_id" in
   match Option.bind raw (B.verify_signed_id
     ~secret_key_base:c.H.secret_key_base ~now:c.H.now) with
-  | None -> Lwt.return_none
-  | Some id -> fetch_blob c id
+  | None -> Lwt.return `Invalid_signature
+  | Some id -> fetch_blob c id >|= function
+      | None -> `Missing_blob
+      | Some blob -> `Blob blob
 
 let absolute c path = H.base_url c ^ path
 
@@ -106,8 +108,9 @@ let disk_show service c =
 
 let blob_proxy service c =
   set_blob c >>= function
-  | None -> Lwt.return (head 404)
-  | Some blob ->
+  | `Invalid_signature -> Lwt.return (head 404)
+  | `Missing_blob -> Lwt.return (H.error ~status:404)
+  | `Blob blob ->
       let content_type=Option.value blob.Db_remaining.Blob.content_type ~default:"" in
       let range=match H.header c "range" with
         | Some value when String.trim value<>"" -> Some value
@@ -136,8 +139,9 @@ let blob_proxy service c =
 
 let blob_redirect_handler service c =
   set_blob c >|= function
-  | None -> head 404
-  | Some blob -> blob_redirect service c blob
+  | `Invalid_signature -> head 404
+  | `Missing_blob -> H.error ~status:404
+  | `Blob blob -> blob_redirect service c blob
 
 let media_type c = Routes.media_type (H.header c "content-type")
 
@@ -235,14 +239,15 @@ let representation_adapter : representation option ref = ref None
 let register_representation f = representation_adapter := Some f
 
 let representation service ~redirect c =
-  let raw=Option.value (H.param_string c "variation_key") ~default:"" in
-  match D.verify ~secret_key_base:c.H.secret_key_base
-    ~purpose:"variation" ~now:c.H.now raw with
-  | None -> Lwt.return (head 404)
-  | Some variation ->
-      set_blob c >>= function
+  set_blob c >>= function
+  | `Invalid_signature -> Lwt.return (head 404)
+  | `Missing_blob -> Lwt.return (H.error ~status:404)
+  | `Blob blob ->
+      let raw=Option.value (H.param_string c "variation_key") ~default:"" in
+      match D.verify ~secret_key_base:c.H.secret_key_base
+        ~purpose:"variation" ~now:c.H.now raw with
       | None -> Lwt.return (head 404)
-      | Some blob -> match !representation_adapter with
+      | Some variation -> match !representation_adapter with
         | None -> Lwt.return (head 501)
         | Some process -> process c blob variation >>= function
           | None -> Lwt.return (head 404)
