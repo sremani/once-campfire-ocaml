@@ -1,6 +1,36 @@
 # M8-T5 release candidate audit (in progress)
 
-## Current candidate: `98ac889`
+## Current local candidate: `bb49e1e`
+
+The frozen source is `bb49e1ed3d318d482a376ae5a12d6def957f7e06`.
+`/tmp/campfire-source-bb49e1e.json` records a clean checkout, 321 pinned
+assets, and zero local Gumbo checksum errors. The full Dune suite passes.
+This revision includes the browser-discovered Turbo frame, empty 204,
+message permalink, Lexxy edit-style, and PWA platform fixes after `98ac889`.
+
+| Architecture | Image ID | Inventory |
+| --- | --- | --- |
+| amd64 | `sha256:09b0fa6bfa5b99ce9dbb0b609827202eecb0e5f5235b81835046f3ca8c080193` | `/tmp/campfire-image-bb49e1e-amd64.json`: 350 runtime packages, 288 builder packages, 321 exact assets, zero issues |
+| arm64 | `sha256:70759724e8f4099935e46e371396016e46c55b45182eebf812b26d04a6ae3b98` | `/tmp/campfire-image-bb49e1e-arm64.json`: 347 runtime packages, 287 builder packages, 321 exact assets, zero issues |
+
+Both images passed copied Rails upgrade/restart, backup/restore, rollback,
+169-message and 14-blob preservation, and clean shutdown in
+`/tmp/campfire-lifecycle-bb49e1e-{amd64,arm64}.log`. Both passed disposable
+local Pebble certificate issue and renewal, HTTP/2 `/up=200`, redirect/Host
+policy, TLS Cable restart, and SIGTERM exit 0 in
+`/tmp/campfire-bb49e1e-protocol-{amd64,arm64}.json`. The arm64 image passed
+233/233 pinned Rust signed-media comparisons in
+`/tmp/m8-t5-bb49e1e-arm64-signed-media.json`.
+
+Focused default-seed browser recaptures pass for Opera's install instructions
+and leave only the documented Lexxy room-script/document-hash difference for
+Chrome on iOS notification help. The full five-seed lean/full matrix is
+running against the clean detached `bb49e1e` checkout and its exact images at
+`/tmp/m8-t3-harness-wt/parity/out/m8-t3-bb49e1e-all/summary.json`.
+M8-T5 remains open for its browser gate and release limitations review;
+external publication and ONCE deployment still lack a registry and target host.
+
+## Earlier candidate: `98ac889`
 
 Clean source `98ac88910ce3811e0dc4cba6ee87b33606ef8b69` fixes the
 browser-discovered duplicate-email join redirect, invalid join-code MIME,
