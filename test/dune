@@ -19,7 +19,7 @@
 (test
  (name m1_t3_test)
  (modules m1_t3_test)
- (libraries campfire alcotest sqlite3 yojson uri)
+ (libraries campfire alcotest sqlite3 yojson uri threads)
  (deps fixtures/campfire_sessions.json fixtures/rails_compat.json))
 
 (test

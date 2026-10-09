@@ -1,8 +1,10 @@
 # M8-T4 performance and resilience record
 
-Status: **open**. The shared adapter and independent route-contract preflight are
-ready. Final throughput and packaged-image resilience require a fresh image from
-a stable source snapshot. No provisional rate below is a release comparison.
+Status: **open**. Clean candidate `c37b9f3` passed the shared contract preflight,
+packaged header probe, full resilience run, and release-comparable alternating
+timed benchmark. A later derived-key cache patch has a large provisional
+throughput gain; its integrated image still needs the release gates repeated.
+Earlier diagnostic rates below remain provisional where labeled.
 
 ## Shared benchmark setup
 
@@ -67,8 +69,7 @@ posts were delivered to both subscribers and persisted. These are workload
 observations for the direct listener, **not** comparative throughput or packaged
 release evidence. Raw result:
 `once-campfire-verification/tmp/bench/m8-t4-resilience-1791531817-3055/`.
-The sustained-resource and recovery stages were not reached, so the ticket
-remains open.
+The sustained-resource and recovery stages were not reached in that run.
 
 The old packaged `campfire-ocaml:m7-t3` image
 (`sha256:4a4c24c2425bc31c9cc1e5bcf026f88ab7358c7d5fcb57a7ba1fe0dd3cec8500`,
@@ -95,8 +96,8 @@ adapted JSON contained `max_header_bytes: 65536`, but Go's HTTP reader allows
 roughly 4 KiB of parser slack above that value. A disposable build with
 `max_header_size 60KiB` returned 431 at Caddy, closed the target connection,
 returned normal 302s at both listeners, and kept the target private for the
-65 KiB probe. The source now uses that tested setting; rebuild a clean image
-before treating the result as a release gate. Raw experimental probe:
+65 KiB probe. The source adopted that tested setting; the clean `c37b9f3`
+probe below later established the release gate. Raw experimental probe:
 `once-campfire-verification/tmp/bench/m8-t4-resilience-1791537447-2402214/`.
 
 The same disposable `campfire-ocaml:header-60k` image
@@ -131,7 +132,7 @@ The standalone `--header-probe` now passes only when normal anonymous room
 requests redirect through both listeners, a header above 64 KiB is rejected
 by both listeners, and the target is unreachable through the host's non-loopback
 interface. A socket timeout fails the probe. Four focused offline Python tests
-pass; the final clean image still needs the live probe.
+passed at this stage; the clean-image result appears below.
 
 After the source is committed and the packaged image built with that HEAD as
 `GIT_REVISION`, run the checks in this order, during a quiet Docker interval:
@@ -230,16 +231,128 @@ proven worktree into the main checkout. `dune build bin/main.exe bin/front.exe @
 eight focused M7-T1 tests, direct stalled-body and progressing-upload
 checks, and `git diff --check` passed after integration. The experimental image
 was built from an uncommitted worktree and is **not** a release comparison.
-The integrated changes still need a clean committed image, repeat preflight
-and resilience, then the timed alternating benchmark.
+The later clean `c37b9f3` image completed these gates below.
+
+## Clean `c37b9f3` packaged release gates
+
+The clean amd64 image `campfire-ocaml:rc-c37b9f3-amd64` has ID
+`sha256:f517920e872e31e4ca621d845efb560fee2d1b9019772f8f03c2f4e64dde7227`
+and `GIT_REVISION=c37b9f3b15c3d611d2f25c0c593ad76d5d8c881e`. The
+checkout was clean at that revision throughout the shared preflight and timed
+run. Two alternating Rust/OCaml preflight rounds passed all eight route
+contracts and zero-write audits. The packaged header probe returned 431 at
+Caddy for a 65 KiB header, closed the direct target connection, and kept the
+target private to loopback. Raw results:
+`once-campfire-verification/tmp/bench/m8-t4-c37b9f3-preflight/` and
+`m8-t4-resilience-1791546310-1618193/`.
+
+The packaged full resilience run completed. Four concurrent validated workers
+returned 42 room reads, 60 searches, and 41 plus 42 acknowledged writes,
+with zero errors and invalid responses; exact Action Text, FTS and database
+audits passed. Two Cable subscribers received all five paced and 347 saturated
+posts. An incomplete slow body returned 408, malformed JSON 400, oversized
+body 413, and a large header 431. Twenty disconnected clients left health at
+200. The sustained 60-second run completed 16,251 validated reads, peak memory
+49,325,015 bytes and peak 80 PIDs. SIGKILL/restart, backup/restore, SQLite
+integrity and exact acknowledged-write checks passed; the restored database
+held 604 messages. Raw artifacts:
+`once-campfire-verification/tmp/bench/m8-t4-resilience-1791546316-1619387/`.
+
+The alternating timed run used two rounds per app, 16 clients, eight seconds
+per route, gzip, host networking, server CPUs 8–11 and client CPUs 12–15.
+Every one of the 32 timed route samples had zero HTTP errors and zero invalid
+responses under `route-contract-v1`. Acknowledged POSTs exactly matched the
+persisted rows in each round: Rust 39,259 and 45,710; OCaml 1,257 and 949.
+Action Text, FTS and SQLite integrity audits passed. The summary is
+`complete: true` and `release_comparable: true`. The table gives the median of
+two rates and the range of the two p99 latencies, not confidence intervals.
+
+| Route | Rust median req/s | OCaml median req/s | Rust p99 ms | OCaml p99 ms |
+| --- | ---: | ---: | ---: | ---: |
+| Room show | 78,459.65 | 235.05 | 0.471–0.886 | 104.319–129.855 |
+| Messages page | 78,100.45 | 242.25 | 0.409–0.988 | 104.127–145.663 |
+| Sidebar | 60,996.55 | 279.45 | 1.343–1.372 | 86.463–108.031 |
+| Search | 39,935.55 | 277.35 | 1.991–3.269 | 87.871–97.983 |
+| Avatar | 121,094.15 | 4,997.60 | 0.644–0.819 | 6.335–6.959 |
+| Static CSS | 162,817.00 | 5,549.95 | 0.199–0.831 | 5.987–6.051 |
+| Health | 109,940.90 | 4,590.95 | 0.326–1.027 | 6.243–8.903 |
+| POST message | 4,492.15 | 111.75 | 8.559–10.415 | 184.703–242.559 |
+
+The OCaml source/image pairing was clean and pinned; the Rust image ID was
+`sha256:c45786de2e6c7169129edd6bc6e0607c99cc768a1c4d19046f208c376d5822a3`.
+The local Rust checkout was dirty, as recorded in the metadata, so its source
+tree is not an independently clean image provenance claim. The benchmark used
+the fixed Rust image, seed and loadgen. Host load average ranged roughly
+11–30 during the run. These two short rounds establish the measured gap on
+this machine and workload, not a universal throughput ratio. Raw rounds,
+validator results, identities and summary:
+`once-campfire-verification/tmp/bench/m8-t4-c37b9f3-timed/`.
+
+## Authenticated GET bottleneck experiments
+
+The benchmark raw JSON records response contract results and byte counts, but
+not `x-cache` or `cache-control`. A separate fixture-only wire capture against
+the same packaged `c37b9f3` image found that rendered authenticated GETs
+returned `Cache-Control: max-age=0, private, must-revalidate`, gzip, and
+`x-cache: miss`. This is a front public-cache miss, not evidence that the
+private application cache missed. Room-show `x-runtime` fell from about 0.13
+seconds on first render to 0.003–0.005 seconds on repeated requests, consistent
+with a warmed private response. Source and cache tests confirm its eligibility.
+Under 16 warmed room clients, Docker sampled about 100–105% container CPU:
+the OCaml target used about 93–95% of one core and Caddy about 5%. Raw wire
+and CPU captures: `/tmp/campfire_m8_auth_diag/baseline-c37/` and
+`baseline-c37-thread/`.
+
+The first disposable experiment changed safe GET/HEAD session restoration to
+use `Db_runtime.read_async`; only an hourly refresh returned `Needs_refresh`
+and retried full authentication under the writer. Unsafe methods kept their
+existing path. Focused session, HTTP and cache tests passed, including a
+read-only stale/fresh/revoked-session test. The experimental image ID was
+`sha256:a69952141e40a85bac536cd449c481461ae5faebdb9440c58f92a3a515d293e0`.
+Two four-second, 16-client contract-valid rounds passed with zero invalid
+responses and exact POST audits. Baseline versus read-only experiment median
+req/s was 290.45/292.75 for room, 277.10/288.05 for messages, 299.95/321.15
+for sidebar and 279.35/289.50 for search. The unchanged health route rose
+5,046.45/6,033.40 and unchanged POST 121.20/141.60, so the small GET changes
+do not establish an auth-read speed gain. Per-thread CPU shifted from one
+writer thread at about 66–76% to five readers at about 15–19% each, while
+overall room throughput stayed near 300 req/s. The OCaml 4.14 runtime's
+single-domain execution is a likely limit; this is not a function-level CPU
+profile. The read-only patch was not integrated for throughput. Raw runs:
+`once-campfire-verification/tmp/bench/m8-t4-authread-baseline/` and
+`m8-t4-authread-experiment/`; wire/CPU:
+`/tmp/campfire_m8_auth_diag/authread-exp-thread/`.
+
+A stronger cause was repeated key derivation. `Key_generator.derive` performed
+PBKDF2-HMAC-SHA256 with 1,000 iterations on every signed-cookie verification,
+and again for encrypted CookieStore decryption when present. Rust caches
+derived keys. A second disposable build added a mutex-protected, 64-entry
+cache keyed by secret, salt and length; iteration count and digest are fixed
+in this module. It preserved pinned cookie, signed-ID, rotation and private
+cache tests. A disposable 24-thread test also verified concurrent signed and
+encrypted cookies under distinct fixture secrets and rejected rotated keys.
+
+The key-cache image
+`sha256:468e2a004882aa52a2f54c7dbc27ce1e0caaa6369f3ad1aa88d86c38b1f1d6b2`
+passed the same two-round four-second route contracts, zero-error/zero-invalid
+checks, and exact POST audits (3,199 and 2,850 writes). Compared with the
+short baseline above, median req/s rose from 290.45 to 2,439.85 on room show
+(8.40×), 277.10 to 2,128.10 on messages (7.68×), 299.95 to 2,658.05 on
+sidebar (8.86×), 279.35 to 2,331.35 on search (8.35×), and 121.20 to
+506.65 on POST (4.18×). The unchanged health route stayed near 5,000 req/s.
+Warm room `x-runtime` fell from about 3 ms to about 0.25–0.33 ms, with the
+same 24,269-byte gzip representation and private front-cache miss. This
+provisional result isolates the cache change, but the image was built from an
+uncommitted worktree and its summary correctly says `release_comparable: false`.
+Raw contract runs: `once-campfire-verification/tmp/bench/m8-t4-keycache-experiment/`;
+wire/CPU: `/tmp/campfire_m8_auth_diag/keycache-exp-thread/`.
 
 ## Remaining gate
 
-Build one fresh packaged OCaml image after M3/M4 source edits settle. Repeat
-the eight-route contract preflight and full resilience script on that image,
-including the Caddy header cap, sustained memory/PID samples, crash/restart,
-and backup/restore. Run at least two alternating timed Rust/OCaml benchmark
-rounds with the same 8–11 server and 12–15 client CPUs, 16 clients, seed hash,
-and image IDs. Publish rates and latency only from samples with zero invalid
-responses, complete response contracts, exact acknowledged-write audits, and
-SQLite integrity.
+Build a fresh clean packaged image after integrating the derived-key cache and
+current HTTP fixes. Repeat the shared eight-route preflight, packaged header
+probe, full resilience run, and at least two alternating timed Rust/OCaml
+rounds on that immutable image. Keep the existing seed, loadgen and pinned CPU
+sets; require zero invalid responses, exact acknowledged writes and SQLite
+integrity before publishing its release-comparable rates. The `c37b9f3`
+results above remain the last completed clean-image measurements until then.

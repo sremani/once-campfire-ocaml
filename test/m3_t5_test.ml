@@ -452,6 +452,51 @@ let rec reference_root path remaining =
       "parity/.seed/default/db/production.sqlite3") then candidate
   else reference_root (Filename.dirname path) (remaining-1)
 
+let public_media_cache_date () =
+  let source_path=Filename.concat (reference_root (Sys.getcwd ()) 8)
+    "parity/.seed/default/db/production.sqlite3" in
+  let source=Sqlite3.db_open ~mode:`READONLY source_path in
+  let path=Filename.temp_file "campfire-logo-cache-" ".sqlite3" in
+  Sys.remove path;
+  let quoted=String.concat "''" (String.split_on_char '\'' path) in
+  let rc=Sqlite3.exec source ("VACUUM INTO '"^quoted^"'") in
+  ignore (Sqlite3.db_close source);
+  if rc<>Sqlite3.Rc.OK then failwith "could not copy pinned seed";
+  let runtime=Campfire.Db_runtime.open_db ~prepare:false path in
+  Fun.protect ~finally:(fun () ->
+    Campfire.Db_runtime.close runtime;
+    List.iter (fun file -> if Sys.file_exists file then Sys.remove file)
+      [path;path^"-wal";path^"-shm"]) (fun () ->
+    let cache=C.Front.create ~capacity:(2*1024*1024)
+      ~max_item_size:(1024*1024) in
+    let date="Mon, 02 Mar 2026 16:00:00 GMT" in
+    let send ?(extra=[]) () =
+      let request=Cohttp.Request.make
+        ~headers:(headers (["host","chat.example.com"]@extra))
+        (Uri.of_string "/account/logo") in
+      Lwt_main.run (Campfire.Http_app.handle ~runtime
+        ~secret_key_base:(String.make 64 'q') ~front_cache:cache
+        ~now:"2026-03-02T16:00:00Z"
+        ~dispatch:Campfire.App_dispatch.endpoint request Cohttp_lwt.Body.empty) in
+    let first=send () in
+    check int "seeded logo 200" 200 (code (fst first));
+    check (option string) "logo miss keeps frozen Date" (Some date)
+      (get (fst first) "date");
+    check (option string) "logo first miss" (Some "miss")
+      (get (fst first) "x-cache");
+    let hit=send () in
+    check (option string) "logo repeat hit" (Some "hit")
+      (get (fst hit) "x-cache");
+    check (option string) "logo hit keeps frozen Date" (Some date)
+      (get (fst hit) "date");
+    let etag=Option.get (get (fst first) "etag") in
+    let conditional=send ~extra:["if-none-match",etag] () in
+    check int "conditional logo hit 304" 304 (code (fst conditional));
+    check (option string) "conditional logo cache hit" (Some "hit")
+      (get (fst conditional) "x-cache");
+    check (option string) "conditional hit preserves frozen Date" (Some date)
+      (get (fst conditional) "date"))
+
 let private_route_invalidation () =
   let source_path=Filename.concat (reference_root (Sys.getcwd ()) 8)
     "parity/.seed/default/db/production.sqlite3" in
@@ -779,6 +824,7 @@ let () = run "m3-t5-cache" [
     test_case "eligibility and request bypass" `Quick front_eligibility;
     test_case "variant, limits and invalidation" `Quick front_store;
     test_case "public QR route cache" `Quick public_route_cache;
+    test_case "cached media preserves application Date" `Quick public_media_cache_date;
   ];
   "private", [
     test_case "authorization gate, keys, invalidation and limits" `Quick private_cache;

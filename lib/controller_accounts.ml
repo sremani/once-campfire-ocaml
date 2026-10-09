@@ -712,6 +712,10 @@ let media_headers c ~seconds ?validator ?template () =
   let headers = etag_headers @ ["cache-control",Printf.sprintf
     "max-age=%d, public, stale-while-revalidate=604800" seconds] in
   let fresh = Http_cache.is_fresh c.H.request (Cohttp.Header.of_list headers) in
+  (* Rails expires_in sets Date from the application clock only for a fresh
+     representation. The front cache retains that Date on a conditional hit. *)
+  let headers = if fresh then headers else
+    ("date",Http_cache.httpdate (Authentication.now_time c.H.now))::headers in
   headers,fresh
 
 let media_response ~status ~content_type ~headers body =

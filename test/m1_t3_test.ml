@@ -148,9 +148,52 @@ let test_rails_cookiestore () =
   check "tampered CookieStore rejected" (Authentication.read_rails_session
     ~secret_key_base:secret ~now ("_campfire_session=" ^ raw ^ "x") = None)
 
+let test_concurrent_key_rotation () =
+  let now = "2026-10-08T12:00:00Z" in
+  let count = 24 in
+  let secrets = Array.init count (fun i -> Printf.sprintf "fixture-secret-%d" i) in
+  let signed = Array.make count "" in
+  let encrypted = Array.make count "" in
+  let completed = Array.make count false in
+  let workers = Array.init count (fun i -> Thread.create (fun () ->
+    try
+      let secret_key_base = secrets.(i) in
+      let value = Printf.sprintf "fixture-session-%d" i in
+      let raw = Signed_cookie.generate ~secret_key_base ~name:"session_token"
+        ~value ~expires_at:None in
+      let payload = `Assoc ["worker", `Int i] in
+      let sealed = Encrypted_cookie.encrypt_with_iv ~secret_key_base
+        ~name:"_campfire_session" ~value:payload ~expires_at:None
+        ~iv:(String.make 12 (Char.chr (i + 1))) in
+      let ok = ref true in
+      for _ = 1 to 8 do
+        ok := !ok &&
+          Signed_cookie.verify ~secret_key_base ~name:"session_token"
+            ~raw ~now = Some value &&
+          Encrypted_cookie.decrypt ~secret_key_base ~name:"_campfire_session"
+            ~raw:sealed ~now = Some payload
+      done;
+      signed.(i) <- raw;
+      encrypted.(i) <- sealed;
+      completed.(i) <- !ok
+    with _ -> completed.(i) <- false) ()) in
+  Array.iter Thread.join workers;
+  check "parallel signed and encrypted cookie verification"
+    (Array.for_all Fun.id completed);
+  for i = 0 to count - 1 do
+    let wrong = secrets.((i + 1) mod count) in
+    check "rotated secret rejects signed cookie"
+      (Signed_cookie.verify ~secret_key_base:wrong ~name:"session_token"
+        ~raw:signed.(i) ~now = None);
+    check "rotated secret rejects encrypted cookie"
+      (Encrypted_cookie.decrypt ~secret_key_base:wrong
+        ~name:"_campfire_session" ~raw:encrypted.(i) ~now = None)
+  done
+
 let () =
   Alcotest.run "M1-T3 Rails sessions" [
     "seed", [Alcotest.test_case "Rails cookie authenticates and refreshes" `Quick test_seed_continuity;
              Alcotest.test_case "unsafe methods block banned IPs" `Quick test_bans];
     "cookies", [Alcotest.test_case "encrypted Rails CookieStore continuity" `Quick test_rails_cookiestore];
+    "rotation", [Alcotest.test_case "concurrent derived keys isolate secrets" `Quick test_concurrent_key_rotation];
   ]
