@@ -860,7 +860,11 @@ let endpoint name : H.endpoint option =
   | "rooms/opens#destroy" | "rooms/closeds#destroy" -> regular room_nil_action
   | "rooms/directs#new" -> regular (fun c ->
       View_presenter.load_context c >|= fun context ->
-      H.html ~status:200 (Views.direct_new ~context))
+      let frame=match H.header c "turbo-frame" with
+        | Some value -> String.trim value<>"" | None -> false in
+      let page=if frame then Views.frame_page (Views.direct_new_content ~context)
+        else Views.direct_new ~context in
+      H.html ~status:200 page)
   | "rooms/directs#create" -> regular direct_create
   | "rooms/directs#edit" -> regular direct_edit
   | "rooms/directs#show" -> regular direct_show

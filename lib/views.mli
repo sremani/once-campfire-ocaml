@@ -126,6 +126,7 @@ type room_form_data = {
 }
 val room_form_page : context:context -> ?last_room_id:int64 ->
   room_form_data -> string
+val direct_new_content : context:context -> fragment
 val direct_new : context:context -> string
 val direct_edit_page : context:context -> ?last_room_id:int64 ->
   room_id:int64 -> display_name:string -> users:user list -> unit -> string

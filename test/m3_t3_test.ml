@@ -323,6 +323,18 @@ let test_autocomplete_format_negotiation () = with_seed "default" (fun runtime -
 
 let test_content_pages () = with_seed "default" (fun runtime ->
   let admin = mint_session runtime 127326141L in
+  let message,message_body = send ~cookie:admin runtime `GET
+    "/rooms/654632876/messages/933434505" in
+  Alcotest.(check int) "message permalink" 200 (status message);
+  check "message permalink has application layout"
+    (String.starts_with ~prefix:"<!DOCTYPE html>" message_body);
+  check "message permalink has stylesheet preload" (header message "link"<>None);
+  let direct,direct_body = send ~cookie:admin ~turbo_frame:"direct_rooms_control"
+    runtime `GET "/rooms/directs/new" in
+  Alcotest.(check int) "direct form frame" 200 (status direct);
+  check "direct form frame omits application layout"
+    (String.starts_with ~prefix:"<html>\n  <head>\n    \n  </head>\n  <body>\n    " direct_body);
+  check "direct frame has no stylesheet preload" (header direct "link"=None);
   let autocomplete,body = send ~cookie:admin runtime `GET
     "/autocompletable/users" in
   Alcotest.(check int) "autocomplete HTML" 200 (status autocomplete);

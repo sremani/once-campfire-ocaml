@@ -2510,7 +2510,7 @@ let autocomplete_picker_template context =
           "src",asset context "remove-circle.svg"];
         cls "span" "for-screen-reader" [text "Remove ";
           elt "span" ["data-content","screenReaderLabel"] []]]]]
-let direct_new ~context =
+let direct_new_content ~context =
   let replace_literal source needle replacement =
     let output=Buffer.create (String.length source) in
     let needle_length=String.length needle in
@@ -2576,7 +2576,9 @@ let direct_new ~context =
   in
   let frame=List.fold_left (fun html (needle,value) ->
     replace_literal html needle value) source substitutions in
-  page ~context (raw (Trusted_html ("\n" ^ frame)))
+  raw (Trusted_html ("\n" ^ frame))
+
+let direct_new ~context = page ~context (direct_new_content ~context)
 
 let direct_edit_page ~context ?last_room_id ~room_id ~display_name
     ~(users:user list) () =
@@ -3013,7 +3015,7 @@ let record_message_items ~prefix ~suffix ~before_each messages =
    fragments=List.rev !fragments}
 let message_index_recorded messages =
   record_message_items ~prefix:"" ~suffix:"" ~before_each:"\n" messages
-let message_show ~context:_ message = render (message_item message)
+let message_show ~context message = page ~context (message_item message)
 let message_edit ~context message =
   let icon name attributes=void "img" (attributes @ ["src",asset context name]) in
   let delete_button ?(center=false) () =
