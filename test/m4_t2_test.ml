@@ -88,6 +88,16 @@ let test_install_instructions_platform_gate () =
     desktop=false;browser="Chrome";operating_system="iOS"} in
   Alcotest.(check string) "Chrome on iOS has no install instructions"
     "" chrome_ios
+let test_populated_profile_bio () =
+  let user : Views.user={id=127326141L;name="David";title="David";
+    role="administrator";avatar_url="/users/avatar"} in
+  let context={Views.default_context with current_user=Some user} in
+  let html=Views.profile_show_page ~context ~user
+    ~email_address:"david@example.test" ~bio:(Some "Programmer")
+    ~avatar_attached:false ~transfer_id:"test" ~shared_memberships:[]
+    ~direct_memberships:[] () in
+  check_contains "profile bio has no trailing textarea newline" html
+    "id=\"user_bio\">Programmer</textarea>"
 let fixture_json path =
   Yojson.Safe.from_file (if Sys.file_exists path then path else "test/" ^ path)
 
@@ -1357,6 +1367,8 @@ else Alcotest.run "M4 views" [
       test_system_settings_desktop_platforms;
     Alcotest.test_case "install instructions platform gate" `Quick
       test_install_instructions_platform_gate;
+    Alcotest.test_case "populated profile Bio" `Quick
+      test_populated_profile_bio;
     Alcotest.test_case "Firefox Windows browser settings" `Quick
       test_firefox_windows_browser_settings];
   "messages", [Alcotest.test_case "golden stream anchors and cache safety"

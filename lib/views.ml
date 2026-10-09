@@ -3638,8 +3638,8 @@ let profile_show_page ~context ?(back_url="/") ~(user:user)
         <label class="flex align--center gap flex-item--grow input input--actor">
           <textarea class="input txt-large" placeholder="A few words about yourself…" maxlength="200" rows="3" name="user[bio]" id="user_bio">|};
       legacy_text (Option.value bio ~default:"");
-      {|
-</textarea>
+      (if Option.value bio ~default:"" = "" then "\n" else "");
+      {|</textarea>
           |};legacy_img ~size:(Some 24) context "bio.svg"
           ["aria-hidden","true";"class","colorize--black"];
       {|
