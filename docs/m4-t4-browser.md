@@ -150,7 +150,7 @@ captures above are retained as historical debugging evidence.
 
 ## Script-free Lexxy regression, 2026-10-09
 
-The current source `e4b71e6` removes the extra room script and hidden edit
+Source `e4b71e6` removed the extra room script and hidden edit
 field attributes. The shared verification checkout `b7647b4` waits for
 `lexxy-editor.editor.getRootElement()` before entering edit text. This wait
 matches the real readiness condition: an earlier diagnostic filled a visible
@@ -172,3 +172,8 @@ document, pixels, live DOM, accessibility, and Cable were exact. Source
 `d223a0f` aligns that attachment frame with the pinned Rust raw template;
 the four-cell Chromium desktop/phone light/dark recapture passes exactly
 with zero retries. The broad matrix restarted on the clean `d223a0f` image.
+Its first five batches passed 401/401 exact. The sixth found 16 network-only
+room involvement differences because OCaml used the full page layout for a
+Turbo Frame request. Source `7352f48` uses the pinned frame layout; a clean
+16-cell recapture passes all six layers with zero retries or errors. The broad
+matrix restarted on this source and M4-T4 remains open until it completes.

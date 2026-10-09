@@ -1,13 +1,27 @@
 # M8-T5 release candidate audit (in progress)
 
-## Current clean source target: `d223a0f`
+## Current clean source target: `7352f48`
 
-The current code source is `d223a0f2f778b0d8e033b4d721f9dddcde4a8aad`.
+The current code source is `7352f480e79e6aaef52f9044838f23b6ed48b0cb`.
+`/tmp/campfire-source-7352f48.json` records a clean checkout, 321 pinned
+assets and zero local Gumbo checksum errors. The forced OCaml suite passes
+41 suites and 296 cases. Its involvement Turbo-frame fix passes 16/16 focused
+browser cells in all six layers, including raw GET response headers and body
+hashes, with zero retries or errors. The five-seed browser matrix is active at
+`/tmp/m8-t3-harness-wt/parity/out/m8-t3-7352f48-all/summary.json`.
+The offline release runner `/tmp/m8-t5-7352f48-release-verify.sh` passes
+preflight for both architectures; current-source release image gates remain
+open.
+
+### Earlier attachment-edit source checkpoint: `d223a0f`
+
+The earlier code source is `d223a0f2f778b0d8e033b4d721f9dddcde4a8aad`.
 `/tmp/campfire-source-d223a0f.json` records a clean checkout, 321 pinned
 assets and zero local Gumbo checksum errors. The full OCaml suite passes
 41 suites and 296 cases, and all 123 view files are accounted for. The
 attachment edit response fix passes four focused browser cells in all six
-layers. The new all-seed lean/full run is active under
+layers. Its all-seed lean/full run stopped after the sixth batch found 16
+involvement-frame network differences. The reports are under
 `/tmp/m8-t3-harness-wt/parity/out/m8-t3-d223a0f-all/summary.json`. No
 amd64/arm64 release image inventory, lifecycle, protocol or signed-media
 report has yet been produced from this revision. The earlier local source

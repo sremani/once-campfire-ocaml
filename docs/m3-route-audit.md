@@ -72,7 +72,11 @@ cannot reach. A full current-revision five-seed sweep is the clearest final
 gate check.
 Source `d223a0f` changes only the attachment edit-frame serializer after
 this rerun; its four focused Rust/OCaml attachment browser cells are exact.
-The final current-revision ordinary sweep should use the d223 binary.
+Source `7352f48` additionally changes room involvement `Turbo-Frame` layout.
+Its 16 focused browser cells are exact on raw network response, including
+headers and body hashes. The final current-revision ordinary sweep should
+use the 7352 binary; `/tmp/m3-7352-full-http-sweep.sh` is prepared and passes
+its offline source/binary/fixture preflight.
 
 The final clean packaged d6600ed sweep compared all 177 routes under four
 roles on fresh independent copies of `default`, `crowd`, `restricted`, and

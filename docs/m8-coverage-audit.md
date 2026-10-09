@@ -21,12 +21,13 @@ benchmark/resilience evidence. M8-T2 is complete as a comparison with its
 Lexxy, gzip-wire and Caddy-parser differences retained as failures;
 M8-T3, M8-T5 and the release milestone remain open.
 
-Current clean executable source `d223a0f` removes the retained Lexxy room-script
-difference and matches both text and attachment edit responses. The pinned
+Current clean executable source `7352f48` removes the retained Lexxy room-script
+difference and matches text, attachment edit and involvement-frame responses. The pinned
 seeded room bodies match Rust directly at rows 95/100; the 16 previously failing
 HTTP/state cells pass exactly across four populated seeds on `e4b71e6`. Focused
-`d223a0f` attachment-edit browser cells pass 4/4 across server, live DOM,
-accessibility, network, Cable and pixels. The full current-revision M3 route
+`d223a0f` attachment-edit browser cells pass 4/4 and `7352f48` involvement
+cells pass 16/16 across server, live DOM, accessibility, network, Cable and
+pixels. The full current-revision M3 route
 gate, M8-T3 browser matrix, and final-image release audit remain open. The
 historical `d6600ed` results below retain their original evidence scope.
 

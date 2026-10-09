@@ -98,10 +98,11 @@ pass DOM/accessibility/screenshot comparisons and escaping tests.
   inputs). On packaged d6600ed, five crowd view rows pass signed and denied
   Rust/OCaml status, header, body, and state comparison (10/10); first-run row 3
   passes anonymous and bot (2/2). Six seeded responses also match full Rust
-  SHA-256 digests. Current source `e4b71e6` renders the room body directly
+  SHA-256 digests. Current source `7352f48` renders the room body directly
   against the pinned Rust hash and passes the full 123-file view inventory.
-  Ten focused browser cells match all six comparison layers after the edit
-  frame copied Rust's raw template serialization. See [view evidence](m4-t2-views.md).
+  Ten focused edit/browser cells, four attachment-edit cells and 16 room
+  involvement frame cells match all six browser comparison layers after
+  their raw response serialization was aligned. See [view evidence](m4-t2-views.md).
 - [x] **M4-T3 Action Text.** Port HTML parsing, sanitization, attachments, mentions, links,
   plain text, and limits using available libraries; verify upstream rich-text vectors.
 - [ ] **M4-T4 Browser behavior.** Match Turbo/Stimulus fragments, composer, installation,

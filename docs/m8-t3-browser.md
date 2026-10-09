@@ -227,8 +227,23 @@ desktop/phone, light/dark comparison passed **4/4 exact**, zero retries or
 errors, at
 `/tmp/m8-t3-harness-wt/parity/out/m8-t3-attachment-edit-focused/report.json`.
 The old-image sweep was stopped after the third batch. The clean `d223a0f`
-all-seed lean/full run is active under
+all-seed lean/full run then passed its first five batches **401/401 exact**,
+zero retries or errors. Batch six passed 56/72 and found 16 network-only
+differences in the four room involvement states across Chromium desktop/phone
+light/dark. The server document, live DOM, accessibility, Cable and pixels
+were exact. OCaml used the full page layout for a `Turbo-Frame` request,
+adding a stylesheet `Link` header and changing the raw frame response body.
+That run was stopped after the sixth complete report at
 `/tmp/m8-t3-harness-wt/parity/out/m8-t3-d223a0f-all/summary.json`.
+
+Source `7352f48` uses the pinned frame layout for nonempty `Turbo-Frame`
+requests to room involvement. Its controller regression and forced Dune suite
+pass, and a clean image recapture passes **16/16 exact** cells across all six
+layers, with zero retries or errors, at
+`/tmp/m8-t3-harness-wt/parity/out/m8-t3-7352-involvement-16/report.json`.
+The full all-seed lean/full matrix has restarted on the clean `7352f48`
+image under
+`/tmp/m8-t3-harness-wt/parity/out/m8-t3-7352f48-all/summary.json`.
 
 Run each seed in both matrices using the pinned Playwright image and frozen
 clock, for example:
