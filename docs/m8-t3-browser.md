@@ -15,7 +15,8 @@ full batch passes 344/344 exact with zero final flaky cases, failures, or
 errors, bringing completed full coverage to 2,145/2,145. Its Rust-side
 WebKit capture retried once after `page.evaluate: Target crashed` during a
 notification-help readiness wait; OCaml had no retry. A fresh one-cell
-recapture is required after the broad run to clear that operational retry.
+recapture using `/tmp/m8-t3-webkit-retry-recheck.sh` is required after the
+broad run to clear that operational retry.
 The rest of the full matrix is running.
 The earlier diagnostics below are historical checkpoints.
 
