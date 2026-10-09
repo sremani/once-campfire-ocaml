@@ -253,7 +253,20 @@ image digests for deployment and rollback. The bcb local images have an empty OC
 label because `OCI_SOURCE` was unset; the publish workflow supplies it. Inspect
 that label on any pushed image rather than inferring it from this local build.
 
-## Release command log and outstanding checks
+## Current `2a511ac` release command log and outstanding checks
+
+| Check | Current evidence |
+| --- | --- |
+| Source and native tests | `/tmp/campfire-source-2a511ac.json` records a clean source, 321 exact assets and zero local Gumbo errors. `dune runtest --force` passes 41 suites and 297 cases; see `/tmp/campfire-runtest-group-avatar-escalated.log`. The upstream Gumbo archive and Cable commit have not been independently refetched. |
+| HTTP/state | `/tmp/m3-2a511ac-five-seed-audit.md` records 3,186/3,186 exact eligible route/state cases and 354 unavailable first-run signed/denied cells. `/tmp/m3-2a511ac-positive-writes.json` records 30/30 exact writes. The historical Lexxy room-script difference is fixed on this source. |
+| Browser | Focused group-name and avatar-upload recapture passes 8/8 cells across six layers; attachment-edit and involvement-frame recaptures passed on preceding code revisions carried into `2a511ac`. The final five-seed lean/full run is active at `/tmp/m8-t3-harness-wt/parity/out/m8-t3-2a511ac-final-all/summary.json`. |
+| Images and copied installation | `/tmp/campfire-image-2a511ac-{amd64,arm64}.json` reports 321 exact assets and zero issues in each image. `/tmp/campfire-lifecycle-2a511ac-{amd64,arm64}.log` records upgrade, restart, backup/restore, rollback, stable 169 messages and 14 blobs, SQLite integrity and clean shutdown. |
+| Runtime protocol and media | `/tmp/campfire-2a511ac-protocol-{amd64,arm64}.json` records local ACME issue/renewal, HTTP/2, redirect, unknown Host, TLS Cable restart and shutdown. `/tmp/m8-t5-2a511ac-{amd64,arm64}-signed-media.json` records 233/233 exact signed-media cases on each image. |
+| Performance and assets | The measured throughput gap and ten gzip-wire plus one malformed-path asset differences were captured on `d6600ed`. Their current-image status is unverified; see the historical record below. |
+| Reproducible build | Base image digests and direct apt versions are pinned, and package/binary inventories are retained. Mutable transitive apt resolution and the absence of a repeat image build leave byte reproducibility unproven. |
+| External release | Multiarchitecture publication and actual ONCE deployment are pending a registry destination, credentials, target host and CLI. |
+
+### Historical `d6600ed` release command log
 
 | Check | Reproduction command or source | Current evidence |
 | --- | --- | --- |
@@ -266,9 +279,10 @@ that label on any pushed image rather than inferring it from this local build.
 | Runtime contracts | `python3 scripts/release_image_inventory.py --image IMAGE --revision d6600ed... --output /tmp/IMAGE-inventory.json`; focused final-image HTTP/2/TLS/ACME, signed media and Cable/shutdown probes on both architectures | **Inventory and lifecycle pass on d660 amd64 and arm64**: exact assets, notices/hooks, native link checks, copied Rails upgrade/restart/backup/restore/rollback. Both images passed disposable local Pebble certificate issuance and renewal, HTTPS HTTP/2 `/up=200`, HTTP 301, foreign Host 421, TLS Cable 101/restart, and SIGTERM exit 0; reports `/tmp/campfire-d6600ed-protocol-{amd64,arm64}.json`. Packaged signed media passed 233/233 on each architecture, including the independent arm64 comparison in `/tmp/m8-t5-arm64-signed-media.json`. |
 | Published manifest and ONCE | `.github/workflows/publish-image.yml`, `docker buildx imagetools inspect`, then `once deploy IMAGE --host HOST` | **Not run**: no Git remote, registry identity/credentials, ONCE CLI or target host in this workspace. The local images are not a pushed multiarchitecture manifest or an actual ONCE deployment. |
 
-The **local** remaining gates are the broad browser matrix and review of the Lexxy,
-Caddy malformed-path, gzip-wire and measured performance differences; and an
-accurate rebuild promise.
+For the current source, the **local** remaining gates are the broad browser
+matrix, repeatability evidence for the release build, and current-image review
+of the earlier Caddy malformed-path, gzip-wire and measured performance
+differences. The earlier Lexxy room-script difference has been fixed.
 Pinned base digests and direct apt versions plus complete package inventories
 support deployment by immutable image digest, but mutable transitive apt
 resolution does not guarantee a byte-reproducible rebuild. The absent Git
