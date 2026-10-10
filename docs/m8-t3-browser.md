@@ -43,7 +43,10 @@ failures, or errors. Completed default full coverage is 3,828/3,828 and
 completed all-seed coverage is 4,784/5,890 planned cells. The eleventh
 default full batch, the third mutating batch, passes 240/240 with zero
 retries, flaky cases, failures, or errors. Completed default full coverage
-is 4,068/4,068 and completed all-seed coverage is 5,024/5,890.
+is 4,068/4,068 and completed all-seed coverage is 5,024/5,890. The twelfth
+default full batch, the fourth mutating batch, passes 240/240 with no
+retries, flaky cases, failures, or errors. Completed default full coverage
+is 4,308/4,452 and completed all-seed coverage is 5,264/5,890.
 The earlier diagnostics below are historical checkpoints.
 
 ## Pinned sources and local images
