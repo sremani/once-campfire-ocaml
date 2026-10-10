@@ -54,6 +54,33 @@ transient nonzero exit, and a subsequent unforced and forced invocation passed.
 
 Raw summaries: `once-campfire-verification/tmp/bench/ocaml55-authread-{A1,B1,B2,A2}-20261010/`.
 
-The gain is useful but well short of the 80%-of-Go completion target. The next
-escalation is independent application workers for whole-request parallelism,
-with cross-worker Cable delivery and session/cache invalidation gates.
+The gain is useful but well short of the 80%-of-Go completion target.
+
+## Rung 2 diagnostic: independent request processes
+
+The disposable `experiments/worker-scale` image runs two or four application
+processes behind one Caddy front. This is a scaling probe, **not a deployable
+worker design**: each process still owns local Cable subscriptions and job
+queues, and process-local rate limits are independent. It is deliberately
+kept separate from `deploy/boot`. The two-worker preflight passed. The timed
+runs used the same seed, pinned load generator, CPU set and route contracts
+as the one-worker run. All responses were valid, and exact POST write audits
+passed. Raw summaries are under
+`once-campfire-verification/tmp/bench/ocaml55-workers{2,4}-r1-20261010/`.
+
+| Route | 1 worker | 2 workers | 4 workers | 4 workers / Go |
+| --- | ---: | ---: | ---: | ---: |
+| Room show | 4,823 | 7,139 | 8,822 | 17.1% |
+| Messages page | 3,398 | 4,889 | 6,838 | 11.9% |
+| Sidebar | 6,133 | 8,234 | 10,744 | 17.0% |
+| Search | 4,261 | 6,375 | 6,908 | 11.3% |
+| Message POST | 952 | 840 | 791 | 13.3% |
+
+The one-worker numbers are from the second reader-path run above; a same-image
+one-worker repeat remains to be run. The Go denominator is the committed
+OCaml 5.5.1/Go comparison. Four workers use the four assigned server cores but
+are only 1.6–2.0 times faster than one worker on GETs. POST loses 17% as
+multiple SQLite writers contend. Messages-page rounds varied substantially.
+Thus worker coordination alone cannot meet the completion gate. The next
+diagnostic should isolate Caddy/HTTP cost from SQLite/cache work and shorten
+the POST writer section before building the cross-worker Cable bus.
