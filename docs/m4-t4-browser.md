@@ -1,15 +1,27 @@
 # M4-T4 browser behavior log
 
-Status: in progress. The shared Chromium smoke and two-tab repeated-edit
-regression pass on the script-free build. Focused attachment-edit,
-involvement-frame, group-name, and avatar-upload comparisons pass all six
-browser layers on current code source `2a511ac`. The final lean/full matrix
-across five seeds is running against immutable source
-`2a511ac6f74fc3689f72bd039bc11d286e71d1c4` at
-`/tmp/m8-t3-harness-wt/parity/out/m8-t3-2a511ac-final-all/summary.json`.
-M4-T4 also requires the shared Chromium smoke and repeated-edit regression
-on this exact source with separate fresh first-run storage directories after
-the matrix releases resources.
+Status: **complete on frozen source `2a511ac6f74fc3689f72bd039bc11d286e71d1c4`**.
+The ten-plan browser parity audit covers 5,890/5,890 exact final cells across
+five seeds, Chromium, Firefox, WebKit, viewports, and color schemes; the three
+WebKit first-attempt anomalies passed separate first-pass six-layer and
+network recaptures. See [M8-T3 evidence](m8-t3-browser.md).
+
+The final shared Chromium behavior gate also passes on the frozen binary,
+using separate fresh first-run storage for each flow. The corrected runner
+`/tmp/m4-t4-2a511ac-final-smoke.sh` builds `bin/main.exe` in release mode,
+starts the app from the frozen source directory, and runs shared verification
+checkout `b7647b4` (`browser/repeated-edit.mjs` and `browser/smoke.mjs`).
+Both exited 0:
+
+- `PASS: two consecutive edits broadcast to the opposite tab and retain both presentation targets`
+- `PASS: setup, two-tab live messaging, duplicate suppression, and stored-markup safety, copying message permalinks, editing, search, profile/account updates, QR codes, live room creation/renaming, bots, custom styles, session transfers, joining, and autocomplete-started direct pings in Chromium.`
+
+The first attempt of this local runner failed before launching Chrome because
+it started the binary from `/home/srikanth/projects`; `/up` returned HTTP 500
+there. A disposable probe confirmed the same binary returns `/up=200` when
+started from the frozen source directory. The runner now changes to that
+directory before launching. Its final passing server logs are
+`/tmp/campfire-m4t4-2a511ac-{repeated-edit,smoke}.server.log`.
 Earlier differences below are historical checkpoints.
 
 ## Reproduction setup

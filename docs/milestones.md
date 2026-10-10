@@ -109,8 +109,11 @@ pass DOM/accessibility/screenshot comparisons and escaping tests.
   [view evidence](m4-t2-views.md).
 - [x] **M4-T3 Action Text.** Port HTML parsing, sanitization, attachments, mentions, links,
   plain text, and limits using available libraries; verify upstream rich-text vectors.
-- [ ] **M4-T4 Browser behavior.** Match Turbo/Stimulus fragments, composer, installation,
-  notifications, and responsive flows in browser parity tests.
+- [x] **M4-T4 Browser behavior.** Match Turbo/Stimulus fragments, composer, installation,
+  notifications, and responsive flows in browser parity tests. The frozen
+  `2a511ac` source passes the shared two-tab repeated-edit and full Chromium
+  smoke on separate fresh storage, plus the five-seed browser parity matrix.
+  See [browser evidence](m4-t4-browser.md).
 
 ## M5 — Realtime, jobs, and integrations
 
