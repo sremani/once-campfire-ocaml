@@ -177,8 +177,11 @@ differences are intentional, and deployable release artifacts are verified.
   wire bodies and Caddy's malformed-path 400 versus Rust 404 are explicit
   library/front-boundary differences, pending the final-image asset rerun. See
   [coverage audit](m8-coverage-audit.md).
-- [ ] **M8-T3 Browser parity.** Run screens, interactions, accessibility trees, and visual
-  comparisons; resolve or document deliberate differences.
+- [x] **M8-T3 Browser parity.** Run screens, interactions, accessibility trees, and visual
+  comparisons; resolve or document deliberate differences. The frozen `2a511ac`
+  five-seed lean/full sweep is 5,890/5,890 exact on applicable layers, and all
+  three first-attempt WebKit anomalies passed separate exact recaptures.
+  See [browser evidence](m8-t3-browser.md).
 - [x] **M8-T4 Performance and resilience.** Benchmark representative workloads, concurrency,
   memory, crash recovery, security limits, and long-running service behavior.
   Clean d6600ed preflight, header, 60-second resilience, and alternating timed
@@ -188,5 +191,6 @@ differences are intentional, and deployable release artifacts are verified.
   instructions, complete tests, known differences, and reproducible release build.
   Local amd64 and arm64 images from `2a511ac` pass inventory, copied Rails
   installation lifecycle, TLS/HTTP2/ACME, WebSocket restart, and 233/233
-  signed-media comparisons each. The full browser gate and external manifest
-  publication/ONCE deployment remain open. See [release audit](m8-t5-release-audit.md).
+  signed-media comparisons each. The full browser gate passes; final local
+  release checks and external manifest publication/ONCE deployment remain open.
+  See [release audit](m8-t5-release-audit.md).

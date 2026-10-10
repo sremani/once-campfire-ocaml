@@ -1,60 +1,29 @@
 # M8-T3 browser parity evidence
 
-Status: inventory passed on all five seeds. Current code source `2a511ac`
-passes focused recaptures for the earlier attachment-edit, involvement-frame,
-group-name, and avatar-upload differences across all six browser layers.
-The final lean/full five-seed matrix is running against the immutable source
-at `/tmp/m8-t3-harness-wt/parity/out/m8-t3-2a511ac-final-all/summary.json`.
-The pinned inventory expands to 5,890 planned cells: 956 lean and 4,934
-full (default 4,452; crowd 145; custom styles 193; first run 96;
-restricted 48). The default full count matches its saved canonical plan;
-the other full plans are created as the coordinator reaches each seed.
-All five lean seed matrices have completed: **956/956 exact** on their
-applicable layers, with zero errors or retries (default 874, crowd 25,
-custom styles 33, first run 16, restricted 8). The 940 page cells match all
-six layers; 16 pinned fragment cells compare server HTML only. The first four default-seed
-full batches also pass 1,801/1,801 exact (416, 496, 432, and 457 cells),
-with zero flaky cases, retries, or errors; their reports are under the same
-run directory at `default-full-shared-{01,02,03,04}/report.json`. The fifth
-full batch passes 344/344 exact with zero final flaky cases, failures, or
-errors, bringing completed full coverage to 2,145/2,145. Its Rust-side
-WebKit capture retried once after `page.evaluate: Target crashed` during a
-notification-help readiness wait; OCaml had no retry. A fresh one-cell
-recapture using `/tmp/m8-t3-webkit-retry-recheck.sh` is required after the
-broad run to clear that operational retry.
-The sixth default full batch passes 416/416 exact with zero retries,
-flaky cases, failures, or errors. The seventh passes 467/467 with no final
-layer differences, bringing completed full coverage to 3,028/3,028 across
-seven batches. Its `search/results/many @ webkit-desktop-dark` cell had a
-114-pixel avatar-edge difference on attempt one and passed on attempt two;
-all non-pixel layers matched on the first attempt. The eighth default full
-batch passes 378/378 exact with zero retries, flaky cases, failures, or
-errors, bringing completed full coverage to 3,406/3,406. Fresh exact-cell
-recaptures for both WebKit retry cells are required after the broad run.
-The ninth default full batch, the first fresh-server mutating batch, passes
-194/194 with no final flaky cases, failures, or errors, bringing completed
-full coverage to 3,600/3,600. Its OCaml-side
-`auth/sign_in/rate_limited @ webkit-laptop-light` capture retried once after
-`page.evaluate: Target crashed` on `/session/new`; the Rust capture had no
-retry. This third cell also requires a first-pass exact recapture. The rest
-of the full matrix is running. The tenth default full batch, the second
-fresh-server mutating batch, passes 228/228 with zero retries, flaky cases,
-failures, or errors. Completed default full coverage is 3,828/3,828 and
-completed all-seed coverage is 4,784/5,890 planned cells. The eleventh
-default full batch, the third mutating batch, passes 240/240 with zero
-retries, flaky cases, failures, or errors. Completed default full coverage
-is 4,068/4,068 and completed all-seed coverage is 5,024/5,890. The twelfth
-default full batch, the fourth mutating batch, passes 240/240 with no
-retries, flaky cases, failures, or errors. Completed default full coverage
-is 4,308/4,452 and completed all-seed coverage is 5,264/5,890.
-The thirteenth default full batch, the fifth mutating batch, passes
-120/120 with zero retries, flaky cases, failures, or errors. Completed
-default full coverage is 4,428/4,452 and completed all-seed coverage is
-5,384/5,890 at that checkpoint.
-The final default full batch passes 24/24 with zero retries, flaky cases,
-failures, or errors. The default full matrix is now 4,452/4,452, and
-completed all-seed coverage is 5,408/5,890. The four other full seed
-matrices remain in progress.
+Status: **complete on the frozen `2a511ac` source**. The final browser
+coordinator covered all ten pinned seed/matrix plans in 40 batches:
+**5,890/5,890 final comparisons exact** on their applicable layers. The
+five lean plans contribute 956 cells and the five full plans 4,934
+(default 4,452; crowd 145; custom styles 193; first run 96; restricted
+48). Of the 5,890 cells, 5,858 page cells compare server HTML, live DOM,
+accessibility, network, Cable, and pixels; 32 pinned fragments compare
+server HTML only. The independent full audit is
+`/tmp/m8-t3-2a511ac-all-validation-root.json`; the coordinator summary
+is `/tmp/m8-t3-harness-wt/parity/out/m8-t3-2a511ac-final-all/summary.json`
+with `incomplete: false`. There are no final failures, errors, or allowed
+differences.
+
+Three cells needed a second attempt inside the broad sweep: a Rust-side
+WebKit target crash in notification help, a 114-pixel avatar-edge
+screenshot difference in WebKit search, and an OCaml-side WebKit target
+crash in rate-limited sign-in. The broad coordinator returned exit 1
+because it treats capture retries as a release-gate failure, despite
+all final comparisons passing. After it exited, the three exact cells
+were recaptured separately using `/tmp/m8-t3-postrun-webkit-rechecks.sh`.
+Each passed on its first attempt with all six layers and network
+transcripts equal, zero capture retries, and disposable containers
+removed. Their reports are under the same parity output root at
+`m8-t3-2a511ac-webkit-{chrome-mac-retry,search-flake,rate-limit-retry}-recheck/report.json`.
 The earlier diagnostics below are historical checkpoints.
 
 ## Pinned sources and local images
@@ -268,8 +237,8 @@ format, the two edit cells passed **2/2 exact**, zero errors or retries, at
 `/tmp/m8-t3-harness-wt/parity/out/m8-t3-exact-edit-focused/report.json`.
 The earlier eight exact cells are at
 `/tmp/m8-t3-harness-wt/parity/out/m8-t3-lexxy-no-shim-focused/report.json`.
-Together they resolve all ten focused states; the full matrix below remains
-the M8-T3 gate.
+Together they resolve all ten focused states; the full matrix was then
+required for the M8-T3 gate.
 
 The subsequent `e4b71e6` default lean run completed 178/178 exact cells in
 its first two batches. Its third batch completed 78 pass and four fail, with
@@ -309,7 +278,7 @@ OCaml suite passes 41 suites and 297 cases. A fresh eight-cell Chromium
 desktop/phone light/dark recapture passes **8/8 exact** across server, live
 DOM, ARIA, network, Cable and pixels, with zero retries or errors, at
 `/tmp/m8-t3-harness-wt/parity/out/m8-t3-2a511ac-group-avatar-8/report.json`.
-The full all-seed lean/full matrix remains open for this source.
+The full all-seed lean/full matrix for this source is complete above.
 
 Run each seed in both matrices using the pinned Playwright image and frozen
 clock, for example:

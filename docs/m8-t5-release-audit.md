@@ -32,40 +32,16 @@ shutdown passed on both architectures in
 `/tmp/campfire-2a511ac-protocol-{amd64,arm64}.json`.
 Signed media is 233/233 exact per architecture in
 `/tmp/m8-t5-2a511ac-{amd64,arm64}-signed-media.json`.
-The final all-seed browser matrix is running against the frozen source; all
-ten seed/matrix combinations expand to 5,890 planned cells from the pinned
-inventory (956 lean, 4,934 full). The coordinator creates plans lazily; each
-saved canonical job list is audited as its seed starts. The
-five lean seeds are 956/956 exact on applicable layers with zero retries or
-errors: 940 page cells compare six layers and 16 pinned fragments compare
-server HTML only. Its first five default-seed full batches are 2,145/2,145 exact,
-with zero final flaky cases, failures, or errors. The fifth batch had one
-Rust-side WebKit capture retry after `page.evaluate: Target crashed`; a
-fresh one-cell recapture remains pending. The sixth batch passes 416/416
-exact with no retries; the seventh passes 467/467, bringing completed full
-coverage to 3,028/3,028 across seven batches. One seventh-batch WebKit
-search screenshot had 114 differing avatar-edge pixels on its first attempt
-and matched on its second, with all other layers already equal. That cell
-also requires a fresh exact-cell recapture after the broad run. The eighth
-batch passes 378/378 exact with zero retries or flaky cases. The ninth,
-first mutating batch passes 194/194 with no final layer differences,
-bringing completed full coverage to 3,600/3,600. One OCaml-side WebKit
-capture of the rate-limited sign-in cell crashed during page evaluation and
-passed on retry; it requires a third first-pass exact recapture. The
-second mutating batch passes 228/228 with zero retries or flaky cases,
-bringing completed default full coverage to 3,828/3,828 and completed
-all-seed coverage to 4,784/5,890 planned cells. The third mutating batch
-passes 240/240 with no retries or flaky cases, bringing default full
-coverage to 4,068/4,068 and all-seed coverage to 5,024/5,890. The fourth
-mutating batch passes 240/240 with no retries or flaky cases, bringing
-default full coverage to 4,308/4,452 and all-seed coverage to 5,264/5,890.
-The fifth mutating batch passes 120/120 with zero retries or flaky cases,
-bringing default full coverage to 4,428/4,452 and all-seed coverage to
-5,384/5,890 at that checkpoint.
-The final default batch passes 24/24 with zero retries or flaky cases:
-default full is 4,452/4,452, and all-seed coverage is 5,408/5,890.
-The four other full seed matrices remain in progress.
-The remaining full seed matrices are in progress.
+The final all-seed browser matrix on the frozen source is complete:
+5,890/5,890 final cells exact across ten seed/matrix plans and 40 batches.
+The independent audit at `/tmp/m8-t3-2a511ac-all-validation-root.json`
+checks 5,858 six-layer page cells and 32 server-only pinned fragments,
+with zero final failures, errors, or allowed differences. The broad
+coordinator returned exit 1 solely because two WebKit captures needed
+retries; a third WebKit screenshot had a 114-pixel first-attempt
+avatar-edge difference. All three cells then passed separate first-pass
+exact recaptures across six layers and network transcripts, with no
+retries. See [browser evidence](m8-t3-browser.md).
 An uncached repeat-build comparison is prepared at
 `/tmp/m8-t5-2a511ac-reproducibility.py`; its source and inventory preflight
 passes, and the Docker rebuild waits for browser capture to release the
@@ -330,8 +306,8 @@ that label on any pushed image rather than inferring it from this local build.
 | Runtime contracts | `python3 scripts/release_image_inventory.py --image IMAGE --revision d6600ed... --output /tmp/IMAGE-inventory.json`; focused final-image HTTP/2/TLS/ACME, signed media and Cable/shutdown probes on both architectures | **Inventory and lifecycle pass on d660 amd64 and arm64**: exact assets, notices/hooks, native link checks, copied Rails upgrade/restart/backup/restore/rollback. Both images passed disposable local Pebble certificate issuance and renewal, HTTPS HTTP/2 `/up=200`, HTTP 301, foreign Host 421, TLS Cable 101/restart, and SIGTERM exit 0; reports `/tmp/campfire-d6600ed-protocol-{amd64,arm64}.json`. Packaged signed media passed 233/233 on each architecture, including the independent arm64 comparison in `/tmp/m8-t5-arm64-signed-media.json`. |
 | Published manifest and ONCE | `.github/workflows/publish-image.yml`, `docker buildx imagetools inspect`, then `once deploy IMAGE --host HOST` | **Not run**: no Git remote, registry identity/credentials, ONCE CLI or target host in this workspace. The local images are not a pushed multiarchitecture manifest or an actual ONCE deployment. |
 
-For the current source, the **local** remaining gates are the broad browser
-matrix, repeatability evidence for the release build, and current-image review
+For the current source, the **local** remaining gates are repeatability
+evidence for the release build and current-image review
 of the earlier Caddy malformed-path, gzip-wire and measured performance
 differences. The earlier Lexxy room-script difference has been fixed.
 Pinned base digests and direct apt versions plus complete package inventories
