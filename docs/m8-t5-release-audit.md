@@ -69,9 +69,11 @@ verification checkout `b7647b4` passes `bin/check` in
 `campfire-m8-check:pinned`; its exit-0 log is
 `/tmp/m8-t5-2a511ac-shared-check.log`. M8-T5 remains open for external
 manifest publication and ONCE deployment, plus review of the recorded
-image-byte limitation. No Git remote, registry destination, target host, or
-ONCE CLI is configured. `gh auth status` now succeeds for `sremani`, but
-`gh repo list sremani` shows no Campfire/ONCE repository target.
+image-byte limitation. The private repository
+`https://github.com/sremani/once-campfire-ocalm` is configured as `origin`;
+its intended GHCR path is `ghcr.io/sremani/once-campfire-ocalm`. A release
+tag, target host, and ONCE CLI are still missing. `gh auth status` succeeds
+for `sremani`.
 The [publication handoff](m8-t5-publication-handoff.md) records the exact
 source tag, GHCR verification, and ONCE steps once those targets are supplied.
 
@@ -88,7 +90,7 @@ source tag, GHCR verification, and ONCE steps once those targets are supplied.
 | Final-image timed performance | `bash /tmp/m8-t4-2a511ac-timed.sh` | Pass: complete, release comparable, 32/32 validated route samples, zero errors/invalid responses and four exact write audits; `once-campfire-verification/tmp/bench/m8-t4-2a511ac-timed/summary.json` |
 | Uncached rebuild | `python3 /tmp/m8-t5-2a511ac-reproducibility.py --rebuild` | Application inventories match on both architectures; 11 system-file content differences per architecture prevent byte-identical output; `/tmp/campfire-2a511ac-reproducibility.json` |
 | Shared verification | `docker run --rm --mount type=bind,src=/home/srikanth/projects/once-campfire-verification,dst=/verify --workdir /verify -e CARGO_TARGET_DIR=/tmp/loadgen-target campfire-m8-check:pinned bin/check` | Pass, exit 0; `/tmp/m8-t5-2a511ac-shared-check.log` |
-| Published multiarchitecture image and ONCE | Tag/CI, digest inspection, deployment commands in [publication handoff](m8-t5-publication-handoff.md) | Open: no target Git remote, GHCR repository/tag, ONCE CLI, or host |
+| Published multiarchitecture image and ONCE | Tag/CI, digest inspection, deployment commands in [publication handoff](m8-t5-publication-handoff.md) | Open: private GitHub repository and GHCR path are identified; release tag, published digest, ONCE CLI, and host are missing |
 
 ### Earlier involvement-frame source checkpoint: `7352f48`
 
@@ -328,7 +330,7 @@ that label on any pushed image rather than inferring it from this local build.
 | Performance and assets | Final-image benchmark preflight, two-round timed benchmark, header and 60-second resilience pass; timed summary has 32 validated route samples, zero errors/invalid responses, and exact write audits at `once-campfire-verification/tmp/bench/m8-t4-2a511ac-timed/summary.json`. The final asset sweep is 1,004/1,015 exact with zero fixture errors: ten gzip wire bodies and one malformed Caddy path differ; see `/tmp/m8-t2-2a511ac-assets-live.json`. |
 | Reproducible build | Uncached rebuild inventories, packages, binaries, assets, linked libraries and notices match on both architectures; each image has 11 changed system account/cache/log files and different tar metadata. See `/tmp/campfire-2a511ac-reproducibility.json`. Byte-identical images remain unproven. |
 | Shared verification | `bin/check` passes in `campfire-m8-check:pinned` against checkout `b7647b4`; `/tmp/m8-t5-2a511ac-shared-check.log`. |
-| External release | Multiarchitecture publication and actual ONCE deployment are pending a Git remote/registry destination, release tag, ONCE CLI and host. `gh auth status` succeeds for `sremani`. |
+| External release | Multiarchitecture publication and actual ONCE deployment are pending a release tag, pushed image, ONCE CLI and host. The private `sremani/once-campfire-ocalm` repository exists and `gh auth status` succeeds. |
 
 ### Historical `d6600ed` release command log
 
