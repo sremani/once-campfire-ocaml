@@ -1,9 +1,9 @@
 # 2a511ac publication and ONCE deployment handoff
 
 This is a command review, not evidence of publication or deployment. The
-private repository `https://github.com/sremani/once-campfire-ocalm` now exists
+public repository `https://github.com/sremani/once-campfire-ocaml` now exists
 and is configured as `origin`; its intended image path is
-`ghcr.io/sremani/once-campfire-ocalm`. A release tag, ONCE CLI, and target host
+`ghcr.io/sremani/once-campfire-ocaml`. A release tag, ONCE CLI, and target host
 are still missing. `gh auth status` succeeds for `sremani`. Review the release
 version and ONCE host before publishing or deploying.
 The browser and post-browser local gates in
@@ -50,7 +50,7 @@ OCI source label. The registry image IDs therefore need independent review.
 ```sh
 SOURCE=/tmp/campfire-browser-2a511ac
 SOURCE_REV=2a511ac6f74fc3689f72bd039bc11d286e71d1c4
-IMAGE_REPO=ghcr.io/sremani/once-campfire-ocalm
+IMAGE_REPO=ghcr.io/sremani/once-campfire-ocaml
 : "${RELEASE_TAG:?set exact published v-prefixed tag}"
 docker buildx imagetools inspect "$IMAGE_REPO:$RELEASE_TAG" \
   | tee /tmp/campfire-2a511ac-published-manifest.txt
@@ -119,7 +119,7 @@ documented CLI form with explicit values:
 
 ```sh
 : "${ONCE_HOST:?set the existing ONCE host}"
-IMAGE_REPO=ghcr.io/sremani/once-campfire-ocalm
+IMAGE_REPO=ghcr.io/sremani/once-campfire-ocaml
 : "${PUBLISHED_DIGEST:?set verified sha256 index digest}"
 : "${OLD_IMAGE_REF:?record current immutable image reference for rollback}"
 once deploy "$IMAGE_REPO@$PUBLISHED_DIGEST" --host "$ONCE_HOST"
