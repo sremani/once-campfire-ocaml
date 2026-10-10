@@ -72,8 +72,9 @@ jobs:
 
       - name: Clean release build and full Dune suite
         working-directory: once-campfire-ocaml
+        shell: bash
         run: |
-          docker run --rm --network host \
+          if docker run --rm --network host \
             -v "$PWD/..:/fixtures:ro" \
             --entrypoint /bin/sh campfire-ocaml:test-toolchain -ec \
             'mkdir -p /home/opam/projects && \
@@ -83,7 +84,23 @@ jobs:
              opam exec -- ocamlc -version | grep -Fx 5.5.1 && \
              opam exec -- dune clean && \
              opam exec -- dune build --profile release && \
-             opam exec -- dune runtest --profile release --force'
+             opam exec -- dune runtest --profile release --force' \
+             > "$RUNNER_TEMP/ocaml55-dune.log" 2>&1; then
+            tail -n 30 "$RUNNER_TEMP/ocaml55-dune.log"
+          else
+            python3 - "$RUNNER_TEMP/ocaml55-dune.log" <<'PY'
+          import pathlib, re, sys
+          lines = pathlib.Path(sys.argv[1]).read_text(errors="replace").splitlines()
+          matches = [i for i, line in enumerate(lines) if re.search(
+              r"Error:|\[FAIL\]|FAIL |Traceback|not found|Permission denied|Fatal error|cp:", line)]
+          selected = sorted({j for i in matches for j in range(max(0, i - 2), min(len(lines), i + 7))})
+          excerpt = "\n".join(lines[i] for i in selected[-100:]) or "\n".join(lines[-60:])
+          escaped = excerpt.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+          print("::error title=OCaml 5.5.1 suite failure::" + escaped)
+          PY
+            tail -n 80 "$RUNNER_TEMP/ocaml55-dune.log"
+            exit 1
+          fi
 
   build:
     name: Audit and push image (${{ matrix.arch }})
