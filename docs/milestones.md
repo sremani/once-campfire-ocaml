@@ -195,6 +195,8 @@ differences are intentional, and deployable release artifacts are verified.
   instructions, complete tests, known differences, and reproducible release build.
   Local amd64 and arm64 images from `2a511ac` pass inventory, copied Rails
   installation lifecycle, TLS/HTTP2/ACME, WebSocket restart, and 233/233
-  signed-media comparisons each. The full browser gate passes; final local
-  release checks and external manifest publication/ONCE deployment remain open.
+  signed-media comparisons each. The full browser gate and final local release
+  checks pass. The `v0.1.0` multiarchitecture manifest is published, signed,
+  and independently checked against the exact published images. An actual
+  ONCE deployment remains open for a target host and CLI access.
   See [release audit](m8-t5-release-audit.md).
