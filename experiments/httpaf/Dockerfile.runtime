@@ -1,0 +1,9 @@
+FROM campfire-ocaml:httpaf-deps AS build
+WORKDIR /home/opam/campfire
+COPY --chown=opam:opam . .
+RUN cp experiments/httpaf/httpaf_probe.ml bin/httpaf_probe.ml && \
+    printf '\n(executable (name httpaf_probe) (modules httpaf_probe) (libraries campfire httpaf-lwt-unix cohttp-lwt lwt.unix yojson))\n' >> bin/dune && \
+    opam exec -- dune build --profile release bin/httpaf_probe.exe
+
+FROM campfire-ocaml:authread-exp
+COPY --from=build /home/opam/campfire/_build/default/bin/httpaf_probe.exe /usr/local/bin/campfire

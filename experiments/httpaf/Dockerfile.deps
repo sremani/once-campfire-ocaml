@@ -1,0 +1,2 @@
+FROM campfire-ocaml:ocaml55-deps
+RUN opam install -y --jobs=4 httpaf-lwt-unix.0.7.1

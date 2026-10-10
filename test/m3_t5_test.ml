@@ -846,6 +846,19 @@ let private_route_invalidation () =
         check string "private sidebar uses stored response"
           "sidebar cache sentinel" sidebar_hit;
         Campfire.Db_runtime.write runtime (fun tx ->
+          let membership=Campfire.Db_rooms.Membership.find_by_room_and_user
+            (Campfire.Db_runtime.conn tx) 654632876L session.user_id
+            |> Option.get in
+          Campfire.Db_rooms.Membership.destroy tx membership
+            ~on_disconnect:(fun ~user_id:_ ~reconnect:_ -> ()));
+        let removed,removed_body=send () in
+        check int "revoked membership bypasses room cache" 302 (code removed);
+        check bool "revoked membership cannot see cached room" false
+          (contains removed_body "private cache sentinel" 0);
+        let removed_index,_=send ~path:index_path () in
+        check int "revoked membership bypasses message cache" 404
+          (code removed_index);
+        Campfire.Db_runtime.write runtime (fun tx ->
           Campfire.Db_accounts.Session.destroy
             (Campfire.Db_runtime.conn tx) session);
         let revoked,revoked_body=send () in

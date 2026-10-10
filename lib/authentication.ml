@@ -168,7 +168,8 @@ let is_safe_method = function "GET" | "HEAD" -> true | _ -> false
 
 type read_result = Ready of outcome | Refresh_due
 
-(** A reader can restore fresh sessions. An hourly refresh must retry on the
+(** A reader can restore fresh sessions for every HTTP method. Unsafe methods
+    also check the IP ban on that reader. An hourly refresh retries on the
     writer, preserving the existing cookie and activity update semantics. *)
 let restore_headers_step ~may_refresh ~db ~secret_key_base ~now ~method_
     ~remote_ip ~user_agent ~cookie_headers =
@@ -210,8 +211,6 @@ let restore_headers ~db ~secret_key_base ~now ~method_ ~remote_ip ~user_agent ~c
 
 let restore_headers_readonly ~db ~secret_key_base ~now ~method_ ~remote_ip
     ~user_agent ~cookie_headers =
-  if not (is_safe_method method_) then
-    invalid_arg "restore_headers_readonly requires GET or HEAD";
   restore_headers_step ~may_refresh:false ~db ~secret_key_base ~now
     ~method_ ~remote_ip ~user_agent ~cookie_headers
 

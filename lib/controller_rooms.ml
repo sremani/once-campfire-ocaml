@@ -128,12 +128,14 @@ let rooms_index c = match user_id c with
 let context_for_account c db account =
   View_presenter.context ~has_custom_logo:(View_presenter.has_custom_logo db account)
     c account
-let room_show c = room_or_root c (fun room ->
+let room_show c =
+  match (if accepts c Http_format.Html then H.private_lookup c else None) with
+  | Some cached ->
+      Option.iter (remember_room c) (number c "room_id");
+      response cached
+  | None -> room_or_root c (fun room ->
   remember_room c room.R.Room.id;
   if not (accepts c Http_format.Html) then error 406 else
-  match H.private_lookup c with
-  | Some cached -> response cached
-  | None ->
   read c (fun db ->
     let account = Db_accounts.Account.first db in
     let messages = (match number c "message_id" with
@@ -393,15 +395,15 @@ let read_paged c f = Lwt.catch
   (fun () -> read c f >|= fun value -> Ok value)
   (function Invalid_message_page -> Lwt.return (Error ())
     | error -> Lwt.fail error)
-let message_index c = scope_or_404 c (fun _ room ->
+let message_index c =
+  match (if accepts c Http_format.Html then H.private_lookup c else None) with
+  | Some cached -> response cached
+  | None -> scope_or_404 c (fun _ room ->
   read_paged c (fun db -> paginate c db room) >>= function
   | Error () -> public_error c 404
   | Ok messages ->
   if messages=[] then action_head c 204 else
   if not (accepts c Http_format.Html) then error 406 else
-  match H.private_lookup c with
-  | Some cached -> response cached
-  | None ->
   read c (fun db -> List.map (View_presenter.message c db room) messages)
   >>= fun messages ->
   let page=Views.message_index_recorded messages in
@@ -792,11 +794,11 @@ let searched_messages c q = match user_id c,q with
 let search_index c = match search_query c,user_id c with
   | Error (),_ -> error 500 | _,None -> error 500
   | Ok q,Some uid ->
-      searched_messages c q >>= fun messages ->
-      if not (accepts c Http_format.Html) then error 406 else
-      match H.private_lookup c with
+      match (if accepts c Http_format.Html then H.private_lookup c else None) with
       | Some cached -> response cached
       | None ->
+      searched_messages c q >>= fun messages ->
+      if not (accepts c Http_format.Html) then error 406 else
       read c (fun db ->
         let account = Db_accounts.Account.first db in
         let rendered = messages |> List.filter_map (fun (message : M.Message.t) ->

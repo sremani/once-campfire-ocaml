@@ -124,7 +124,13 @@ let test_bans () =
       ~remote_ip:ip ~user_agent:None header in
     (match run "POST" with Authentication.Banned_ip -> () | _ -> failwith "POST banned IP");
     ignore (authenticated "GET from banned IP is allowed" (run "GET"));
-    ignore (authenticated "HEAD from banned IP is allowed" (run "HEAD")))
+    ignore (authenticated "HEAD from banned IP is allowed" (run "HEAD"));
+    exec db "PRAGMA query_only=ON";
+    check "read-only POST preserves banned-IP rejection"
+      (Authentication.restore_headers_readonly ~db ~secret_key_base:secret
+        ~now:"2026-10-08T12:00:00Z" ~method_:"POST" ~remote_ip:ip
+        ~user_agent:None ~cookie_headers:[header]
+       = Ok (Authentication.Ready Authentication.Banned_ip)))
 
 let test_readonly_fresh_session () =
   let secret = secret_key_base () in
@@ -133,28 +139,35 @@ let test_readonly_fresh_session () =
   let header = string "cookie_header" vector in
   let now = "2026-10-08T12:00:00Z" in
   with_seed_copy (fun db ->
-    let inspect () = Authentication.restore_headers_readonly ~db
-      ~secret_key_base:secret ~now ~method_:"GET"
+    let inspect method_ = Authentication.restore_headers_readonly ~db
+      ~secret_key_base:secret ~now ~method_
       ~remote_ip:"198.51.100.12" ~user_agent:None
       ~cookie_headers:[header] in
     exec db "PRAGMA query_only=ON";
     check "stale reader requests writer refresh"
-      (inspect () = Ok Authentication.Refresh_due);
+      (inspect "GET" = Ok Authentication.Refresh_due);
+    check "stale POST reader requests writer refresh"
+      (inspect "POST" = Ok Authentication.Refresh_due);
     exec db "PRAGMA query_only=OFF";
     ignore (authenticated "writer refreshes stale session"
-      (restore db ~secret ~now ~method_:"GET" ~remote_ip:"198.51.100.12"
+      (restore db ~secret ~now ~method_:"POST" ~remote_ip:"198.51.100.12"
          ~user_agent:None header));
     exec db "PRAGMA query_only=ON";
-    (match inspect () with
+    (match inspect "GET" with
      | Ok (Authentication.Ready (Authentication.Authenticated identity)) ->
          check "fresh reader does not issue renewal"
            (identity.refreshed_token_cookie = None)
      | _ -> failwith "fresh read-only session should authenticate");
+    (match inspect "POST" with
+     | Ok (Authentication.Ready (Authentication.Authenticated identity)) ->
+         check "fresh POST reader does not issue renewal"
+           (identity.refreshed_token_cookie = None)
+     | _ -> failwith "fresh read-only POST session should authenticate");
     exec db "PRAGMA query_only=OFF";
     exec db "DELETE FROM sessions WHERE id=481019661";
     exec db "PRAGMA query_only=ON";
     check "reader observes revocation"
-      (inspect () = Ok (Authentication.Ready
+      (inspect "GET" = Ok (Authentication.Ready
         (Authentication.Unauthenticated Authentication.Revoked_session))))
 
 let test_rails_cookiestore () =

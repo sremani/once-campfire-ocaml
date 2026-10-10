@@ -11,10 +11,12 @@ case "$target_port" in *[!0-9]*|'') echo "invalid target port" >&2; exit 2 ;; es
 
 upstreams=""
 pids=()
+mkdir -p /rails/storage/logs
 for ((i=0; i<workers; i++)); do
   port=$((target_port + i))
   upstreams="${upstreams} 127.0.0.1:${port}"
-  /usr/local/bin/campfire serve --port "$port" &
+  CAMPFIRE_PROFILE_PATH="/rails/storage/logs/profile-${port}.tsv" \
+    /usr/local/bin/campfire serve --port "$port" &
   pids+=("$!")
 done
 

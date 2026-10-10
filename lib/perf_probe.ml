@@ -50,6 +50,8 @@ let record name elapsed =
   Mutex.unlock mutex;
   if flush then (try dump () with _ -> ())
 
+let bump name = if enabled then record name 0.
+
 let time name f =
   if not enabled then f () else
   let started = Unix.gettimeofday () in

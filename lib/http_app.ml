@@ -192,7 +192,7 @@ let private_lookup ctx =
         Http_cache.Private.eligible_request
           ~endpoint:ctx.route.endpoint ~original_method:ctx.original_method
           ~raw_post:ctx.raw_post ctx.request ->
-      if flash ctx <> [] then None else
+      if flash ctx <> [] then (Perf_probe.bump "private_flash"; None) else
       (match Http_cache.Observer.version cache.observer with
        | Some current when current=generation ->
            (match Http_cache.Private.key ~generation
@@ -204,14 +204,19 @@ let private_lookup ctx =
                 (match Http_cache.Private.lookup cache.store
                     ~now:(Unix.gettimeofday ()) ~generation:current ticket with
                  | Some item ->
+                     Perf_probe.bump "private_hit";
                      ctx.private_hit<-true;
                      let response=Cohttp.Response.make
                        ~status:(Cohttp.Code.status_of_code item.status)
                        ~headers:item.headers () in
                      Some (response,Cohttp_lwt.Body.of_string item.body)
-                 | None -> ctx.private_ticket<-Some ticket; None))
-       | _ -> None)
-  | _ -> None
+                 | None ->
+                     Perf_probe.bump "private_miss";
+                     ctx.private_ticket<-Some ticket; None))
+       | _ -> Perf_probe.bump "private_generation_changed"; None)
+  | Some _,Some _,Some (Authentication.Authenticated _) ->
+      Perf_probe.bump "private_ineligible"; None
+  | _ -> Perf_probe.bump "private_unavailable"; None
 
 let csrf_check ctx =
   let request = {
@@ -257,8 +262,7 @@ let restore_auth ctx =
     >>= finish ~load_user:(fun user_id ->
       Db_runtime.read_async ctx.runtime (fun db ->
         Db_accounts.User.find_by_id db user_id)) in
-  if not readonly_auth_enabled ||
-     not (Authentication.is_safe_method ctx.method_) then restore_on_writer ()
+  if not readonly_auth_enabled then restore_on_writer ()
   else
     Db_runtime.read_async ctx.runtime (fun db ->
       let result = Authentication.restore_headers_readonly ~db
@@ -685,9 +689,11 @@ let handle ~runtime ~secret_key_base ?cable ?event_sink ?front_cache
                 let response={response with headers;
                   encoding=Cohttp.Transfer.Fixed length} in
                 (match Http_cache.Observer.version cache.observer with
-                 | Some generation -> ignore (Http_cache.Private.store cache.store
-                     ~now:(Unix.gettimeofday ()) ~generation ticket
-                     ~status:200 ~headers ~body:bytes)
+                 | Some generation ->
+                     let stored = Http_cache.Private.store cache.store
+                       ~now:(Unix.gettimeofday ()) ~generation ticket
+                       ~status:200 ~headers ~body:bytes in
+                     Perf_probe.bump (if stored then "private_store" else "private_store_rejected")
                  | None -> ());
                 response,Cohttp_lwt.Body.of_string bytes
           | _ -> Lwt.return (response,body))
