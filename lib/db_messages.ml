@@ -262,21 +262,25 @@ module Message = struct
   let create ?(rich_text=basic_rich_text) ?(on_push=(fun ~room_id:_ ~message_id:_ -> ())) tx ~now attrs =
     let db = Db_runtime.conn tx and stamp = now_string now in
     let client_message_id = Option.value ~default:(Db_accounts.uuid ()) attrs.client_message_id in
-    run db "INSERT INTO messages (client_message_id,created_at,creator_id,room_id,updated_at) VALUES (?,?,?,?,?)"
-      [text client_message_id; text stamp; integer attrs.creator_id; integer attrs.room_id; text stamp];
+    Perf_probe.time "post_insert_message" (fun () ->
+      run db "INSERT INTO messages (client_message_id,created_at,creator_id,room_id,updated_at) VALUES (?,?,?,?,?)"
+        [text client_message_id; text stamp; integer attrs.creator_id; integer attrs.room_id; text stamp]);
     let id = Sqlite3.last_insert_rowid db in
-    (match attrs.body with None -> () | Some body ->
-      ignore (Rich_text_record.create tx ~now ~record_type:"Message" ~record_id:id ~name:"body" ~body));
+    Perf_probe.time "post_insert_body" (fun () ->
+      match attrs.body with None -> () | Some body ->
+        ignore (Rich_text_record.create tx ~now ~record_type:"Message" ~record_id:id ~name:"body" ~body));
     (match attrs.attachment_blob_id with None -> () | Some blob_id ->
       run db "INSERT INTO active_storage_attachments (blob_id,created_at,name,record_id,record_type) VALUES (?,?,'attachment',?,'Message')"
         [integer blob_id; text stamp; integer id]);
-    Db_rooms.Room.touch tx ~now attrs.room_id;
-    let message = find db id in
-    Db_runtime.after_commit tx (fun tx ->
-      let db = Db_runtime.conn tx in
-      insert_index ~rich_text db message;
+    Perf_probe.time "post_touch_room" (fun () ->
+      Db_rooms.Room.touch tx ~now attrs.room_id);
+    let message = Perf_probe.time "post_find_message" (fun () -> find db id) in
+    let index () = Perf_probe.time "post_insert_index" (fun () ->
+      insert_index ~rich_text db message) in
+    let receive () = Perf_probe.time "post_receive_room" (fun () ->
       Db_rooms.Room.receive tx ~now ~room_id:message.room_id ~message_id:message.id
-        ~created_at:message.created_at ~creator_id:message.creator_id ~on_push);
+        ~created_at:message.created_at ~creator_id:message.creator_id ~on_push) in
+    Db_runtime.after_commit tx (fun _ -> index (); receive ());
     message
   let update_body ?(rich_text=basic_rich_text) tx ~now message html =
     let db = Db_runtime.conn tx in
