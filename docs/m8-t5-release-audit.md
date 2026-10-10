@@ -59,6 +59,9 @@ passes 240/240 with no retries or flaky cases, bringing default full
 coverage to 4,068/4,068 and all-seed coverage to 5,024/5,890. The fourth
 mutating batch passes 240/240 with no retries or flaky cases, bringing
 default full coverage to 4,308/4,452 and all-seed coverage to 5,264/5,890.
+The fifth mutating batch passes 120/120 with zero retries or flaky cases,
+bringing default full coverage to 4,428/4,452 and all-seed coverage to
+5,384/5,890. The remaining default batch has 24 planned cells.
 The remaining full matrix is in progress.
 An uncached repeat-build comparison is prepared at
 `/tmp/m8-t5-2a511ac-reproducibility.py`; its source and inventory preflight
