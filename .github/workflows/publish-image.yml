@@ -79,7 +79,18 @@ jobs:
             --entrypoint /bin/sh campfire-ocaml:test-toolchain -ec \
             'mkdir -p /home/opam/projects && \
              cp -a /fixtures/once-campfire-ocaml /home/opam/projects/ && \
-             ln -s /fixtures/once-campfire-rust /home/opam/projects/once-campfire-rust && \
+             mkdir -p /home/opam/projects/once-campfire-rust/parity && \
+             for path in /fixtures/once-campfire-rust/* /fixtures/once-campfire-rust/.[!.]*; do \
+               [ -e "$path" ] || continue; name=${path##*/}; \
+               [ "$name" = parity ] || ln -s "$path" "/home/opam/projects/once-campfire-rust/$name"; \
+             done && \
+             for path in /fixtures/once-campfire-rust/parity/* /fixtures/once-campfire-rust/parity/.[!.]*; do \
+               [ -e "$path" ] || continue; name=${path##*/}; \
+               [ "$name" = .seed ] || ln -s "$path" "/home/opam/projects/once-campfire-rust/parity/$name"; \
+             done && \
+             cp -R /fixtures/once-campfire-rust/parity/.seed \
+               /home/opam/projects/once-campfire-rust/parity/.seed && \
+             chmod -R u+rwX /home/opam/projects/once-campfire-rust/parity/.seed && \
              cd /home/opam/projects/once-campfire-ocaml && \
              opam exec -- ocamlc -version | grep -Fx 5.5.1 && \
              opam exec -- dune clean && \
