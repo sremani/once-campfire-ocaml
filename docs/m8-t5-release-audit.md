@@ -54,8 +54,10 @@ capture of the rate-limited sign-in cell crashed during page evaluation and
 passed on retry; it requires a third first-pass exact recapture. The
 second mutating batch passes 228/228 with zero retries or flaky cases,
 bringing completed default full coverage to 3,828/3,828 and completed
-all-seed coverage to 4,784/5,890 planned cells. The remaining full matrix
-is in progress.
+all-seed coverage to 4,784/5,890 planned cells. The third mutating batch
+passes 240/240 with no retries or flaky cases, bringing default full
+coverage to 4,068/4,068 and all-seed coverage to 5,024/5,890. The
+remaining full matrix is in progress.
 An uncached repeat-build comparison is prepared at
 `/tmp/m8-t5-2a511ac-reproducibility.py`; its source and inventory preflight
 passes, and the Docker rebuild waits for browser capture to release the

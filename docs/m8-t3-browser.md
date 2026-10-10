@@ -40,7 +40,10 @@ retry. This third cell also requires a first-pass exact recapture. The rest
 of the full matrix is running. The tenth default full batch, the second
 fresh-server mutating batch, passes 228/228 with zero retries, flaky cases,
 failures, or errors. Completed default full coverage is 3,828/3,828 and
-completed all-seed coverage is 4,784/5,890 planned cells.
+completed all-seed coverage is 4,784/5,890 planned cells. The eleventh
+default full batch, the third mutating batch, passes 240/240 with zero
+retries, flaky cases, failures, or errors. Completed default full coverage
+is 4,068/4,068 and completed all-seed coverage is 5,024/5,890.
 The earlier diagnostics below are historical checkpoints.
 
 ## Pinned sources and local images
