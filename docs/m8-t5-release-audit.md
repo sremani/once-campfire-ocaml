@@ -52,7 +52,10 @@ first mutating batch passes 194/194 with no final layer differences,
 bringing completed full coverage to 3,600/3,600. One OCaml-side WebKit
 capture of the rate-limited sign-in cell crashed during page evaluation and
 passed on retry; it requires a third first-pass exact recapture. The
-remaining full matrix is in progress.
+second mutating batch passes 228/228 with zero retries or flaky cases,
+bringing completed default full coverage to 3,828/3,828 and completed
+all-seed coverage to 4,784/5,890 planned cells. The remaining full matrix
+is in progress.
 An uncached repeat-build comparison is prepared at
 `/tmp/m8-t5-2a511ac-reproducibility.py`; its source and inventory preflight
 passes, and the Docker rebuild waits for browser capture to release the
