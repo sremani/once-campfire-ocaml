@@ -38,8 +38,12 @@ errors. Its first five default-seed full batches are 2,145/2,145 exact,
 with zero final flaky cases, failures, or errors. The fifth batch had one
 Rust-side WebKit capture retry after `page.evaluate: Target crashed`; a
 fresh one-cell recapture remains pending. The sixth batch passes 416/416
-exact with no retries, bringing full coverage to 2,561/2,561 across six
-batches. The remaining full matrix is in progress.
+exact with no retries; the seventh passes 467/467, bringing completed full
+coverage to 3,028/3,028 across seven batches. One seventh-batch WebKit
+search screenshot had 114 differing avatar-edge pixels on its first attempt
+and matched on its second, with all other layers already equal. That cell
+also requires a fresh exact-cell recapture after the broad run. The remaining
+full matrix is in progress.
 An uncached repeat-build comparison is prepared at
 `/tmp/m8-t5-2a511ac-reproducibility.py`; its source and inventory preflight
 passes, and the Docker rebuild waits for browser capture to release the
