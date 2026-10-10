@@ -120,6 +120,11 @@ def audit(image, revision):
     ))
     if not builder_packages:
         issues.append("build-stage package inventory is empty")
+    opam_packages = in_image(
+        image, "cat /usr/share/doc/once-campfire-ocaml/build-opam-packages.txt",
+    ).splitlines()
+    if "ocaml-base-compiler.5.5.1" not in opam_packages:
+        issues.append("build-stage opam inventory does not contain OCaml 5.5.1")
     builder_notices = hash_lines(in_image(
         image,
         "find /usr/share/doc/once-campfire-ocaml/build-copyrights -type f "
@@ -182,6 +187,7 @@ def audit(image, revision):
         "asset_hashes": image_assets,
         "packages": packages,
         "builder_packages": builder_packages,
+        "builder_opam_packages": opam_packages,
         "builder_copyright_hashes": builder_notices,
         "missing_package_copyright": missing_notices,
         "runtime_copyright_hashes": runtime_notices,

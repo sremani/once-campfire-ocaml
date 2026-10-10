@@ -1,0 +1,9 @@
+_build
+_build_*
+.git
+.github
+docs
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+*.opam.locked

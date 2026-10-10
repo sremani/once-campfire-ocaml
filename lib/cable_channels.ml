@@ -25,7 +25,7 @@ type t = {
   mutex : Mutex.t;
   connections : connection list ref;
   hub : Cable_ring.t;
-  notification : int;
+  notify : unit -> unit;
   started : float;
   mutable stopping : bool;
 }
@@ -49,14 +49,15 @@ let create ~db ~secret_key_base ~now () =
     let live = !connections in
     Mutex.unlock mutex;
     List.iter (fun c -> Lwt_condition.broadcast c.wake ()) live) in
-  {db; secret_key_base; now; mutex; connections; notification;
+  {db; secret_key_base; now; mutex; connections;
+   notify=(fun () -> Lwt_unix.send_notification notification);
    hub=Cable_ring.create (); started = Unix.gettimeofday (); stopping=false}
 
 let with_lock t f =
   Mutex.lock t.mutex;
   Fun.protect ~finally:(fun () -> Mutex.unlock t.mutex) f
 
-let wake t = Lwt_unix.send_notification t.notification
+let wake t = t.notify ()
 
 let broadcast t ~stream ~payload =
   let count = Cable_ring.broadcast t.hub ~stream ~payload in

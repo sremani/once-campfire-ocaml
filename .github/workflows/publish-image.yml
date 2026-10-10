@@ -60,23 +60,9 @@ jobs:
           assert manifest["static_assets"]["count"] == 321
           PY
 
-      - name: Install OCaml test dependencies
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install --no-install-recommends -y \
-            build-essential pkg-config ocaml-nox=4.14.1-1ubuntu1 ocaml-findlib \
-            ocaml-dune=3.14.0-1 libalcotest-ocaml-dev \
-            libsqlite3-ocaml-dev liburi-ocaml-dev libipaddr-ocaml-dev \
-            libyojson-ocaml-dev libbase64-ocaml-dev libastring-ocaml-dev \
-            libocplib-endian-ocaml-dev libconduit-ocaml-dev=6.2.1-1build3 \
-            libmirage-crypto-ocaml-dev=0.11.2-2build3 libcstruct-ocaml-dev \
-            libpbkdf-ocaml-dev=1.2.0-3build7 libeqaf-ocaml-dev \
-            libptime-ocaml-dev libuutf-ocaml-dev libcohttp-ocaml-dev \
-            libcohttp-lwt-ocaml-dev libcohttp-lwt-unix-ocaml-dev=5.3.0-1build6 \
-            libconduit-lwt-ocaml-dev libssl-ocaml-dev liblwt-ocaml-dev \
-            liblogs-ocaml-dev libfmt-ocaml-dev libcmdliner-ocaml-dev \
-            libtyxml-ocaml-dev libcurl4-openssl-dev libqrencode-dev zlib1g-dev \
-            libvips42t64 ffmpeg
+      - name: Build OCaml 5.5.1 test toolchain
+        working-directory: once-campfire-ocaml
+        run: docker build --target deps -f Dockerfile.test -t campfire-ocaml:test-toolchain .
 
       - name: Build pinned Rails parity seeds
         working-directory: once-campfire-rust
@@ -87,9 +73,17 @@ jobs:
       - name: Clean release build and full Dune suite
         working-directory: once-campfire-ocaml
         run: |
-          dune clean
-          dune build --profile release
-          dune runtest --force
+          docker run --rm --network host \
+            -v "$PWD/..:/fixtures:ro" \
+            --entrypoint /bin/sh campfire-ocaml:test-toolchain -ec \
+            'mkdir -p /home/opam/projects && \
+             cp -a /fixtures/once-campfire-ocaml /home/opam/projects/ && \
+             ln -s /fixtures/once-campfire-rust /home/opam/projects/once-campfire-rust && \
+             cd /home/opam/projects/once-campfire-ocaml && \
+             opam exec -- ocamlc -version | grep -Fx 5.5.1 && \
+             opam exec -- dune clean && \
+             opam exec -- dune build --profile release && \
+             opam exec -- dune runtest --profile release --force'
 
   build:
     name: Audit and push image (${{ matrix.arch }})

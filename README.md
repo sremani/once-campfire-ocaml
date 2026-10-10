@@ -35,7 +35,7 @@ The route, Rails compatibility, and schema fixtures under `test/fixtures/` come 
   jobs, Web Push, guarded outbound integrations, and a Caddy front configuration. These have
   focused and seeded tests. The HTTP/state differential and browser parity are complete locally.
 
-Build and test with OCaml 4.14 or newer, Dune, and the packages in
+Build and test with OCaml 5.5.1, Dune, and the packages in
 [`dune-project`](dune-project):
 
 ```sh
@@ -43,6 +43,12 @@ dune build
 dune runtest
 dune exec bin/main.exe -- check --database /path/to/storage/db/production.sqlite3
 ```
+
+The release image uses a pinned OCaml 5.5.1 build image and a Debian trixie
+runtime. Build it with `docker build -t campfire-ocaml:local .`. The full test
+suite also needs the pinned `once-campfire-rust` checkout and built parity
+seeds beside this checkout; `Dockerfile.test` defines the 5.5.1 test toolchain
+used by CI.
 
 `check` never creates or modifies the database. It checks table presence, not every column or
 index. `dune exec bin/main.exe -- serve` starts the application listener after configuration;

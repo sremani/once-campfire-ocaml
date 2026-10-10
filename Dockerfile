@@ -1,32 +1,32 @@
 # syntax=docker/dockerfile:1.7
-# Build from the pinned Debian trixie multi-architecture base. The package
-# versions below are the Debian equivalents of the pinned Rust image.
+# Build with OCaml 5.5.1 and package into the pinned Debian trixie runtime.
 ARG DEBIAN_IMAGE=docker.io/library/debian:trixie-slim@sha256:a29215f6a35e51e22adffa17f89e9d2ef06214e64a2bad10d765c46aea49f11f
-ARG UBUNTU_BUILD_IMAGE=docker.io/library/ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55
-# Ubuntu 24.04 carries Mirage Crypto 0.11.2 and PBKDF 1.2.0, the APIs this
-# port was built against. Debian trixie's Mirage Crypto 2.0 breaks those APIs.
-FROM ${UBUNTU_BUILD_IMAGE} AS build
+ARG OCAML_BUILD_IMAGE=ocaml/opam:ubuntu-24.04-ocaml-5.5@sha256:612f36244a0a6b24e2a3bcdcb8555da8ec21c5cb6a37741b5fc20d3a7c8f1630
+FROM ${OCAML_BUILD_IMAGE} AS build
+USER root
 RUN apt-get update -qq && apt-get install --no-install-recommends -y \
-    build-essential pkg-config ocaml-nox=4.14.1-1ubuntu1 ocaml-findlib \
-    ocaml-dune=3.14.0-1 \
-    libsqlite3-ocaml-dev liburi-ocaml-dev libipaddr-ocaml-dev \
-    libyojson-ocaml-dev libbase64-ocaml-dev libastring-ocaml-dev \
-    libocplib-endian-ocaml-dev libconduit-ocaml-dev=6.2.1-1build3 \
-    libmirage-crypto-ocaml-dev=0.11.2-2build3 libcstruct-ocaml-dev \
-    libpbkdf-ocaml-dev=1.2.0-3build7 \
-    libeqaf-ocaml-dev libptime-ocaml-dev libuutf-ocaml-dev \
-    libcohttp-ocaml-dev libcohttp-lwt-ocaml-dev \
-    libcohttp-lwt-unix-ocaml-dev=5.3.0-1build6 \
-    libconduit-lwt-ocaml-dev libssl-ocaml-dev liblwt-ocaml-dev \
-    liblogs-ocaml-dev libfmt-ocaml-dev libcmdliner-ocaml-dev \
-    libtyxml-ocaml-dev \
-    libcurl4-openssl-dev libqrencode-dev zlib1g-dev && \
-    rm -rf /var/lib/apt/lists/*
-WORKDIR /src
-COPY . .
-RUN dune build --profile release bin/main.exe bin/front.exe && \
+    build-essential pkg-config libsqlite3-dev libssl-dev libcurl4-openssl-dev \
+    libqrencode4 zlib1g-dev libgmp-dev libcrypt-dev && \
+    rm -rf /var/lib/apt/lists/* && \
+    mkdir -p /out && chown opam:opam /out
+USER opam
+RUN opam install -y --jobs=4 \
+    dune.3.24.2 sqlite3 uri ipaddr yojson.2.2.2 base64 astring ocplib-endian \
+    conduit.6.2.3 conduit-lwt-unix.6.2.3 \
+    mirage-crypto.0.11.3 mirage-crypto-rng.0.11.3 \
+    cstruct pbkdf.1.2.0 eqaf ptime uutf \
+    cohttp.5.3.0 cohttp-lwt.5.3.0 cohttp-lwt-unix.5.3.0 \
+    ssl lwt logs fmt cmdliner tyxml
+# Installing lwt_ssl before the Conduit rebuild enables its real TLS backend.
+RUN opam install -y lwt_ssl.1.2.0 && \
+    opam reinstall -y conduit-lwt-unix.6.2.3
+WORKDIR /home/opam/campfire
+COPY --chown=opam:opam . .
+RUN opam exec -- dune build --profile release bin/main.exe bin/front.exe && \
     install -D -m 755 _build/default/bin/main.exe /out/campfire && \
     install -D -m 755 _build/default/bin/front.exe /out/campfire-front && \
+    opam list --installed --short --columns=package --color=never \
+      > /out/build-opam-packages.txt && \
     dpkg-query -W --showformat='${Package}\t${Version}\t${Architecture}\n' \
       > /out/build-packages.tsv && \
     mkdir -p /out/build-copyrights && \
@@ -56,6 +56,7 @@ COPY --chmod=644 vendor/cable_websocket/LICENSE.md /usr/share/doc/once-campfire-
 COPY --chmod=644 vendor/gumbo/LICENSE-DEPENDENCIES.md /usr/share/doc/once-campfire-ocaml/GUMBO-LICENSE-DEPENDENCIES.md
 COPY --chmod=644 vendor/gumbo/provenance.json /usr/share/doc/once-campfire-ocaml/GUMBO-PROVENANCE.json
 COPY --from=build --chmod=644 /out/build-packages.tsv /usr/share/doc/once-campfire-ocaml/build-packages.tsv
+COPY --from=build --chmod=644 /out/build-opam-packages.txt /usr/share/doc/once-campfire-ocaml/build-opam-packages.txt
 COPY --from=build --chmod=644 /out/build-copyrights/ /usr/share/doc/once-campfire-ocaml/build-copyrights/
 RUN chmod 755 /usr/share/doc/once-campfire-ocaml /usr/share/doc/once-campfire-ocaml/build-copyrights
 COPY --chmod=755 deploy/boot /rails/bin/boot

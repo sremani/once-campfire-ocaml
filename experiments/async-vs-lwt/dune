@@ -1,0 +1,15 @@
+(library
+ (name probe_common)
+ (wrapped false)
+ (modules common)
+ (libraries cohttp))
+
+(executable
+ (name lwt_server)
+ (modules lwt_server)
+ (libraries probe_common cohttp-lwt-unix lwt.unix))
+
+(executable
+ (name async_server)
+ (modules async_server)
+ (libraries probe_common cohttp-async async))

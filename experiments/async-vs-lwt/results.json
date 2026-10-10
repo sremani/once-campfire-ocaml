@@ -1,0 +1,635 @@
+{
+  "started_at": 1791640331.8089476,
+  "client_cpus": "12-15",
+  "loadgen_sha256": "8997721370a9d9fc321ba09ce5f1a7396d9e5527d4694fab8b2ab0a8c4a2b6b3",
+  "body_sha256": {
+    "/up": "a12b7cb43c9d9134b5bb1b35e9096b66775d9e92e7611d1cc92b02edd6782a87",
+    "/rooms/1": "96417c6897832b957c270363d6f6d6deb62c7e97709d637267159e74eb5a345e"
+  },
+  "samples": [
+    {
+      "round": 1,
+      "backend": "lwt",
+      "avg_bytes": 3,
+      "conc": 1,
+      "errors": 0,
+      "gzip": false,
+      "invalid_reasons": {},
+      "invalid_responses": 0,
+      "latency": {
+        "max_ms": 6.399,
+        "mean_ms": 0.01,
+        "n": 266259,
+        "p50_ms": 0.013,
+        "p90_ms": 0.017,
+        "p99_ms": 0.025
+      },
+      "ok": 266259,
+      "path": "/up",
+      "rps": 66563.8,
+      "secs": 4.0,
+      "statuses": {
+        "200": 266259
+      },
+      "validation": "status-only"
+    },
+    {
+      "round": 1,
+      "backend": "async",
+      "avg_bytes": 3,
+      "conc": 1,
+      "errors": 0,
+      "gzip": false,
+      "invalid_reasons": {},
+      "invalid_responses": 0,
+      "latency": {
+        "max_ms": 2.297,
+        "mean_ms": 0.01,
+        "n": 266712,
+        "p50_ms": 0.014,
+        "p90_ms": 0.015,
+        "p99_ms": 0.024
+      },
+      "ok": 266712,
+      "path": "/up",
+      "rps": 66677.0,
+      "secs": 4.0,
+      "statuses": {
+        "200": 266712
+      },
+      "validation": "status-only"
+    },
+    {
+      "round": 1,
+      "backend": "lwt",
+      "avg_bytes": 3,
+      "conc": 16,
+      "errors": 0,
+      "gzip": false,
+      "invalid_reasons": {},
+      "invalid_responses": 0,
+      "latency": {
+        "max_ms": 2.739,
+        "mean_ms": 0.19,
+        "n": 333724,
+        "p50_ms": 0.166,
+        "p90_ms": 0.276,
+        "p99_ms": 0.422
+      },
+      "ok": 333724,
+      "path": "/up",
+      "rps": 83423.9,
+      "secs": 4.0,
+      "statuses": {
+        "200": 333724
+      },
+      "validation": "status-only"
+    },
+    {
+      "round": 1,
+      "backend": "async",
+      "avg_bytes": 3,
+      "conc": 16,
+      "errors": 0,
+      "gzip": false,
+      "invalid_reasons": {},
+      "invalid_responses": 0,
+      "latency": {
+        "max_ms": 1.057,
+        "mean_ms": 0.15,
+        "n": 418207,
+        "p50_ms": 0.136,
+        "p90_ms": 0.239,
+        "p99_ms": 0.294
+      },
+      "ok": 418207,
+      "path": "/up",
+      "rps": 104542.1,
+      "secs": 4.0,
+      "statuses": {
+        "200": 418207
+      },
+      "validation": "status-only"
+    },
+    {
+      "round": 1,
+      "backend": "lwt",
+      "avg_bytes": 21267,
+      "conc": 1,
+      "errors": 0,
+      "gzip": false,
+      "invalid_reasons": {},
+      "invalid_responses": 0,
+      "latency": {
+        "max_ms": 2.973,
+        "mean_ms": 0.03,
+        "n": 153208,
+        "p50_ms": 0.024,
+        "p90_ms": 0.032,
+        "p99_ms": 0.042
+      },
+      "ok": 153208,
+      "path": "/rooms/1",
+      "rps": 38301.2,
+      "secs": 4.0,
+      "statuses": {
+        "200": 153208
+      },
+      "validation": "status-only"
+    },
+    {
+      "round": 1,
+      "backend": "async",
+      "avg_bytes": 21267,
+      "conc": 1,
+      "errors": 0,
+      "gzip": false,
+      "invalid_reasons": {},
+      "invalid_responses": 0,
+      "latency": {
+        "max_ms": 4.017,
+        "mean_ms": 0.02,
+        "n": 230521,
+        "p50_ms": 0.016,
+        "p90_ms": 0.018,
+        "p99_ms": 0.027
+      },
+      "ok": 230521,
+      "path": "/rooms/1",
+      "rps": 57629.3,
+      "secs": 4.0,
+      "statuses": {
+        "200": 230521
+      },
+      "validation": "status-only"
+    },
+    {
+      "round": 1,
+      "backend": "lwt",
+      "avg_bytes": 21267,
+      "conc": 16,
+      "errors": 0,
+      "gzip": false,
+      "invalid_reasons": {},
+      "invalid_responses": 0,
+      "latency": {
+        "max_ms": 2.661,
+        "mean_ms": 0.4,
+        "n": 161424,
+        "p50_ms": 0.366,
+        "p90_ms": 0.491,
+        "p99_ms": 0.753
+      },
+      "ok": 161424,
+      "path": "/rooms/1",
+      "rps": 40351.2,
+      "secs": 4.0,
+      "statuses": {
+        "200": 161424
+      },
+      "validation": "status-only"
+    },
+    {
+      "round": 1,
+      "backend": "async",
+      "avg_bytes": 21267,
+      "conc": 16,
+      "errors": 0,
+      "gzip": false,
+      "invalid_reasons": {},
+      "invalid_responses": 0,
+      "latency": {
+        "max_ms": 4.651,
+        "mean_ms": 0.2,
+        "n": 311679,
+        "p50_ms": 0.173,
+        "p90_ms": 0.309,
+        "p99_ms": 0.432
+      },
+      "ok": 311679,
+      "path": "/rooms/1",
+      "rps": 77912.4,
+      "secs": 4.0,
+      "statuses": {
+        "200": 311679
+      },
+      "validation": "status-only"
+    },
+    {
+      "round": 2,
+      "backend": "async",
+      "avg_bytes": 3,
+      "conc": 1,
+      "errors": 0,
+      "gzip": false,
+      "invalid_reasons": {},
+      "invalid_responses": 0,
+      "latency": {
+        "max_ms": 3.853,
+        "mean_ms": 0.02,
+        "n": 238259,
+        "p50_ms": 0.014,
+        "p90_ms": 0.02,
+        "p99_ms": 0.029
+      },
+      "ok": 238259,
+      "path": "/up",
+      "rps": 59563.9,
+      "secs": 4.0,
+      "statuses": {
+        "200": 238259
+      },
+      "validation": "status-only"
+    },
+    {
+      "round": 2,
+      "backend": "lwt",
+      "avg_bytes": 3,
+      "conc": 1,
+      "errors": 0,
+      "gzip": false,
+      "invalid_reasons": {},
+      "invalid_responses": 0,
+      "latency": {
+        "max_ms": 1.587,
+        "mean_ms": 0.01,
+        "n": 288271,
+        "p50_ms": 0.013,
+        "p90_ms": 0.014,
+        "p99_ms": 0.02
+      },
+      "ok": 288271,
+      "path": "/up",
+      "rps": 72066.6,
+      "secs": 4.0,
+      "statuses": {
+        "200": 288271
+      },
+      "validation": "status-only"
+    },
+    {
+      "round": 2,
+      "backend": "async",
+      "avg_bytes": 3,
+      "conc": 16,
+      "errors": 0,
+      "gzip": false,
+      "invalid_reasons": {},
+      "invalid_responses": 0,
+      "latency": {
+        "max_ms": 2.451,
+        "mean_ms": 0.15,
+        "n": 417015,
+        "p50_ms": 0.136,
+        "p90_ms": 0.24,
+        "p99_ms": 0.295
+      },
+      "ok": 417015,
+      "path": "/up",
+      "rps": 104244.5,
+      "secs": 4.0,
+      "statuses": {
+        "200": 417015
+      },
+      "validation": "status-only"
+    },
+    {
+      "round": 2,
+      "backend": "lwt",
+      "avg_bytes": 3,
+      "conc": 16,
+      "errors": 0,
+      "gzip": false,
+      "invalid_reasons": {},
+      "invalid_responses": 0,
+      "latency": {
+        "max_ms": 1.416,
+        "mean_ms": 0.19,
+        "n": 340166,
+        "p50_ms": 0.166,
+        "p90_ms": 0.274,
+        "p99_ms": 0.422
+      },
+      "ok": 340166,
+      "path": "/up",
+      "rps": 85032.3,
+      "secs": 4.0,
+      "statuses": {
+        "200": 340166
+      },
+      "validation": "status-only"
+    },
+    {
+      "round": 2,
+      "backend": "async",
+      "avg_bytes": 21267,
+      "conc": 1,
+      "errors": 0,
+      "gzip": false,
+      "invalid_reasons": {},
+      "invalid_responses": 0,
+      "latency": {
+        "max_ms": 2.805,
+        "mean_ms": 0.02,
+        "n": 238111,
+        "p50_ms": 0.016,
+        "p90_ms": 0.017,
+        "p99_ms": 0.026
+      },
+      "ok": 238111,
+      "path": "/rooms/1",
+      "rps": 59526.5,
+      "secs": 4.0,
+      "statuses": {
+        "200": 238111
+      },
+      "validation": "status-only"
+    },
+    {
+      "round": 2,
+      "backend": "lwt",
+      "avg_bytes": 21267,
+      "conc": 1,
+      "errors": 0,
+      "gzip": false,
+      "invalid_reasons": {},
+      "invalid_responses": 0,
+      "latency": {
+        "max_ms": 2.977,
+        "mean_ms": 0.02,
+        "n": 163611,
+        "p50_ms": 0.023,
+        "p90_ms": 0.026,
+        "p99_ms": 0.034
+      },
+      "ok": 163611,
+      "path": "/rooms/1",
+      "rps": 40902.2,
+      "secs": 4.0,
+      "statuses": {
+        "200": 163611
+      },
+      "validation": "status-only"
+    },
+    {
+      "round": 2,
+      "backend": "async",
+      "avg_bytes": 21267,
+      "conc": 16,
+      "errors": 0,
+      "gzip": false,
+      "invalid_reasons": {},
+      "invalid_responses": 0,
+      "latency": {
+        "max_ms": 1.171,
+        "mean_ms": 0.18,
+        "n": 352092,
+        "p50_ms": 0.163,
+        "p90_ms": 0.267,
+        "p99_ms": 0.343
+      },
+      "ok": 352092,
+      "path": "/rooms/1",
+      "rps": 88016.2,
+      "secs": 4.0,
+      "statuses": {
+        "200": 352092
+      },
+      "validation": "status-only"
+    },
+    {
+      "round": 2,
+      "backend": "lwt",
+      "avg_bytes": 21267,
+      "conc": 16,
+      "errors": 0,
+      "gzip": false,
+      "invalid_reasons": {},
+      "invalid_responses": 0,
+      "latency": {
+        "max_ms": 0.991,
+        "mean_ms": 0.38,
+        "n": 170046,
+        "p50_ms": 0.357,
+        "p90_ms": 0.465,
+        "p99_ms": 0.705
+      },
+      "ok": 170046,
+      "path": "/rooms/1",
+      "rps": 42507.8,
+      "secs": 4.0,
+      "statuses": {
+        "200": 170046
+      },
+      "validation": "status-only"
+    },
+    {
+      "round": 3,
+      "backend": "lwt",
+      "avg_bytes": 3,
+      "conc": 1,
+      "errors": 0,
+      "gzip": false,
+      "invalid_reasons": {},
+      "invalid_responses": 0,
+      "latency": {
+        "max_ms": 2.038,
+        "mean_ms": 0.01,
+        "n": 284019,
+        "p50_ms": 0.013,
+        "p90_ms": 0.015,
+        "p99_ms": 0.02
+      },
+      "ok": 284019,
+      "path": "/up",
+      "rps": 71003.7,
+      "secs": 4.0,
+      "statuses": {
+        "200": 284019
+      },
+      "validation": "status-only"
+    },
+    {
+      "round": 3,
+      "backend": "async",
+      "avg_bytes": 3,
+      "conc": 1,
+      "errors": 0,
+      "gzip": false,
+      "invalid_reasons": {},
+      "invalid_responses": 0,
+      "latency": {
+        "max_ms": 3.827,
+        "mean_ms": 0.02,
+        "n": 251321,
+        "p50_ms": 0.014,
+        "p90_ms": 0.019,
+        "p99_ms": 0.026
+      },
+      "ok": 251321,
+      "path": "/up",
+      "rps": 62829.4,
+      "secs": 4.0,
+      "statuses": {
+        "200": 251321
+      },
+      "validation": "status-only"
+    },
+    {
+      "round": 3,
+      "backend": "lwt",
+      "avg_bytes": 3,
+      "conc": 16,
+      "errors": 0,
+      "gzip": false,
+      "invalid_reasons": {},
+      "invalid_responses": 0,
+      "latency": {
+        "max_ms": 4.095,
+        "mean_ms": 0.2,
+        "n": 315330,
+        "p50_ms": 0.166,
+        "p90_ms": 0.285,
+        "p99_ms": 0.454
+      },
+      "ok": 315330,
+      "path": "/up",
+      "rps": 78825.0,
+      "secs": 4.0,
+      "statuses": {
+        "200": 315330
+      },
+      "validation": "status-only"
+    },
+    {
+      "round": 3,
+      "backend": "async",
+      "avg_bytes": 3,
+      "conc": 16,
+      "errors": 0,
+      "gzip": false,
+      "invalid_reasons": {},
+      "invalid_responses": 0,
+      "latency": {
+        "max_ms": 4.319,
+        "mean_ms": 0.15,
+        "n": 418860,
+        "p50_ms": 0.136,
+        "p90_ms": 0.238,
+        "p99_ms": 0.292
+      },
+      "ok": 418860,
+      "path": "/up",
+      "rps": 104706.2,
+      "secs": 4.0,
+      "statuses": {
+        "200": 418860
+      },
+      "validation": "status-only"
+    },
+    {
+      "round": 3,
+      "backend": "lwt",
+      "avg_bytes": 21267,
+      "conc": 1,
+      "errors": 0,
+      "gzip": false,
+      "invalid_reasons": {},
+      "invalid_responses": 0,
+      "latency": {
+        "max_ms": 1.381,
+        "mean_ms": 0.03,
+        "n": 152707,
+        "p50_ms": 0.024,
+        "p90_ms": 0.032,
+        "p99_ms": 0.043
+      },
+      "ok": 152707,
+      "path": "/rooms/1",
+      "rps": 38176.4,
+      "secs": 4.0,
+      "statuses": {
+        "200": 152707
+      },
+      "validation": "status-only"
+    },
+    {
+      "round": 3,
+      "backend": "async",
+      "avg_bytes": 21267,
+      "conc": 1,
+      "errors": 0,
+      "gzip": false,
+      "invalid_reasons": {},
+      "invalid_responses": 0,
+      "latency": {
+        "max_ms": 3.989,
+        "mean_ms": 0.02,
+        "n": 203658,
+        "p50_ms": 0.016,
+        "p90_ms": 0.024,
+        "p99_ms": 0.036
+      },
+      "ok": 203658,
+      "path": "/rooms/1",
+      "rps": 50913.6,
+      "secs": 4.0,
+      "statuses": {
+        "200": 203658
+      },
+      "validation": "status-only"
+    },
+    {
+      "round": 3,
+      "backend": "lwt",
+      "avg_bytes": 21267,
+      "conc": 16,
+      "errors": 0,
+      "gzip": false,
+      "invalid_reasons": {},
+      "invalid_responses": 0,
+      "latency": {
+        "max_ms": 4.827,
+        "mean_ms": 0.38,
+        "n": 167639,
+        "p50_ms": 0.358,
+        "p90_ms": 0.466,
+        "p99_ms": 0.722
+      },
+      "ok": 167639,
+      "path": "/rooms/1",
+      "rps": 41905.8,
+      "secs": 4.0,
+      "statuses": {
+        "200": 167639
+      },
+      "validation": "status-only"
+    },
+    {
+      "round": 3,
+      "backend": "async",
+      "avg_bytes": 21267,
+      "conc": 16,
+      "errors": 0,
+      "gzip": false,
+      "invalid_reasons": {},
+      "invalid_responses": 0,
+      "latency": {
+        "max_ms": 1.611,
+        "mean_ms": 0.18,
+        "n": 349004,
+        "p50_ms": 0.165,
+        "p90_ms": 0.264,
+        "p99_ms": 0.345
+      },
+      "ok": 349004,
+      "path": "/rooms/1",
+      "rps": 87244.3,
+      "secs": 4.0,
+      "statuses": {
+        "200": 349004
+      },
+      "validation": "status-only"
+    }
+  ]
+}
