@@ -5,6 +5,10 @@ passes focused recaptures for the earlier attachment-edit, involvement-frame,
 group-name, and avatar-upload differences across all six browser layers.
 The final lean/full five-seed matrix is running against the immutable source
 at `/tmp/m8-t3-harness-wt/parity/out/m8-t3-2a511ac-final-all/summary.json`.
+The pinned inventory expands to 5,890 planned cells: 956 lean and 4,934
+full (default 4,452; crowd 145; custom styles 193; first run 96;
+restricted 48). The default full count matches its saved canonical plan;
+the other full plans are created as the coordinator reaches each seed.
 All five lean seed matrices have completed: **956/956 exact** on their
 applicable layers, with zero errors or retries (default 874, crowd 25,
 custom styles 33, first run 16, restricted 8). The 940 page cells match all

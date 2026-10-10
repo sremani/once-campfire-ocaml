@@ -33,6 +33,9 @@ shutdown passed on both architectures in
 Signed media is 233/233 exact per architecture in
 `/tmp/m8-t5-2a511ac-{amd64,arm64}-signed-media.json`.
 The final all-seed browser matrix is running against the frozen source; all
+ten seed/matrix combinations expand to 5,890 planned cells from the pinned
+inventory (956 lean, 4,934 full). The coordinator creates plans lazily; each
+saved canonical job list is audited as its seed starts. The
 five lean seeds are 956/956 exact on applicable layers with zero retries or
 errors: 940 page cells compare six layers and 16 pinned fragments compare
 server HTML only. Its first five default-seed full batches are 2,145/2,145 exact,
