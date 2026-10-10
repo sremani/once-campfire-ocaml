@@ -493,7 +493,8 @@ let async_worker t ~writer =
     match next () with
     | None -> ()
     | Some job ->
-        (try job.run () with exn -> job.reject exn);
+        (try Perf_probe.time (if writer then "db_write_worker" else "db_read_worker") job.run
+         with exn -> job.reject exn);
         loop ()
   in loop ()
 
@@ -532,7 +533,7 @@ let read_async t f =
     t.async_read_queue <- t.async_read_queue @ [job];
     Condition.broadcast t.async_ready);
   Mutex.unlock t.async_mutex;
-  promise
+  Perf_probe.time_lwt "db_read_wait" (fun () -> promise)
 
 (** The writer's admitted queue is capped at 256. Further Lwt callers retain
     promises and wait in an admission queue without occupying OS threads. *)
@@ -546,7 +547,7 @@ let write_async t f =
     Condition.broadcast t.async_ready)
   else t.async_write_waiting <- t.async_write_waiting @ [job];
   Mutex.unlock t.async_mutex;
-  promise
+  Perf_probe.time_lwt "db_write_wait" (fun () -> promise)
 
 let close t =
   Mutex.lock t.pool_mutex;

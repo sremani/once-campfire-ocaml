@@ -225,13 +225,12 @@ let csrf_check ctx =
   | Ok _ -> Ok ()
   | Error rejection -> ctx.skip_cookie_commit <- true; Error (error ~status:rejection.status)
 
+let readonly_auth_enabled = Sys.getenv_opt "CAMPFIRE_AUTH_READ" <> Some "0"
+
 let restore_auth ctx =
   let cookie_headers = Cohttp.Header.get_multi (Cohttp.Request.headers ctx.request) "cookie" in
-  Db_runtime.write_async ctx.runtime (fun tx ->
-    Authentication.restore_headers ~db:(Db_runtime.conn tx)
-      ~secret_key_base:ctx.secret_key_base ~now:ctx.now ~method_:ctx.method_
-      ~remote_ip:ctx.remote_ip ~user_agent:(header ctx "user-agent") ~cookie_headers)
-  >>= function
+  let user_agent = header ctx "user-agent" in
+  let finish ~load_user = function
   | Error _ -> Lwt.return (Error (error ~status:500))
   | Ok (Authentication.Authenticated identity as outcome) ->
       ctx.auth <- Some outcome;
@@ -240,8 +239,7 @@ let restore_auth ctx =
         Cookie_http.set ctx.cookies "session_token"
           { (Cookie_http.cookie raw) with permanent = true; httponly = true })
         identity.refreshed_token_cookie;
-      Db_runtime.read_async ctx.runtime (fun db ->
-        Db_accounts.User.find_by_id db identity.user.id)
+      load_user identity.user.id
       >|= (function
         | Some user -> ctx.current_user <- Some user; Ok ()
         | None -> Error (error ~status:500))
@@ -250,7 +248,32 @@ let restore_auth ctx =
   | Ok Authentication.Banned_ip ->
       ctx.auth <- Some Authentication.Banned_ip;
       ctx.skip_cookie_commit <- true;
-      Lwt.return (Error (respond ~status:429 ~content_type:"text/html" ""))
+      Lwt.return (Error (respond ~status:429 ~content_type:"text/html" "")) in
+  let restore_on_writer () =
+    Db_runtime.write_async ctx.runtime (fun tx ->
+      Authentication.restore_headers ~db:(Db_runtime.conn tx)
+        ~secret_key_base:ctx.secret_key_base ~now:ctx.now ~method_:ctx.method_
+        ~remote_ip:ctx.remote_ip ~user_agent ~cookie_headers)
+    >>= finish ~load_user:(fun user_id ->
+      Db_runtime.read_async ctx.runtime (fun db ->
+        Db_accounts.User.find_by_id db user_id)) in
+  if not readonly_auth_enabled ||
+     not (Authentication.is_safe_method ctx.method_) then restore_on_writer ()
+  else
+    Db_runtime.read_async ctx.runtime (fun db ->
+      let result = Authentication.restore_headers_readonly ~db
+        ~secret_key_base:ctx.secret_key_base ~now:ctx.now ~method_:ctx.method_
+        ~remote_ip:ctx.remote_ip ~user_agent ~cookie_headers in
+      let user = match result with
+        | Ok (Authentication.Ready (Authentication.Authenticated identity)) ->
+            Db_accounts.User.find_by_id db identity.user.id
+        | _ -> None in
+      result,user) >>= function
+    | Ok Authentication.Refresh_due, _ -> restore_on_writer ()
+    | Ok (Authentication.Ready outcome), user ->
+        finish ~load_user:(fun _ -> Lwt.return user) (Ok outcome)
+    | Error error, _ ->
+        finish ~load_user:(fun _ -> Lwt.return_none) (Error error)
 
 let reject_banned_ip ctx =
   if ctx.method_ = "GET" || ctx.method_ = "HEAD" then Lwt.return (Ok ())
@@ -488,8 +511,9 @@ let handle_uncompressed ~runtime ~secret_key_base ?cable ?private_cache
   let uploaded_paths = ref [] in
   let upload_workers = ref [] in
   Lwt.finalize (fun () ->
-    parse_request_body ~on_error:Http_request_log.rejected
-      ~content_type ~raw_method ?max_body_bytes body >>= function
+    Perf_probe.time_lwt "body_parse" (fun () ->
+      parse_request_body ~on_error:Http_request_log.rejected
+        ~content_type ~raw_method ?max_body_bytes body) >>= function
     | Error status -> Lwt.return (error ~status)
     | Ok (body, request_params, paths) ->
         uploaded_paths := paths;
@@ -551,9 +575,12 @@ let handle_uncompressed ~runtime ~secret_key_base ?cable ?private_cache
                } in
                capture_context ctx;
                Lwt.catch (fun () ->
-                 endpoint.before_action ctx >>= function
-                 | Error response -> Lwt.return (commit ctx response)
-                 | Ok () -> endpoint.action ctx >|= commit ctx)
+                 Perf_probe.time_lwt ("before:" ^ route.endpoint)
+                   (fun () -> endpoint.before_action ctx) >>= function
+                 | Error response -> Lwt.return (Perf_probe.time "commit" (fun () -> commit ctx response))
+                 | Ok () -> Perf_probe.time_lwt ("action:" ^ route.endpoint)
+                     (fun () -> endpoint.action ctx) >|= fun response ->
+                       Perf_probe.time "commit" (fun () -> commit ctx response))
                  (fun cause ->
                    Http_request_log.failed ~path cause;
                    Lwt.return (error ~status:500))))
@@ -619,13 +646,14 @@ let handle ~runtime ~secret_key_base ?cable ?event_sink ?front_cache
   let public_exception = ref false in
   let run () =
     let context = ref None in
-    let static = static_response request in
+    let static = Perf_probe.time "static_lookup" (fun () -> static_response request) in
     let response = match static with
       | Some response -> Lwt.return response
-      | None -> handle_uncompressed ~runtime ~secret_key_base ?cable
-          ?private_cache ~capture_context:(fun ctx -> context:=Some ctx) ?event_sink
-          ?now ?remote_ip ~ssl ~force_ssl
-          ~action_not_found_pages ?max_body_bytes ~dispatch request body in
+      | None -> Perf_probe.time_lwt "app_route" (fun () ->
+          handle_uncompressed ~runtime ~secret_key_base ?cable
+            ?private_cache ~capture_context:(fun ctx -> context:=Some ctx) ?event_sink
+            ?now ?remote_ip ~ssl ~force_ssl
+            ~action_not_found_pages ?max_body_bytes ~dispatch request body) in
     response >>= fun response ->
     public_exception := Cohttp.Header.mem (Cohttp.Response.headers (fst response))
       "x-campfire-public-exception";

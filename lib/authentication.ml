@@ -166,32 +166,54 @@ let refresh db ~now ~ip_address ~user_agent session =
 
 let is_safe_method = function "GET" | "HEAD" -> true | _ -> false
 
-(** Restores the signed database session. [db] must be writable only if an hourly
-    refresh is due. SQL errors are returned and never treated as failed auth. *)
-let restore_headers ~db ~secret_key_base ~now ~method_ ~remote_ip ~user_agent ~cookie_headers =
+type read_result = Ready of outcome | Refresh_due
+
+(** A reader can restore fresh sessions. An hourly refresh must retry on the
+    writer, preserving the existing cookie and activity update semantics. *)
+let restore_headers_step ~may_refresh ~db ~secret_key_base ~now ~method_
+    ~remote_ip ~user_agent ~cookie_headers =
   try
-    if not (is_safe_method method_) && banned_ip db remote_ip then Ok Banned_ip
+    if not (is_safe_method method_) && banned_ip db remote_ip then Ok (Ready Banned_ip)
     else match cookie cookie_headers "session_token" with
-      | None -> Ok (Unauthenticated Missing_cookie)
+      | None -> Ok (Ready (Unauthenticated Missing_cookie))
       | Some raw ->
           match Signed_cookie.verify ~secret_key_base ~name:"session_token" ~raw ~now with
-          | None -> Ok (Unauthenticated Invalid_cookie)
+          | None -> Ok (Ready (Unauthenticated Invalid_cookie))
           | Some token ->
               match find_session db token with
-              | None -> Ok (Unauthenticated Revoked_session)
-              | Some (_, None) -> Ok (Unauthenticated Revoked_session)
-              | Some (_, Some {status = (Deactivated | Banned); _}) -> Ok (Unauthenticated Inactive_user)
+              | None -> Ok (Ready (Unauthenticated Revoked_session))
+              | Some (_, None) -> Ok (Ready (Unauthenticated Revoked_session))
+              | Some (_, Some {status = (Deactivated | Banned); _}) ->
+                  Ok (Ready (Unauthenticated Inactive_user))
               | Some (session, Some user) ->
                   let refresh_due = needs_refresh ~now session in
+                  if refresh_due && not may_refresh then Ok Refresh_due else
                   let session = if refresh_due then
                     refresh db ~now ~ip_address:(Some remote_ip) ~user_agent session
                     else session in
                   let refreshed_token_cookie = if refresh_due then
                     Some (issue_token_cookie ~secret_key_base ~now token) else None in
                   let rails_session = read_rails_session_headers ~secret_key_base ~now cookie_headers in
-                  Ok (Authenticated {user; session; rails_session; refreshed_token_cookie})
+                  Ok (Ready (Authenticated
+                    {user; session; rails_session; refreshed_token_cookie}))
   with
   | Sqlite3.SqliteError error | Failure error -> Error error
+
+(** Restores the signed database session. [db] must be writable only if an hourly
+    refresh is due. SQL errors are returned and never treated as failed auth. *)
+let restore_headers ~db ~secret_key_base ~now ~method_ ~remote_ip ~user_agent ~cookie_headers =
+  match restore_headers_step ~may_refresh:true ~db ~secret_key_base ~now
+      ~method_ ~remote_ip ~user_agent ~cookie_headers with
+  | Ok (Ready outcome) -> Ok outcome
+  | Ok Refresh_due -> assert false
+  | Error error -> Error error
+
+let restore_headers_readonly ~db ~secret_key_base ~now ~method_ ~remote_ip
+    ~user_agent ~cookie_headers =
+  if not (is_safe_method method_) then
+    invalid_arg "restore_headers_readonly requires GET or HEAD";
+  restore_headers_step ~may_refresh:false ~db ~secret_key_base ~now
+    ~method_ ~remote_ip ~user_agent ~cookie_headers
 
 let restore ~db ~secret_key_base ~now ~method_ ~remote_ip ~user_agent ~cookie_header =
   restore_headers ~db ~secret_key_base ~now ~method_ ~remote_ip ~user_agent

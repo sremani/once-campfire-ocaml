@@ -126,6 +126,37 @@ let test_bans () =
     ignore (authenticated "GET from banned IP is allowed" (run "GET"));
     ignore (authenticated "HEAD from banned IP is allowed" (run "HEAD")))
 
+let test_readonly_fresh_session () =
+  let secret = secret_key_base () in
+  let vector = first "sessions"
+    (Yojson.Basic.from_file "fixtures/campfire_sessions.json") in
+  let header = string "cookie_header" vector in
+  let now = "2026-10-08T12:00:00Z" in
+  with_seed_copy (fun db ->
+    let inspect () = Authentication.restore_headers_readonly ~db
+      ~secret_key_base:secret ~now ~method_:"GET"
+      ~remote_ip:"198.51.100.12" ~user_agent:None
+      ~cookie_headers:[header] in
+    exec db "PRAGMA query_only=ON";
+    check "stale reader requests writer refresh"
+      (inspect () = Ok Authentication.Refresh_due);
+    exec db "PRAGMA query_only=OFF";
+    ignore (authenticated "writer refreshes stale session"
+      (restore db ~secret ~now ~method_:"GET" ~remote_ip:"198.51.100.12"
+         ~user_agent:None header));
+    exec db "PRAGMA query_only=ON";
+    (match inspect () with
+     | Ok (Authentication.Ready (Authentication.Authenticated identity)) ->
+         check "fresh reader does not issue renewal"
+           (identity.refreshed_token_cookie = None)
+     | _ -> failwith "fresh read-only session should authenticate");
+    exec db "PRAGMA query_only=OFF";
+    exec db "DELETE FROM sessions WHERE id=481019661";
+    exec db "PRAGMA query_only=ON";
+    check "reader observes revocation"
+      (inspect () = Ok (Authentication.Ready
+        (Authentication.Unauthenticated Authentication.Revoked_session))))
+
 let test_rails_cookiestore () =
   let vectors = Yojson.Basic.from_file "fixtures/rails_compat.json" in
   let secret = string "secret_key_base" vectors in
@@ -193,6 +224,7 @@ let test_concurrent_key_rotation () =
 let () =
   Alcotest.run "M1-T3 Rails sessions" [
     "seed", [Alcotest.test_case "Rails cookie authenticates and refreshes" `Quick test_seed_continuity;
+             Alcotest.test_case "fresh GET uses read-only session path" `Quick test_readonly_fresh_session;
              Alcotest.test_case "unsafe methods block banned IPs" `Quick test_bans];
     "cookies", [Alcotest.test_case "encrypted Rails CookieStore continuity" `Quick test_rails_cookiestore];
     "rotation", [Alcotest.test_case "concurrent derived keys isolate secrets" `Quick test_concurrent_key_rotation];

@@ -131,7 +131,7 @@ let serve ?stop ~socket ~read_timeout ~write_timeout ~idle_timeout ~callback () 
     let module Response = Cohttp.Response.Make (Timed_io) in
     let conn = flow,Cohttp.Connection.create () in
     let rec serve_one () =
-      Request.read ic >>= function
+      Perf_probe.time_lwt "http_request_read" (fun () -> Request.read ic) >>= function
       | `Eof | `Invalid _ -> Lwt.return_unit
       | `Ok request ->
           clock.phase <- Body;
@@ -171,11 +171,12 @@ let serve ?stop ~socket ~read_timeout ~write_timeout ~idle_timeout ~callback () 
           clock.phase <- Response;
           (match action with
            | `Response (response,response_body) ->
+               Perf_probe.time_lwt "http_response_write" (fun () ->
                Response.write ~flush:(Cohttp.Response.flush response)
                  (fun writer ->
                    Cohttp_lwt.Body.write_body
                      (Response.write_body writer) response_body)
-                 response oc >>= fun () ->
+                 response oc) >>= fun () ->
                if Cohttp.Request.is_keep_alive request && not close_after_response then (
                  clock.phase <- Idle;
                  clock.header_deadline <- None;
