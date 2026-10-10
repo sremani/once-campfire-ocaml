@@ -145,17 +145,21 @@ let live_long_websocket () =
     if length >= 126 then Alcotest.fail "unexpected extended frame"
     else Lwt_io.read ~count:length ic >|= fun body ->
       Char.code first,body in
-  let probe port label =
+  let probe ?(coalesced=false) port label =
     Lwt_io.open_connection (Unix.ADDR_INET (Unix.inet_addr_loopback,port))
     >>= fun (ic,oc) ->
     Lwt.finalize (fun () ->
       let request = "GET /cable HTTP/1.1\r\nHost: campfire.test\r\n" ^
         "Connection: Upgrade\r\nUpgrade: websocket\r\n" ^
-        "Origin: " ^ (if label = "direct" then "https" else "http") ^
+        "Origin: " ^ (if label = "direct" || coalesced then "https" else "http") ^
         "://campfire.test\r\n" ^
         "Sec-WebSocket-Version: 13\r\n" ^
         "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n" in
-      Lwt_io.write oc request >>= fun () -> Lwt_io.flush oc >>= fun () ->
+      let payload = "ping" and mask = "\x12\x34\x56\x78" in
+      let frame = "\x81\x84" ^ mask ^ String.init 4 (fun i ->
+        Char.chr (Char.code payload.[i] lxor Char.code mask.[i])) in
+      Lwt_io.write oc (request ^ if coalesced then frame else "") >>= fun () ->
+      Lwt_io.flush oc >>= fun () ->
       Lwt_io.read_line ic >>= fun status ->
       let rec headers () = Lwt_io.read_line ic >>= fun line ->
         if String.trim line = "" then Lwt.return_unit else headers () in
@@ -164,19 +168,19 @@ let live_long_websocket () =
         (String.starts_with ~prefix:"HTTP/1.1 101" status);
       read_frame ic >>= fun (_,welcome) ->
       check string "welcome" "welcome" welcome;
-      Lwt_unix.sleep 2.2 >>= fun () ->
-      let payload = "ping" and mask = "\x12\x34\x56\x78" in
-      let frame = "\x81\x84" ^ mask ^ String.init 4 (fun i ->
-        Char.chr (Char.code payload.[i] lxor Char.code mask.[i])) in
-      Lwt_io.write oc frame >>= fun () -> Lwt_io.flush oc >>= fun () ->
+      (if coalesced then Lwt.return_unit else
+        Lwt_unix.sleep 2.2 >>= fun () ->
+        Lwt_io.write oc frame >>= fun () -> Lwt_io.flush oc) >>= fun () ->
       read_frame ic >|= fun (_,reply) ->
-      check string (label ^ " survives three one-second deadlines") "pong" reply)
+      check string (label ^ " receives ping") "pong" reply)
     (fun () ->
       Lwt.catch (fun () -> Lwt_io.close oc) (fun _ -> Lwt.return_unit)) in
   Lwt_main.run (Lwt.finalize (fun () ->
     Lwt.async (fun () -> server);
     Lwt_unix.sleep 0.03 >>= fun () ->
     Lwt_unix.with_timeout 5. (fun () -> probe port "direct") >>= fun () ->
+    Lwt_unix.with_timeout 5. (fun () ->
+      probe ~coalesced:true port "coalesced") >>= fun () ->
     match Sys.getenv_opt "CAMPFIRE_CADDY_BIN" with
     | None -> Lwt.return_unit
     | Some caddy ->

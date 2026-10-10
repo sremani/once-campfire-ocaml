@@ -106,3 +106,57 @@ alongside throughput.
 Sources: `once-campfire-rust/README.md` performance table,
 `once-campfire-go/README.md` benchmark table,
 `docs/m8-t4-performance.md`, and the shared verification summaries above.
+
+## Buffered HTTP listener experiment (2026-10-10)
+
+The Cohttp adapter previously called `Lwt_io.read_char_opt` and created a
+timeout race for every request-header byte. The listener now applies one
+deadline to each header line, reads into a 4 KiB buffer, and carries prefetched
+bytes into request bodies and WebSocket upgrades. It retains the aggregate
+header byte and line limits. A live test covers a WebSocket frame sent in the
+same write as its upgrade request, in addition to the existing timeout and
+upload probes. The full Dune suite passed with localhost sockets enabled.
+
+The shared harness ran two four-second rounds per route at 16 clients. Both
+images passed response contracts and exact acknowledged-write audits. These
+are medians from the released image and the final candidate on the same host;
+the `up` values are the two-round averages from the route samples:
+
+| Route | Released req/s | Buffered req/s | Gain |
+| --- | ---: | ---: | ---: |
+| Room show | 3,529 | 4,838 | 37% |
+| Messages page | 2,883 | 3,803 | 32% |
+| Sidebar | 4,223 | 6,195 | 47% |
+| Search | 3,293 | 4,441 | 35% |
+| Message POST | 975 | 1,092 | 12% |
+| `/up` | 6,965 | 14,349 | 106% |
+
+Raw results: `tmp/bench/perf-line-timer-baseline-20261010/` and
+`tmp/bench/perf-buffered-final-20261010/` in the shared verification checkout.
+
+A separate alternating Go/OCaml comparison on a quieter host run passed the
+same contracts and write audits. Go served 55,786 room views/s, 57,483 message
+pages/s, 63,522 sidebars/s, 64,286 searches/s, and 5,971 posts/s. The
+buffered OCaml image served 4,877, 3,846, 6,215, 4,465, and 1,079 respectively:
+6.7–9.8% of Go's GET throughput and 18.1% of its POST throughput. Go `/up`
+was 138,205/s versus OCaml's 14,472/s. Raw results:
+`tmp/bench/perf-go-buffered-20261010/`.
+
+The transport change is a measured gain, but does not meet the 80% target.
+The quiet-host comparison makes the remaining gap clear. The next experiment
+should measure CPU time across Cohttp parsing, session restoration, cache
+lookup, and response writing, then test a process or OCaml 5 domain model with
+cross-worker Cable delivery and cache invalidation. The current OCaml 4.14
+application executes request callbacks on one runtime domain; Go can run them
+across the four assigned cores.
+
+A follow-up one/four/sixteen-client room-view run makes both costs visible.
+Go rose from 15,259 to 41,995 to 56,509 requests/s; OCaml rose from 3,766
+to 4,727 to 4,887. Go is already 4.1 times faster with one client, and then
+gains 3.7 times more throughput as concurrency rises, while OCaml gains only
+1.3 times. `/up` showed the same shape: Go 33,236 to 139,268/s and OCaml
+7,802 to 14,515/s. A process sample during the OCaml run put the application
+near one core and Caddy near 0.4 core. The raw scaling run is
+`tmp/bench/perf-concurrency-go-buffered-20261010/` in the shared checkout.
+Parallel request execution alone will not close the single-client gap;
+reducing HTTP/proxy work per request also matters.

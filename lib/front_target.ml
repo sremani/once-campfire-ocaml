@@ -41,59 +41,85 @@ let serve ?stop ~socket ~read_timeout ~write_timeout ~idle_timeout ~callback () 
         Some (Unix.gettimeofday () +. float read_timeout) else None);
       header_bytes=0; header_lines=0;
     } in
+    (* Cohttp asks its IO module for one header line at a time. Read the socket
+       in blocks and retain bytes after a newline for the next line or body. *)
+    let input = Bytes.create 4096 in
+    let input_start = ref 0 and input_end = ref 0 in
+    let fill ic =
+      if !input_start < !input_end then Lwt.return_true else
+      Lwt_io.read_into ic input 0 (Bytes.length input) >|= fun count ->
+      input_start := 0;
+      input_end := count;
+      count > 0 in
     let module Timed_io = struct
       include Cohttp_lwt_unix.IO
 
       let read_line ic =
-        let rec next buffer =
-          let deadline = match clock.phase with
-            | Initial | Headers -> remaining clock.header_deadline
-            | Idle -> float idle_timeout
-            | Body -> float read_timeout
-            | Response | Upgrade -> 0. in
-          within deadline (fun () -> Lwt_io.read_char_opt ic) >>= function
-          | None ->
+        let buffer = Buffer.create 128 in
+        let rec next () =
+          fill ic >>= function
+          | false ->
               if Buffer.length buffer = 0 then Lwt.return_none
               else Lwt.return_some (Buffer.contents buffer)
-          | Some char ->
-              (match clock.phase with
-               | Initial ->
-                   clock.phase <- Headers;
-                   clock.header_bytes <- 0;
-                   clock.header_lines <- 0
-               | Idle ->
-                   clock.phase <- Headers;
-                   clock.header_deadline <-
-                     (if read_timeout > 0 then
-                        Some (Unix.gettimeofday () +. float read_timeout)
-                      else None);
-                   clock.header_bytes <- 0;
-                   clock.header_lines <- 0
-               | _ -> ());
-              (match clock.phase with
-               | Headers ->
-                   clock.header_bytes <- clock.header_bytes + 1;
-                   if clock.header_bytes > max_header_bytes then raise Header_limit
-               | _ -> ());
-              if char = '\n' then (
-                (match clock.phase with
-                 | Headers ->
-                     clock.header_lines <- clock.header_lines + 1;
-                     if clock.header_lines > max_header_lines then raise Header_limit
-                 | _ -> ());
-                let line = Buffer.contents buffer in
-                let length = String.length line in
-                let line = if length > 0 && line.[length - 1] = '\r' then
-                  String.sub line 0 (length - 1) else line in
-                Lwt.return_some line)
-              else (
-                Buffer.add_char buffer char;
-                if Buffer.length buffer > max_header_bytes then raise Header_limit;
-                next buffer) in
-        next (Buffer.create 128)
+          | true ->
+              if clock.phase = Initial then (
+                clock.phase <- Headers;
+                clock.header_bytes <- 0;
+                clock.header_lines <- 0);
+              let first = !input_start in
+              let rec find_newline position =
+                if position >= !input_end then None
+                else if Bytes.get input position = '\n' then Some position
+                else find_newline (position + 1) in
+              let newline = find_newline first in
+              let last = match newline with
+                | Some position -> position + 1 | None -> !input_end in
+              let count = last - first in
+              if clock.phase = Headers then (
+                clock.header_bytes <- clock.header_bytes + count;
+                if clock.header_bytes > max_header_bytes then raise Header_limit);
+              let copy_count = if Option.is_some newline then count - 1 else count in
+              Buffer.add_subbytes buffer input first copy_count;
+              input_start := last;
+              match newline with
+              | None ->
+                  if Buffer.length buffer > max_header_bytes then raise Header_limit;
+                  next ()
+              | Some _ ->
+                  if clock.phase = Headers then (
+                    clock.header_lines <- clock.header_lines + 1;
+                    if clock.header_lines > max_header_lines then raise Header_limit);
+                  let line = Buffer.contents buffer in
+                  let length = String.length line in
+                  Lwt.return_some (if length > 0 && line.[length - 1] = '\r' then
+                    String.sub line 0 (length - 1) else line) in
+        (* The idle timer covers the wait for the next request's first byte.
+           The fixed header deadline then covers its entire first line. *)
+        match clock.phase with
+        | Idle ->
+            within (float idle_timeout) (fun () -> fill ic) >>= (function
+              | false -> Lwt.return_none
+              | true ->
+                  clock.phase <- Headers;
+                  clock.header_deadline <-
+                    (if read_timeout > 0 then
+                       Some (Unix.gettimeofday () +. float read_timeout)
+                     else None);
+                  clock.header_bytes <- 0;
+                  clock.header_lines <- 0;
+                  within (remaining clock.header_deadline) next)
+        | Initial | Headers ->
+            within (remaining clock.header_deadline) next
+        | Body -> within (float read_timeout) next
+        | Response | Upgrade -> next ()
 
       let read ic count =
-        within (float read_timeout) (fun () -> Cohttp_lwt_unix.IO.read ic count)
+        if !input_start < !input_end then (
+          let length = min count (!input_end - !input_start) in
+          let data = Bytes.sub_string input !input_start length in
+          input_start := !input_start + length;
+          Lwt.return data)
+        else within (float read_timeout) (fun () -> Cohttp_lwt_unix.IO.read ic count)
 
       let write oc data =
         within (float write_timeout) (fun () -> Cohttp_lwt_unix.IO.write oc data)
@@ -158,7 +184,20 @@ let serve ?stop ~socket ~read_timeout ~write_timeout ~idle_timeout ~callback () 
            | `Expert (response,handler) ->
                Response.write_header response oc >>= fun () ->
                clock.phase <- Upgrade;
-               handler ic oc >>= fun () ->
+               (* A frame can arrive in the same packet as the upgrade headers.
+                  Hand any prefetched bytes to the protocol handler first. *)
+               let expert_ic =
+                 if !input_start >= !input_end then ic
+                 else Lwt_io.make ~mode:Lwt_io.input
+                   ~close:(fun () -> Lwt_io.close ic)
+                   (fun target offset length ->
+                     if !input_start < !input_end then (
+                       let count = min length (!input_end - !input_start) in
+                       Lwt_bytes.blit_from_bytes input !input_start target offset count;
+                       input_start := !input_start + count;
+                       Lwt.return count)
+                     else Lwt_io.read_into_bigstring ic target offset length) in
+               handler expert_ic oc >>= fun () ->
                clock.phase <- Idle;
                clock.header_deadline <- None;
                serve_one ()) in
