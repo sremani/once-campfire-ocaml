@@ -160,3 +160,46 @@ near one core and Caddy near 0.4 core. The raw scaling run is
 `tmp/bench/perf-concurrency-go-buffered-20261010/` in the shared checkout.
 Parallel request execution alone will not close the single-client gap;
 reducing HTTP/proxy work per request also matters.
+
+## OCaml 5 domain experiment (2026-10-10)
+
+The OCaml 5.5.1 release still runs one Cohttp/Lwt request loop. We tested two
+ways to use domains against the current application. First, one Lwt listener
+per domain with `SO_REUSEPORT` failed at startup: Lwt 6.1.2 rejects a second
+concurrent `Lwt_main.run` with `Nested calls to Lwt_main.run are not allowed`.
+Its event loop guard and scheduler state are process-wide, so that design is
+not supported by the pinned Lwt runtime.
+
+The second, working experiment kept one Lwt loop and moved the pure room-show
+and message-page renderers to an OCaml 5 domain pool. Four domains passed the
+shared fixture preflight. We measured the same disposable image and fixture at
+16 clients on four pinned server cores, in one-domain/four-domain/one-domain
+order. Each setting ran two four-second rounds per route. All timed runs passed
+response contracts, SQLite integrity, and exact acknowledged-write audits.
+The image and source were experimental and marked non-release-comparable by
+the shared harness.
+
+| Route | 1 domain before | 4 domains | 1 domain after |
+| --- | ---: | ---: | ---: |
+| Room show | 4,304 | 4,558 | 4,345 |
+| Messages page | 3,218 | 3,429 | 3,226 |
+| Sidebar | 5,035 | 5,465 | 5,257 |
+| Search | 3,606 | 4,198 | 4,041 |
+| Message POST | 837 | 729 | 772 |
+
+Search and sidebar did not use the domain pool, yet their rates changed by a
+similar amount. The room-show first round of the later one-domain run (4,532)
+also matched both four-domain rounds (4,553 and 4,564). The POST result was
+lower with four domains. These data do not isolate a reliable throughput gain
+from domain rendering. We removed the experimental pool rather than add a
+request-path dependency without evidence. Raw summaries are in the shared
+verification checkout under `tmp/bench/ocaml-cpu-domains1-timed-20261010/`,
+`tmp/bench/ocaml-cpu-domains4-timed-20261010/`, and
+`tmp/bench/ocaml-cpu-domains1-repeat-20261010/`.
+
+The next multicore experiment should parallelize whole request handling, not
+only rendering. That requires a request runtime with independent per-domain
+schedulers, or separate Lwt worker processes plus cross-worker Cable delivery,
+session revocation, and cache invalidation. An Async migration is a candidate
+only if its scheduler and HTTP stack can support that design; substituting its
+promise API alone would not parallelize these request callbacks.
