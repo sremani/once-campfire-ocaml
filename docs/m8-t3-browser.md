@@ -50,7 +50,11 @@ is 4,308/4,452 and completed all-seed coverage is 5,264/5,890.
 The thirteenth default full batch, the fifth mutating batch, passes
 120/120 with zero retries, flaky cases, failures, or errors. Completed
 default full coverage is 4,428/4,452 and completed all-seed coverage is
-5,384/5,890. The remaining default batch has 24 planned cells.
+5,384/5,890 at that checkpoint.
+The final default full batch passes 24/24 with zero retries, flaky cases,
+failures, or errors. The default full matrix is now 4,452/4,452, and
+completed all-seed coverage is 5,408/5,890. The four other full seed
+matrices remain in progress.
 The earlier diagnostics below are historical checkpoints.
 
 ## Pinned sources and local images
