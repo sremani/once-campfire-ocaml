@@ -23,9 +23,11 @@ flaky cases, failures, or errors. The seventh passes 467/467 with no final
 layer differences, bringing completed full coverage to 3,028/3,028 across
 seven batches. Its `search/results/many @ webkit-desktop-dark` cell had a
 114-pixel avatar-edge difference on attempt one and passed on attempt two;
-all non-pixel layers matched on the first attempt. A fresh exact-cell
-recapture is required after the broad run. The rest of the full matrix is
-running.
+all non-pixel layers matched on the first attempt. The eighth default full
+batch passes 378/378 exact with zero retries, flaky cases, failures, or
+errors, bringing completed full coverage to 3,406/3,406. Fresh exact-cell
+recaptures for both WebKit retry cells are required after the broad run.
+The rest of the full matrix is running.
 The earlier diagnostics below are historical checkpoints.
 
 ## Pinned sources and local images
