@@ -191,12 +191,13 @@ differences are intentional, and deployable release artifacts are verified.
   timed gates pass with 32 valid route samples and exact write audits; the
   measured throughput gap remains a release finding. See
   [performance evidence](m8-t4-performance.md).
-- [ ] **M8-T5 Release audit.** Verify license/dependency provenance, Docker images, upgrade
+- [x] **M8-T5 Release audit.** Verify license/dependency provenance, Docker images, upgrade
   instructions, complete tests, known differences, and reproducible release build.
   Local amd64 and arm64 images from `2a511ac` pass inventory, copied Rails
   installation lifecycle, TLS/HTTP2/ACME, WebSocket restart, and 233/233
   signed-media comparisons each. The full browser gate and final local release
   checks pass. The `v0.1.0` multiarchitecture manifest is published, signed,
-  and independently checked against the exact published images. An actual
-  ONCE deployment remains open for a target host and CLI access.
-  See [release audit](m8-t5-release-audit.md).
+  and independently checked against the exact published images. The immutable
+  digest is deployed through ONCE on luigi, with health, storage, restart,
+  first-run, and backup checks passed. See [release audit](m8-t5-release-audit.md)
+  and [deployment record](m8-t5-luigi-deployment.md).

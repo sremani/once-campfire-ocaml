@@ -1,4 +1,4 @@
-# M8-T5 release candidate audit (in progress)
+# M8-T5 release candidate audit (complete)
 
 ## Current clean source target: `2a511ac`
 
@@ -72,10 +72,11 @@ verification checkout `b7647b4` passes `bin/check` in
 `v0.1.0` on this verified source. Its [publication run](https://github.com/sremani/once-campfire-ocaml/actions/runs/38031979097)
 passed all four jobs and published a signed amd64/arm64 image at
 `ghcr.io/sremani/once-campfire-ocaml@sha256:3215a11e11ee5cfb1c5b37ce4312a7292b6e5fe85fb5cfe451c556fcd42a7154`.
-The exact published images pass the checks below. M8-T5 remains open for an
-actual ONCE deployment and review of the recorded image-byte limitation;
-the target host and `once` CLI access are still missing. The
-[publication handoff](m8-t5-publication-handoff.md) records the deployment steps.
+The exact published images pass the checks below. The immutable digest is
+deployed through ONCE on luigi; its persistent storage, managed restart,
+health, first-run page, and initial backup are verified in the
+[deployment record](m8-t5-luigi-deployment.md). The recorded image-byte
+limitation remains a documented release finding. M8-T5 is complete.
 
 ### Published `v0.1.0` artifact audit
 
@@ -87,6 +88,7 @@ the target host and `once` CLI access are still missing. The
 | Signature and provenance | `cosign verify` with the exact tag workflow identity and GitHub OIDC issuer verified six signatures for the index digest; CI recorded per-architecture provenance attestations [amd64](https://github.com/sremani/once-campfire-ocaml/attestations/54566123) and [arm64](https://github.com/sremani/once-campfire-ocaml/attestations/54565874) |
 | Pulled image inventories | amd64 image ID `sha256:97c4240114e5f05d8b363a9e43595fe4206209201825c53c6cdd8469ee7adaf1`; arm64 `sha256:5b25a80b8da180c4b0ce2eb6d4909eccf43a8eca19aad56c2edac20c4f150216`; both have 321 assets, zero issues, and matching application inventories versus locally checked images, except expected version and OCI metadata; `/tmp/campfire-v0.1.0-{amd64,arm64}-inventory.json` |
 | Published-image behavior | Both images passed copied-install upgrade/restart/backup/restore/rollback with 169 messages and 14 blob hashes stable; TLS/HTTP2/ACME/Cable restart passed in `/tmp/campfire-v0.1.0-protocol-{amd64,arm64}.json`; signed media passed 233/233 per architecture in `/tmp/campfire-v0.1.0-{amd64,arm64}-signed-media.json` |
+| Actual ONCE deployment | Fresh private Tailscale installation on luigi runs the exact index digest and published amd64 image; `/up`, `/first_run`, packaged assets, database integrity, ONCE stop/start, volume retention, and initial backup pass; [deployment record](m8-t5-luigi-deployment.md) |
 
 ### Final `2a511ac` command and artifact ledger
 
@@ -101,7 +103,7 @@ the target host and `once` CLI access are still missing. The
 | Final-image timed performance | `bash /tmp/m8-t4-2a511ac-timed.sh` | Pass: complete, release comparable, 32/32 validated route samples, zero errors/invalid responses and four exact write audits; `once-campfire-verification/tmp/bench/m8-t4-2a511ac-timed/summary.json` |
 | Uncached rebuild | `python3 /tmp/m8-t5-2a511ac-reproducibility.py --rebuild` | Application inventories match on both architectures; 11 system-file content differences per architecture prevent byte-identical output; `/tmp/campfire-2a511ac-reproducibility.json` |
 | Shared verification | `docker run --rm --mount type=bind,src=/home/srikanth/projects/once-campfire-verification,dst=/verify --workdir /verify -e CARGO_TARGET_DIR=/tmp/loadgen-target campfire-m8-check:pinned bin/check` | Pass, exit 0; `/tmp/m8-t5-2a511ac-shared-check.log` |
-| Published multiarchitecture image and ONCE | Tag/CI, digest inspection, deployment commands in [publication handoff](m8-t5-publication-handoff.md) | Publication and published-image audit pass on both architectures; actual ONCE deployment remains open for host and CLI access |
+| Published multiarchitecture image and ONCE | Tag/CI, digest inspection, [publication handoff](m8-t5-publication-handoff.md), and [deployment record](m8-t5-luigi-deployment.md) | Pass: published-image audit on both architectures and live ONCE deployment on luigi |
 
 ### Earlier involvement-frame source checkpoint: `7352f48`
 
@@ -341,7 +343,7 @@ that label on any pushed image rather than inferring it from this local build.
 | Performance and assets | Final-image benchmark preflight, two-round timed benchmark, header and 60-second resilience pass; timed summary has 32 validated route samples, zero errors/invalid responses, and exact write audits at `once-campfire-verification/tmp/bench/m8-t4-2a511ac-timed/summary.json`. The final asset sweep is 1,004/1,015 exact with zero fixture errors: ten gzip wire bodies and one malformed Caddy path differ; see `/tmp/m8-t2-2a511ac-assets-live.json`. |
 | Reproducible build | Uncached rebuild inventories, packages, binaries, assets, linked libraries and notices match on both architectures; each image has 11 changed system account/cache/log files and different tar metadata. See `/tmp/campfire-2a511ac-reproducibility.json`. Byte-identical images remain unproven. |
 | Shared verification | `bin/check` passes in `campfire-m8-check:pinned` against checkout `b7647b4`; `/tmp/m8-t5-2a511ac-shared-check.log`. |
-| External release | Published `v0.1.0` manifest and both architecture artifacts pass independent audit at digest `sha256:3215a11e11ee5cfb1c5b37ce4312a7292b6e5fe85fb5cfe451c556fcd42a7154`. Actual ONCE deployment remains pending a host and CLI access. |
+| External release | Published `v0.1.0` manifest and both architecture artifacts pass independent audit at digest `sha256:3215a11e11ee5cfb1c5b37ce4312a7292b6e5fe85fb5cfe451c556fcd42a7154`. Actual ONCE deployment on luigi passes the checks in the [deployment record](m8-t5-luigi-deployment.md). |
 
 ### Historical `d6600ed` release command log
 
@@ -363,8 +365,9 @@ rebuilds. The earlier Lexxy room-script difference has been fixed. Pinned
 base digests, direct apt versions, and captured package inventories support
 deployment by immutable image digest, but mutable transitive apt resolution
 and build-time system files do not guarantee a byte-reproducible rebuild.
-M8-T5 remains open for a published multiarchitecture manifest, review of
-the exact published artifact, and an actual ONCE deployment.
+Those publication and deployment items were completed on `v0.1.0` as recorded
+in the current-source audit above and the
+[luigi deployment record](m8-t5-luigi-deployment.md).
 
 For an immutable local candidate, first record a clean `git rev-parse HEAD` and source
 manifest. Build each architecture from that source, setting `APP_VERSION` and `GIT_REVISION`

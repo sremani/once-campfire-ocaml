@@ -2,9 +2,10 @@
 
 Pinned baseline: Rust `9872c1d9541551c0889a60e3d49a14488bd1e403` and Rails
 `90b330024dec3e757c79b6a7e6568f93da8e3148`. All three local tickets are verified. The milestone's
-remote ONCE deployment gate remains open. The `v0.1.0` GHCR manifest and both
-published architecture images have passed the independent release checks in
-[M8-T5](m8-t5-release-audit.md).
+remote ONCE deployment gate is complete on luigi. The `v0.1.0` GHCR manifest
+and both published architecture images passed the independent release checks
+in [M8-T5](m8-t5-release-audit.md); the
+[deployment record](m8-t5-luigi-deployment.md) covers the host.
 
 ## T1 review after handoff
 

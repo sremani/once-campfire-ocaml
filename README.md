@@ -8,8 +8,8 @@ removed, and all 16 formerly differing room-route cases now match on the pinned 
 The current code source passes the five-seed HTTP/state comparison for all 3,186 eligible
 cases and 30 positive writes. The HTTP/state differential and performance checks have passed
 their scoped gates. Final-source browser parity passes 5,890/5,890 applicable
-comparisons. The `v0.1.0` multiarchitecture image is published and verified;
-deployment to an ONCE host remains release work.
+comparisons. The `v0.1.0` multiarchitecture image is published, verified, and
+deployed through ONCE on luigi.
 
 The port targets compatibility with existing Campfire installations: the SQLite schema, storage
 layout, and signed and encrypted cookies. The Rust source is pinned at
@@ -85,6 +85,7 @@ HTTP/state rerun passes 3,186 eligible cases and 30 positive writes exactly;
 354 first-run signed/denied roles lack a fixture session. M4-T4 browser behavior,
 M8-T3 browser parity, M8-T1 golden-vector coverage, M8-T2
 HTTP/state differential, and M8-T4 performance and resilience have passed their recorded
-gates. M8-T5 is the sole open ticket: the published `v0.1.0` image has passed
-both architecture audits, but an actual ONCE deployment awaits a target host
-and CLI access. See the [ticket plan](docs/milestones.md) for exact gates and evidence.
+gates. M8-T5 also passes: the published `v0.1.0` image passed both architecture
+audits and is deployed through ONCE on luigi. All 35 tickets are complete;
+the fresh installation awaits owner onboarding. See the [ticket plan](docs/milestones.md)
+and [deployment record](docs/m8-t5-luigi-deployment.md) for evidence.

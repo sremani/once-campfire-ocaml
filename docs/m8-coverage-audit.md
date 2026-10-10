@@ -19,8 +19,9 @@ room-page differences; packaged asset and raw malformed-path results are
 classified below. The clean `d6600ed` image also has complete local M8-T4
 benchmark/resilience evidence. M8-T2 is complete as a comparison with its
 Lexxy, gzip-wire and Caddy-parser differences retained as failures;
-M8-T5 and the release milestone remain open; M8-T3 is complete on the final
-source as recorded below.
+M8-T3 is complete on the final source as recorded below. M8-T5 and the
+release milestone were subsequently completed with the published `v0.1.0`
+image and [ONCE deployment on luigi](m8-t5-luigi-deployment.md).
 
 Current clean executable source `2a511ac` removes the retained Lexxy room-script
 difference and matches text, attachment edit, involvement-frame, group-name
@@ -246,8 +247,9 @@ step. Compare disposable seed copies only.
 No benchmark or browser result is inferred from local module tests. M8-T1's
 golden coverage and M8-T4's clean packaged benchmark/resilience tickets are
 complete. M8-T2 is accepted as a completed historical comparison with its
-scoped differences recorded above; M8-T3, M8-T5 and the milestone gate remain
-open.
+scoped differences recorded above. At that historical checkpoint, M8-T3,
+M8-T5 and the milestone gate remained open; the final `2a511ac` browser audit
+and `v0.1.0` [release deployment](m8-t5-luigi-deployment.md) closed them.
 
 ### Harness audit commands and results
 

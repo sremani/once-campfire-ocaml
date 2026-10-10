@@ -6,8 +6,9 @@ The [successful publication run](https://github.com/sremani/once-campfire-ocaml/
 published and signed the image at
 `ghcr.io/sremani/once-campfire-ocaml@sha256:3215a11e11ee5cfb1c5b37ce4312a7292b6e5fe85fb5cfe451c556fcd42a7154`.
 Both published architecture images passed independent inventory, copied-install
-lifecycle, TLS/ACME/Cable, and signed-media checks. No ONCE deployment has
-occurred: the target host and `once` CLI access are still missing.
+lifecycle, TLS/ACME/Cable, and signed-media checks. The immutable digest is
+deployed through ONCE on luigi; see the
+[deployment record](m8-t5-luigi-deployment.md).
 The browser and post-browser local gates in
 `/tmp/m8-2a511ac-post-browser-checks.md` are complete. If a publication
 review requires a source change, freeze the new revision and repeat its local
@@ -101,33 +102,21 @@ published artifacts. Review Cosign signatures and the workflow's architecture
 attestations against the same immutable digest; the workflow does not itself
 run a post-push manifest/platform inspection.
 
-## Prepare the existing ONCE installation
+## ONCE deployment and future upgrades
 
-Confirm the actual ONCE CLI and `once deploy --help` on the operator machine;
-CLI syntax has not been checked here because `once` is absent. The repository
-documents `once deploy IMAGE --host HOST`. Record the current deployed image
-**digest**, preserve the existing `SECRET_KEY_BASE`, and take a verified backup
-of `/rails/storage` before changing the image. That storage includes `db`,
-`files`, `backups`, and `thruster`; keep TLS/Caddy certificate storage too.
-Ensure the target host can pull the public GHCR package.
-The local copied-install rehearsal preserved 169 messages and 14 blob hashes
-on both architectures; it is not a remote backup or deployment result.
+Luigi was a fresh installation with no existing ONCE application or Campfire
+data. The official ONCE v0.3.4 CLI was installed on the host, and the exact
+published digest was deployed with `--host luigi.tailc5ed1.ts.net`,
+`--disable-tls`, `--auto-update=false`, and automatic backups to
+`/var/backups/once`. The selected hostname is private to Tailscale; no public
+certificate was requested. The initial backup and ONCE-managed restart passed.
+The [deployment record](m8-t5-luigi-deployment.md) contains the command,
+running image ID, volume, HTTP checks, and backup evidence.
 
-After the publication and exact-digest checks and host review, use the
-documented CLI form with explicit values:
-
-```sh
-: "${ONCE_HOST:?set the existing ONCE host}"
-IMAGE_REPO=ghcr.io/sremani/once-campfire-ocaml
-PUBLISHED_DIGEST=sha256:3215a11e11ee5cfb1c5b37ce4312a7292b6e5fe85fb5cfe451c556fcd42a7154
-: "${OLD_IMAGE_REF:?record current immutable image reference for rollback}"
-once deploy "$IMAGE_REPO@$PUBLISHED_DIGEST" --host "$ONCE_HOST"
-# Verify /up, login, messages, attachments, search, Cable, TLS and backup.
-# If rollback is required: once deploy "$OLD_IMAGE_REF" --host "$ONCE_HOST"
-```
-
-If data restore is required, stop the app first and use the existing ONCE
-backup/restore flow and `/hooks/post-restore`; do not invent a CLI restore
-command. Save deployment and rollback outputs, resulting digest, health checks,
-backup reference, and architecture chosen by the host. M8-T5 remains open
-until the actual deployment is evidenced.
+For future upgrades on this existing installation, record the current image
+digest, preserve `SECRET_KEY_BASE` and `/rails/storage`, and take a verified
+ONCE backup before changing the image. Use `once update HOST --image
+IMAGE@sha256:DIGEST` for an upgrade or rollback; `once deploy` creates a new
+application and cannot replace an occupied hostname. ONCE v0.3.4 documents
+`once restore FILE` for recovery from a backup. Verify the new image, health,
+and application behavior before retaining an upgrade.
