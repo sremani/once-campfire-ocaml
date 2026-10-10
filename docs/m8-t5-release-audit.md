@@ -67,15 +67,26 @@ the verified application payload from the frozen source, with no claim of
 byte-identical images or future apt repository resolution. The pinned shared
 verification checkout `b7647b4` passes `bin/check` in
 `campfire-m8-check:pinned`; its exit-0 log is
-`/tmp/m8-t5-2a511ac-shared-check.log`. M8-T5 remains open for external
-manifest publication and ONCE deployment, plus review of the recorded
-image-byte limitation. The public repository
-`https://github.com/sremani/once-campfire-ocaml` is configured as `origin`;
-its intended GHCR path is `ghcr.io/sremani/once-campfire-ocaml`. A release
-tag, target host, and ONCE CLI are still missing. `gh auth status` succeeds
-for `sremani`.
-The [publication handoff](m8-t5-publication-handoff.md) records the exact
-source tag, GHCR verification, and ONCE steps once those targets are supplied.
+`/tmp/m8-t5-2a511ac-shared-check.log`. The public repository
+`https://github.com/sremani/once-campfire-ocaml` contains annotated tag
+`v0.1.0` on this verified source. Its [publication run](https://github.com/sremani/once-campfire-ocaml/actions/runs/38031979097)
+passed all four jobs and published a signed amd64/arm64 image at
+`ghcr.io/sremani/once-campfire-ocaml@sha256:3215a11e11ee5cfb1c5b37ce4312a7292b6e5fe85fb5cfe451c556fcd42a7154`.
+The exact published images pass the checks below. M8-T5 remains open for an
+actual ONCE deployment and review of the recorded image-byte limitation;
+the target host and `once` CLI access are still missing. The
+[publication handoff](m8-t5-publication-handoff.md) records the deployment steps.
+
+### Published `v0.1.0` artifact audit
+
+| Check | Result |
+| --- | --- |
+| Tag and CI | Annotated `v0.1.0` resolves to `2a511ac6f74fc3689f72bd039bc11d286e71d1c4`; [run 38031979097](https://github.com/sremani/once-campfire-ocaml/actions/runs/38031979097) passed source, amd64, arm64, manifest, and signing steps |
+| Public index | Anonymous `docker buildx imagetools inspect` succeeds; index `sha256:3215a11e11ee5cfb1c5b37ce4312a7292b6e5fe85fb5cfe451c556fcd42a7154` contains only expected `linux/amd64` and `linux/arm64` children; `/tmp/campfire-v0.1.0-published-manifest.json` |
+| Architecture digests | amd64 `sha256:644f6e86e6969fba6e7a55f83bf0cdca99787f4017cb9dd8c04873e83a2edef3`; arm64 `sha256:76019801145a7008133423004e35ebd3770de7a8cb0ab1399c89f0d7de5f5cf9`; both match their architecture tags and the index children |
+| Signature and provenance | `cosign verify` with the exact tag workflow identity and GitHub OIDC issuer verified six signatures for the index digest; CI recorded per-architecture provenance attestations [amd64](https://github.com/sremani/once-campfire-ocaml/attestations/54566123) and [arm64](https://github.com/sremani/once-campfire-ocaml/attestations/54565874) |
+| Pulled image inventories | amd64 image ID `sha256:97c4240114e5f05d8b363a9e43595fe4206209201825c53c6cdd8469ee7adaf1`; arm64 `sha256:5b25a80b8da180c4b0ce2eb6d4909eccf43a8eca19aad56c2edac20c4f150216`; both have 321 assets, zero issues, and matching application inventories versus locally checked images, except expected version and OCI metadata; `/tmp/campfire-v0.1.0-{amd64,arm64}-inventory.json` |
+| Published-image behavior | Both images passed copied-install upgrade/restart/backup/restore/rollback with 169 messages and 14 blob hashes stable; TLS/HTTP2/ACME/Cable restart passed in `/tmp/campfire-v0.1.0-protocol-{amd64,arm64}.json`; signed media passed 233/233 per architecture in `/tmp/campfire-v0.1.0-{amd64,arm64}-signed-media.json` |
 
 ### Final `2a511ac` command and artifact ledger
 
@@ -90,7 +101,7 @@ source tag, GHCR verification, and ONCE steps once those targets are supplied.
 | Final-image timed performance | `bash /tmp/m8-t4-2a511ac-timed.sh` | Pass: complete, release comparable, 32/32 validated route samples, zero errors/invalid responses and four exact write audits; `once-campfire-verification/tmp/bench/m8-t4-2a511ac-timed/summary.json` |
 | Uncached rebuild | `python3 /tmp/m8-t5-2a511ac-reproducibility.py --rebuild` | Application inventories match on both architectures; 11 system-file content differences per architecture prevent byte-identical output; `/tmp/campfire-2a511ac-reproducibility.json` |
 | Shared verification | `docker run --rm --mount type=bind,src=/home/srikanth/projects/once-campfire-verification,dst=/verify --workdir /verify -e CARGO_TARGET_DIR=/tmp/loadgen-target campfire-m8-check:pinned bin/check` | Pass, exit 0; `/tmp/m8-t5-2a511ac-shared-check.log` |
-| Published multiarchitecture image and ONCE | Tag/CI, digest inspection, deployment commands in [publication handoff](m8-t5-publication-handoff.md) | Open: public GitHub repository and GHCR path are identified; release tag, published digest, ONCE CLI, and host are missing |
+| Published multiarchitecture image and ONCE | Tag/CI, digest inspection, deployment commands in [publication handoff](m8-t5-publication-handoff.md) | Publication and published-image audit pass on both architectures; actual ONCE deployment remains open for host and CLI access |
 
 ### Earlier involvement-frame source checkpoint: `7352f48`
 
@@ -330,7 +341,7 @@ that label on any pushed image rather than inferring it from this local build.
 | Performance and assets | Final-image benchmark preflight, two-round timed benchmark, header and 60-second resilience pass; timed summary has 32 validated route samples, zero errors/invalid responses, and exact write audits at `once-campfire-verification/tmp/bench/m8-t4-2a511ac-timed/summary.json`. The final asset sweep is 1,004/1,015 exact with zero fixture errors: ten gzip wire bodies and one malformed Caddy path differ; see `/tmp/m8-t2-2a511ac-assets-live.json`. |
 | Reproducible build | Uncached rebuild inventories, packages, binaries, assets, linked libraries and notices match on both architectures; each image has 11 changed system account/cache/log files and different tar metadata. See `/tmp/campfire-2a511ac-reproducibility.json`. Byte-identical images remain unproven. |
 | Shared verification | `bin/check` passes in `campfire-m8-check:pinned` against checkout `b7647b4`; `/tmp/m8-t5-2a511ac-shared-check.log`. |
-| External release | Multiarchitecture publication and actual ONCE deployment are pending a release tag, pushed image, ONCE CLI and host. The public `sremani/once-campfire-ocaml` repository exists and `gh auth status` succeeds. |
+| External release | Published `v0.1.0` manifest and both architecture artifacts pass independent audit at digest `sha256:3215a11e11ee5cfb1c5b37ce4312a7292b6e5fe85fb5cfe451c556fcd42a7154`. Actual ONCE deployment remains pending a host and CLI access. |
 
 ### Historical `d6600ed` release command log
 

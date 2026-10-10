@@ -1,11 +1,13 @@
 # 2a511ac publication and ONCE deployment handoff
 
-This is a command review, not evidence of publication or deployment. The
-public repository `https://github.com/sremani/once-campfire-ocaml` now exists
-and is configured as `origin`; its intended image path is
-`ghcr.io/sremani/once-campfire-ocaml`. A release tag, ONCE CLI, and target host
-are still missing. `gh auth status` succeeds for `sremani`. Review the release
-version and ONCE host before publishing or deploying.
+The public repository is `https://github.com/sremani/once-campfire-ocaml`.
+Tag `v0.1.0` points to verified source `2a511ac6f74fc3689f72bd039bc11d286e71d1c4`.
+The [successful publication run](https://github.com/sremani/once-campfire-ocaml/actions/runs/38031979097)
+published and signed the image at
+`ghcr.io/sremani/once-campfire-ocaml@sha256:3215a11e11ee5cfb1c5b37ce4312a7292b6e5fe85fb5cfe451c556fcd42a7154`.
+Both published architecture images passed independent inventory, copied-install
+lifecycle, TLS/ACME/Cable, and signed-media checks. No ONCE deployment has
+occurred: the target host and `once` CLI access are still missing.
 The browser and post-browser local gates in
 `/tmp/m8-2a511ac-post-browser-checks.md` are complete. If a publication
 review requires a source change, freeze the new revision and repeat its local
@@ -16,7 +18,7 @@ release checks before using this handoff.
 The locally verified code revision is
 `2a511ac6f74fc3689f72bd039bc11d286e71d1c4`, at
 `/tmp/campfire-browser-2a511ac`. The main checkout is ahead by documentation
-commits. Tag the exact verified code revision if using its local release evidence:
+commits. The published tag is pinned to that verified revision:
 
 ```sh
 SOURCE=/tmp/campfire-browser-2a511ac
@@ -24,10 +26,7 @@ SOURCE_REV=2a511ac6f74fc3689f72bd039bc11d286e71d1c4
 test "$(git -C "$SOURCE" rev-parse HEAD)" = "$SOURCE_REV"
 test -z "$(git -C "$SOURCE" status --porcelain=v1 --untracked-files=all)"
 git -C "$SOURCE" show "$SOURCE_REV:.github/workflows/publish-image.yml" >/dev/null
-# Review the intended owner/repository, release version, tag and remote first.
-# After the destination and release version are set: tag the verified source.
-# git -C "$SOURCE" tag -a "v<version>" "$SOURCE_REV"
-# git -C "$SOURCE" push <remote> "v<version>"
+# The annotated v0.1.0 tag has already been pushed to origin.
 ```
 
 A tag push matching `v*` triggers `.github/workflows/publish-image.yml`.
@@ -41,8 +40,8 @@ as durable artifacts.
 
 ## Verify the published artifact
 
-Set these from the actual GitHub repository/tag; do not infer them from the
-local image tag. The workflow lowercases `github.repository` for GHCR. Its
+The values below come from the actual GitHub repository and tag. The workflow
+lowercases `github.repository` for GHCR. Its
 CI image has a release `APP_VERSION` and nonempty OCI source label, whereas
 the local candidate uses the source revision as `APP_VERSION` and has an empty
 OCI source label. The registry image IDs therefore need independent review.
@@ -51,7 +50,7 @@ OCI source label. The registry image IDs therefore need independent review.
 SOURCE=/tmp/campfire-browser-2a511ac
 SOURCE_REV=2a511ac6f74fc3689f72bd039bc11d286e71d1c4
 IMAGE_REPO=ghcr.io/sremani/once-campfire-ocaml
-: "${RELEASE_TAG:?set exact published v-prefixed tag}"
+RELEASE_TAG=v0.1.0
 docker buildx imagetools inspect "$IMAGE_REPO:$RELEASE_TAG" \
   | tee /tmp/campfire-2a511ac-published-manifest.txt
 docker buildx imagetools inspect --raw "$IMAGE_REPO:$RELEASE_TAG" \
@@ -72,7 +71,7 @@ PY
 # Record the immutable top-level sha256 digest printed by imagetools inspect.
 # Confirm its amd64/arm64 child digests match the inspected architecture tags.
 # Resolve and review the index digest before setting PUBLISHED_DIGEST.
-: "${PUBLISHED_DIGEST:?set exact sha256 index digest from inspection}"
+PUBLISHED_DIGEST=sha256:3215a11e11ee5cfb1c5b37ce4312a7292b6e5fe85fb5cfe451c556fcd42a7154
 ```
 
 Run the following inventory on each matching architecture, or with working
@@ -110,7 +109,7 @@ documents `once deploy IMAGE --host HOST`. Record the current deployed image
 **digest**, preserve the existing `SECRET_KEY_BASE`, and take a verified backup
 of `/rails/storage` before changing the image. That storage includes `db`,
 `files`, `backups`, and `thruster`; keep TLS/Caddy certificate storage too.
-Ensure the target host can pull the GHCR package, especially if private.
+Ensure the target host can pull the public GHCR package.
 The local copied-install rehearsal preserved 169 messages and 14 blob hashes
 on both architectures; it is not a remote backup or deployment result.
 
@@ -120,7 +119,7 @@ documented CLI form with explicit values:
 ```sh
 : "${ONCE_HOST:?set the existing ONCE host}"
 IMAGE_REPO=ghcr.io/sremani/once-campfire-ocaml
-: "${PUBLISHED_DIGEST:?set verified sha256 index digest}"
+PUBLISHED_DIGEST=sha256:3215a11e11ee5cfb1c5b37ce4312a7292b6e5fe85fb5cfe451c556fcd42a7154
 : "${OLD_IMAGE_REF:?record current immutable image reference for rollback}"
 once deploy "$IMAGE_REPO@$PUBLISHED_DIGEST" --host "$ONCE_HOST"
 # Verify /up, login, messages, attachments, search, Cable, TLS and backup.
@@ -131,4 +130,4 @@ If data restore is required, stop the app first and use the existing ONCE
 backup/restore flow and `/hooks/post-restore`; do not invent a CLI restore
 command. Save deployment and rollback outputs, resulting digest, health checks,
 backup reference, and architecture chosen by the host. M8-T5 remains open
-until the actual publication and deployment are evidenced.
+until the actual deployment is evidenced.
