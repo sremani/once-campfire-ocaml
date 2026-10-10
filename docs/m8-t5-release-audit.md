@@ -44,8 +44,12 @@ coverage to 3,028/3,028 across seven batches. One seventh-batch WebKit
 search screenshot had 114 differing avatar-edge pixels on its first attempt
 and matched on its second, with all other layers already equal. That cell
 also requires a fresh exact-cell recapture after the broad run. The eighth
-batch passes 378/378 exact with zero retries or flaky cases, bringing full
-coverage to 3,406/3,406. The remaining full matrix is in progress.
+batch passes 378/378 exact with zero retries or flaky cases. The ninth,
+first mutating batch passes 194/194 with no final layer differences,
+bringing completed full coverage to 3,600/3,600. One OCaml-side WebKit
+capture of the rate-limited sign-in cell crashed during page evaluation and
+passed on retry; it requires a third first-pass exact recapture. The
+remaining full matrix is in progress.
 An uncached repeat-build comparison is prepared at
 `/tmp/m8-t5-2a511ac-reproducibility.py`; its source and inventory preflight
 passes, and the Docker rebuild waits for browser capture to release the
