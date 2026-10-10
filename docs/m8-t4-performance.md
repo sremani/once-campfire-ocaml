@@ -4,12 +4,18 @@ Status: **M8-T4 release gates complete**, including a final-image preflight,
 header probe, and 60-second resilience run on frozen source `2a511ac`.
 The final amd64 image ID is
 `sha256:18a4cce33ec9ea7c5120feb4f758c7684e12cb3f658b5220bb38557f4562d9cd`.
-The shared two-round benchmark preflight is complete and release comparable
-at `once-campfire-verification/tmp/bench/m8-t4-2a511ac-preflight/summary.json`;
+The shared two-round benchmark preflight and timed run are complete and
+release comparable at
+`once-campfire-verification/tmp/bench/m8-t4-2a511ac-{preflight,timed}/summary.json`;
 `/tmp/m8-t4-2a511ac-probe/{header,resilience}-summary.json` each report
-`complete: true` and pin the same image/source. The measured timed rates
-below remain from `d6600ed` because the final-image check was a contract
-preflight and resilience probe.
+`complete: true` and pin the same image/source. The final timed run used
+two alternating rounds, 16 clients, and eight seconds per route. Its 32
+route samples have zero HTTP errors and zero invalid responses; all four
+acknowledged-write audits match persisted row counts. Median room-show
+throughput was Rust **62,336** versus OCaml **1,947** req/s, and message
+POST was Rust **5,086** versus OCaml **449** req/s on this host. The
+throughput gap remains a release limitation; historical rates below are
+retained for their original candidate revisions.
 
 The shared contract preflight, packaged header probe, full resilience run and
 release-comparable alternating timed benchmark passed on `d6600ed`, as on

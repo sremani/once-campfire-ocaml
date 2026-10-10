@@ -34,8 +34,12 @@ across server, live DOM, accessibility, network, Cable and pixels. The full
 and 30/30 positive writes; 354 first-run roles lack a signed fixture.
 The final-source browser matrix passes 5,890/5,890 applicable cells and its
 three first-attempt WebKit anomalies pass separate exact recaptures. The
-final-image release audit remains open. The
-historical `d6600ed` results below retain their original evidence scope.
+final `2a511ac` shared benchmark passes two alternating timed rounds:
+32 validated route samples have zero errors/invalid responses and four
+exact acknowledged-write audits. Its header and 60-second resilience
+probes pass. The release audit remains open for publication and ONCE
+deployment. The historical `d6600ed` results below retain their original
+evidence scope.
 
 ## Golden corpus coverage (M8-T1)
 

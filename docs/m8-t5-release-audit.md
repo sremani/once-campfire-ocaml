@@ -48,9 +48,13 @@ malformed `/assets/%GG` status/body handled by Caddy before app dispatch;
 raw probes confirm the same Caddy boundary on `%ZZ` and `%2`. The reports
 are `/tmp/m8-t2-2a511ac-assets-live.json` and
 `/tmp/m8-t2-2a511ac-assets-malformed-raw.json`.
-The final amd64 shared two-round benchmark preflight and header and
-60-second resilience probes all pass with `complete: true` against the
-pinned image/source. See `/tmp/m8-t4-2a511ac-probe/` and
+The final amd64 shared two-round benchmark preflight, timed run, header
+probe, and 60-second resilience run all pass with `complete: true` against
+the pinned image/source. The 32 timed route samples have zero errors or
+invalid responses and four exact acknowledged-write audits. Median room
+show is Rust 62,336 versus OCaml 1,947 req/s; message POST is 5,086
+versus 449 req/s. See `/tmp/m8-t4-2a511ac-probe/`,
+`once-campfire-verification/tmp/bench/m8-t4-2a511ac-timed/summary.json` and
 [performance evidence](m8-t4-performance.md). An uncached amd64/arm64
 repeat-build comparison completed at
 `/tmp/campfire-2a511ac-reproducibility.json`: both architectures retain
@@ -70,6 +74,21 @@ ONCE CLI is configured. `gh auth status` now succeeds for `sremani`, but
 `gh repo list sremani` shows no Campfire/ONCE repository target.
 The [publication handoff](m8-t5-publication-handoff.md) records the exact
 source tag, GHCR verification, and ONCE steps once those targets are supplied.
+
+### Final `2a511ac` command and artifact ledger
+
+| Gate | Command | Result and artifact |
+| --- | --- | --- |
+| Source and both architecture images | `bash /tmp/m8-t5-2a511ac-release-verify.sh all` | Pass: clean source, 321 assets, zero inventory issues; `/tmp/campfire-source-2a511ac.json`, `/tmp/campfire-image-2a511ac-{amd64,arm64}.json` |
+| Copied Rails upgrade, rollback, protocol and signed media | Same release runner | Pass on both images: 169 messages and 14 blobs preserved; TLS/HTTP2/ACME/Cable restart and 233/233 media each; `/tmp/campfire-lifecycle-2a511ac-{amd64,arm64}.log`, `/tmp/campfire-2a511ac-protocol-{amd64,arm64}.json`, `/tmp/m8-t5-2a511ac-{amd64,arm64}-signed-media.json` |
+| OCaml code and views | `dune runtest --force`; `python3 test/view_golden_matrix.py --require-all --output /tmp/campfire-2a511ac-view-goldens.json` | Pass: 41 suites/297 cases and 123 accounted view files; `/tmp/campfire-runtest-group-avatar-escalated.log`, `/tmp/campfire-2a511ac-view-goldens.json` |
+| Browser parity and behavior | `python3 /tmp/m8-t3-validate-all-browser.py > /tmp/m8-t3-2a511ac-all-validation-root.json`; `bash /tmp/m8-t3-postrun-webkit-rechecks.sh`; `bash /tmp/m4-t4-2a511ac-final-smoke.sh` | Pass: 5,890/5,890 final exact cells, three first-pass WebKit rechecks, repeated edit and full Chromium smoke; audit JSON, parity recheck reports and M4 server logs |
+| Live static routes | `bash /tmp/m8-t2-2a511ac-assets-live.sh` | 1,004/1,015 exact, zero fixture errors; eleven classified gzip/Caddy differences; `/tmp/m8-t2-2a511ac-assets-live.json` and malformed raw report |
+| Final-image resilience | `bash /tmp/m8-t4-2a511ac-probe/run.sh run` | Pass: shared benchmark preflight, header probe and 60-second resilience; `/tmp/m8-t4-2a511ac-probe/` |
+| Final-image timed performance | `bash /tmp/m8-t4-2a511ac-timed.sh` | Pass: complete, release comparable, 32/32 validated route samples, zero errors/invalid responses and four exact write audits; `once-campfire-verification/tmp/bench/m8-t4-2a511ac-timed/summary.json` |
+| Uncached rebuild | `python3 /tmp/m8-t5-2a511ac-reproducibility.py --rebuild` | Application inventories match on both architectures; 11 system-file content differences per architecture prevent byte-identical output; `/tmp/campfire-2a511ac-reproducibility.json` |
+| Shared verification | `docker run --rm --mount type=bind,src=/home/srikanth/projects/once-campfire-verification,dst=/verify --workdir /verify -e CARGO_TARGET_DIR=/tmp/loadgen-target campfire-m8-check:pinned bin/check` | Pass, exit 0; `/tmp/m8-t5-2a511ac-shared-check.log` |
+| Published multiarchitecture image and ONCE | Tag/CI, digest inspection, deployment commands in [publication handoff](m8-t5-publication-handoff.md) | Open: no target Git remote, GHCR repository/tag, ONCE CLI, or host |
 
 ### Earlier involvement-frame source checkpoint: `7352f48`
 
@@ -303,16 +322,17 @@ that label on any pushed image rather than inferring it from this local build.
 | --- | --- |
 | Source and native tests | `/tmp/campfire-source-2a511ac.json` records a clean source, 321 exact assets and zero local Gumbo errors. `dune runtest --force` passes 41 suites and 297 cases; see `/tmp/campfire-runtest-group-avatar-escalated.log`. `/tmp/campfire-2a511ac-upstream-provenance.json` independently checks the locally retained Nokogiri archive hash, 46 archived Gumbo source files, clean WebSocket Git commit and ISC license; the separate local Gumbo notice is absent from the upstream archive. |
 | HTTP/state | `/tmp/m3-2a511ac-five-seed-audit.md` records 3,186/3,186 exact eligible route/state cases and 354 unavailable first-run signed/denied cells. `/tmp/m3-2a511ac-positive-writes.json` records 30/30 exact writes. The historical Lexxy room-script difference is fixed on this source. |
-| Browser | Focused group-name and avatar-upload recapture passes 8/8 cells across six layers; attachment-edit and involvement-frame recaptures passed on preceding code revisions carried into `2a511ac`. The final five-seed lean/full run is active at `/tmp/m8-t3-harness-wt/parity/out/m8-t3-2a511ac-final-all/summary.json`. |
+| Browser | All ten plans and 40 batches pass 5,890/5,890 final exact cells; three first-attempt WebKit anomalies pass separate first-pass exact recaptures. The shared repeated-edit and full Chromium smoke also pass on frozen `2a511ac`. See `/tmp/m8-t3-2a511ac-all-validation-root.json` and [browser evidence](m8-t3-browser.md). |
 | Images and copied installation | `/tmp/campfire-image-2a511ac-{amd64,arm64}.json` reports 321 exact assets and zero issues in each image. `/tmp/campfire-lifecycle-2a511ac-{amd64,arm64}.log` records upgrade, restart, backup/restore, rollback, stable 169 messages and 14 blobs, SQLite integrity and clean shutdown. |
 | Runtime protocol and media | `/tmp/campfire-2a511ac-protocol-{amd64,arm64}.json` records local ACME issue/renewal, HTTP/2, redirect, unknown Host, TLS Cable restart and shutdown. `/tmp/m8-t5-2a511ac-{amd64,arm64}-signed-media.json` records 233/233 exact signed-media cases on each image. |
-| Performance and assets | The measured throughput gap and ten gzip-wire plus one malformed-path asset differences were captured on `d6600ed`. Their current-image status is unverified; see the historical record below. |
-| Reproducible build | Base image digests and direct apt versions are pinned, and package/binary inventories are retained. Mutable transitive apt resolution and the absence of a repeat image build leave byte reproducibility unproven. |
-| External release | Multiarchitecture publication and actual ONCE deployment are pending a registry destination, credentials, target host and CLI. |
+| Performance and assets | Final-image benchmark preflight, two-round timed benchmark, header and 60-second resilience pass; timed summary has 32 validated route samples, zero errors/invalid responses, and exact write audits at `once-campfire-verification/tmp/bench/m8-t4-2a511ac-timed/summary.json`. The final asset sweep is 1,004/1,015 exact with zero fixture errors: ten gzip wire bodies and one malformed Caddy path differ; see `/tmp/m8-t2-2a511ac-assets-live.json`. |
+| Reproducible build | Uncached rebuild inventories, packages, binaries, assets, linked libraries and notices match on both architectures; each image has 11 changed system account/cache/log files and different tar metadata. See `/tmp/campfire-2a511ac-reproducibility.json`. Byte-identical images remain unproven. |
+| Shared verification | `bin/check` passes in `campfire-m8-check:pinned` against checkout `b7647b4`; `/tmp/m8-t5-2a511ac-shared-check.log`. |
+| External release | Multiarchitecture publication and actual ONCE deployment are pending a Git remote/registry destination, release tag, ONCE CLI and host. `gh auth status` succeeds for `sremani`. |
 
 ### Historical `d6600ed` release command log
 
-| Check | Reproduction command or source | Current evidence |
+| Check | Reproduction command or source | Historical d660 evidence |
 | --- | --- | --- |
 | Source provenance | `python3 scripts/release_source_manifest.py --output /tmp/campfire-source-d6600ed.json` | **Pass locally on clean d660**: zero Gumbo local checksum errors; 321 assets, 87 application files, eight C stubs and 11 release files. The upstream Gumbo archive hash and Cable commit were recorded, not independently refetched. |
 | Copied-install lifecycle | `python3 scripts/m7_image_lifecycle.py --image campfire-ocaml:rc-d6600ed-ARCH --old-image campfire-reference:app` for amd64 and arm64 | **Pass on both d660 images**: old Rails, upgrade, restart, backup/restore and rollback `/up=200`; OCaml SIGTERM=0; 169 messages and 14 blob SHA-256 hashes stable; two additive indexes; table schema and SQLite integrity stable. Logs: `/tmp/campfire-lifecycle-d6600ed-{amd64,arm64}.log`. The prior bcb images passed the same check. |
@@ -323,15 +343,15 @@ that label on any pushed image rather than inferring it from this local build.
 | Runtime contracts | `python3 scripts/release_image_inventory.py --image IMAGE --revision d6600ed... --output /tmp/IMAGE-inventory.json`; focused final-image HTTP/2/TLS/ACME, signed media and Cable/shutdown probes on both architectures | **Inventory and lifecycle pass on d660 amd64 and arm64**: exact assets, notices/hooks, native link checks, copied Rails upgrade/restart/backup/restore/rollback. Both images passed disposable local Pebble certificate issuance and renewal, HTTPS HTTP/2 `/up=200`, HTTP 301, foreign Host 421, TLS Cable 101/restart, and SIGTERM exit 0; reports `/tmp/campfire-d6600ed-protocol-{amd64,arm64}.json`. Packaged signed media passed 233/233 on each architecture, including the independent arm64 comparison in `/tmp/m8-t5-arm64-signed-media.json`. |
 | Published manifest and ONCE | `.github/workflows/publish-image.yml`, `docker buildx imagetools inspect`, then `once deploy IMAGE --host HOST` | **Not run**: no Git remote, registry identity/credentials, ONCE CLI or target host in this workspace. The local images are not a pushed multiarchitecture manifest or an actual ONCE deployment. |
 
-For the current source, the **local** remaining gates are repeatability
-evidence for the release build and current-image review
-of the earlier Caddy malformed-path, gzip-wire and measured performance
-differences. The earlier Lexxy room-script difference has been fixed.
-Pinned base digests and direct apt versions plus complete package inventories
-support deployment by immutable image digest, but mutable transitive apt
-resolution does not guarantee a byte-reproducible rebuild. The absent Git
-remote/registry/ONCE host are additional **external** publication and deployment
-requirements, not the only reason M8-T5 remains open.
+For the current source, the local release checks are complete and their
+exceptions are classified above: gzip wire bytes, Caddy malformed-path
+parsing, measured throughput, and nonidentical system files in uncached
+rebuilds. The earlier Lexxy room-script difference has been fixed. Pinned
+base digests, direct apt versions, and captured package inventories support
+deployment by immutable image digest, but mutable transitive apt resolution
+and build-time system files do not guarantee a byte-reproducible rebuild.
+M8-T5 remains open for a published multiarchitecture manifest, review of
+the exact published artifact, and an actual ONCE deployment.
 
 For an immutable local candidate, first record a clean `git rev-parse HEAD` and source
 manifest. Build each architecture from that source, setting `APP_VERSION` and `GIT_REVISION`
