@@ -5,9 +5,10 @@ passes focused recaptures for the earlier attachment-edit, involvement-frame,
 group-name, and avatar-upload differences across all six browser layers.
 The final lean/full five-seed matrix is running against the immutable source
 at `/tmp/m8-t3-harness-wt/parity/out/m8-t3-2a511ac-final-all/summary.json`.
-All five lean seed matrices have completed: **956/956 exact** across the six
-comparison layers, with zero errors or retries (default 874, crowd 25,
-custom styles 33, first run 16, restricted 8). The first four default-seed
+All five lean seed matrices have completed: **956/956 exact** on their
+applicable layers, with zero errors or retries (default 874, crowd 25,
+custom styles 33, first run 16, restricted 8). The 940 page cells match all
+six layers; 16 pinned fragment cells compare server HTML only. The first four default-seed
 full batches also pass 1,801/1,801 exact (416, 496, 432, and 457 cells),
 with zero flaky cases, retries, or errors; their reports are under the same
 run directory at `default-full-shared-{01,02,03,04}/report.json`. The fifth
