@@ -19,7 +19,8 @@ room-page differences; packaged asset and raw malformed-path results are
 classified below. The clean `d6600ed` image also has complete local M8-T4
 benchmark/resilience evidence. M8-T2 is complete as a comparison with its
 Lexxy, gzip-wire and Caddy-parser differences retained as failures;
-M8-T3, M8-T5 and the release milestone remain open.
+M8-T5 and the release milestone remain open; M8-T3 is complete on the final
+source as recorded below.
 
 Current clean executable source `2a511ac` removes the retained Lexxy room-script
 difference and matches text, attachment edit, involvement-frame, group-name
@@ -31,7 +32,9 @@ cells pass 16/16, and `2a511ac` group-name/avatar-upload cells pass 8/8,
 across server, live DOM, accessibility, network, Cable and pixels. The full
 `2a511ac` five-seed shared HTTP gate also passes 3,186/3,186 eligible cases
 and 30/30 positive writes; 354 first-run roles lack a signed fixture.
-The M8-T3 browser matrix and final-image release audit remain open. The
+The final-source browser matrix passes 5,890/5,890 applicable cells and its
+three first-attempt WebKit anomalies pass separate exact recaptures. The
+final-image release audit remains open. The
 historical `d6600ed` results below retain their original evidence scope.
 
 ## Golden corpus coverage (M8-T1)
@@ -144,6 +147,19 @@ apps. Reports and SHA-256 values are in
 reports differed because the OCaml test launcher omitted `libfaketime` while
 Rust was frozen; the corrected identical-clock reruns pass, and both initial
 reports remain preserved as harness diagnostics.
+
+The final `2a511ac` amd64 image repeats the live comparison against pinned
+Rust: **1,004/1,015 exact**, with zero fixture errors. All 332 applicable
+static fixture responses, 321 manifest GETs, 321 HEADs and five conditional
+requests match. The eleven edge differences are ten gzip wire bodies on
+five files and `/assets/%GG` returning Rust 404 versus Caddy 400. All
+non-gzip sampled edges match. Raw malformed-target probes also confirm
+Rust 404 versus Caddy 400 for `/assets/%GG`, `/assets/%ZZ` and `/assets/%2`.
+The static-handler fixture's `GET /` expects 404, whereas both whole apps
+redirect with 302; the live comparator excludes that static-only assertion
+while still comparing both app responses. Reports are
+`/tmp/m8-t2-2a511ac-assets-live.json` and
+`/tmp/m8-t2-2a511ac-assets-malformed-raw.json`.
 
 The final d660 packaged asset sweep compares **1,004/1,015** cases exactly:
 all 321 manifest GET, 321 HEAD and five conditional requests pass. Its 11

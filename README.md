@@ -7,7 +7,8 @@ implemented. The extra room-view script that caused 16 M3 response differences h
 removed, and all 16 formerly differing room-route cases now match on the pinned seeds.
 The current code source passes the five-seed HTTP/state comparison for all 3,186 eligible
 cases and 30 positive writes. The HTTP/state differential and performance checks have passed
-their scoped gates. Browser parity and the release audit remain in progress.
+their scoped gates. Final-source browser parity passes 5,890/5,890 applicable
+comparisons; publication and ONCE deployment remain release work.
 
 The port targets compatibility with existing Campfire installations: the SQLite schema, storage
 layout, and signed and encrypted cookies. The Rust source is pinned at
@@ -31,7 +32,7 @@ The route, Rails compatibility, and schema fixtures under `test/fixtures/` come 
   cache handling, streamed multipart uploads, packaged assets, and a same-listener Cable upgrade.
 - Tyxml views, Action Text parsing, signed Active Storage responses, libvips/ffmpeg derivatives,
   jobs, Web Push, guarded outbound integrations, and a Caddy front configuration. These have
-  focused and seeded tests. The HTTP/state differential is complete; browser parity remains open.
+  focused and seeded tests. The HTTP/state differential and browser parity are complete locally.
 
 Build and test with OCaml 4.14 or newer, Dune, and the packages in
 [`dune-project`](dune-project):
@@ -46,8 +47,8 @@ dune exec bin/main.exe -- check --database /path/to/storage/db/production.sqlite
 index. `dune exec bin/main.exe -- serve` starts the application listener after configuration;
 set `SECRET_KEY_BASE` and `CAMPFIRE_STORAGE_PATH` for a disposable installation, or use the
 existing installation's secret and storage paths for compatibility checks. The listener and
-deployment configuration are still under differential verification, so use a copied installation
-for testing.
+deployment configuration passed local differential checks; use a copied installation for
+further local testing.
 See [the porting map](docs/porting-map.md) for each upstream subsystem and its current status.
 The [milestones and tickets](docs/milestones.md) and [verification gates](docs/verification-gates.md)
 track the full port.

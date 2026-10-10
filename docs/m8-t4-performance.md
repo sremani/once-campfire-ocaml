@@ -1,6 +1,16 @@
 # M8-T4 performance and resilience record
 
-Status: **M8-T4 release gates complete** on clean packaged candidate `d6600ed`.
+Status: **M8-T4 release gates complete**, including a final-image preflight,
+header probe, and 60-second resilience run on frozen source `2a511ac`.
+The final amd64 image ID is
+`sha256:18a4cce33ec9ea7c5120feb4f758c7684e12cb3f658b5220bb38557f4562d9cd`.
+The shared two-round benchmark preflight is complete and release comparable
+at `once-campfire-verification/tmp/bench/m8-t4-2a511ac-preflight/summary.json`;
+`/tmp/m8-t4-2a511ac-probe/{header,resilience}-summary.json` each report
+`complete: true` and pin the same image/source. The measured timed rates
+below remain from `d6600ed` because the final-image check was a contract
+preflight and resilience probe.
+
 The shared contract preflight, packaged header probe, full resilience run and
 release-comparable alternating timed benchmark passed on `d6600ed`, as on
 the earlier `f099059` and `bcb440c` images. Earlier diagnostic rates below remain

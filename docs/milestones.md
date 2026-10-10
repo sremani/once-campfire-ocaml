@@ -176,9 +176,9 @@ differences are intentional, and deployable release artifacts are verified.
   cells, with 354 first-run signed/denied cells unavailable for lack of a
   session fixture; positive writes are 30/30 exact. Packaged Cable, signed
   media 233/233 on each final-source architecture, and shared write contracts
-  pass. The earlier static-asset comparison is 1,004/1,015 exact; ten gzip
-  wire bodies and Caddy's malformed-path 400 versus Rust 404 are explicit
-  library/front-boundary differences, pending the final-image asset rerun. See
+  pass. The final amd64 static-asset comparison is 1,004/1,015 exact with
+  zero fixture errors; ten gzip wire bodies and Caddy's malformed-path 400
+  versus Rust 404 remain explicit library/front-boundary differences. See
   [coverage audit](m8-coverage-audit.md).
 - [x] **M8-T3 Browser parity.** Run screens, interactions, accessibility trees, and visual
   comparisons; resolve or document deliberate differences. The frozen `2a511ac`

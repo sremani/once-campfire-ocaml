@@ -1,13 +1,14 @@
 # 2a511ac publication and ONCE deployment handoff
 
 This is a command review, not evidence of publication or deployment. No Git remote,
-registry destination, valid `gh` authentication, ONCE CLI, or target host is
-configured here. The current `gh auth status` reports an invalid github.com
-token. Supply and review those values before pushing a tag or deploying.
-Finish the browser and post-browser gates in
-`/tmp/m8-2a511ac-post-browser-checks.md` first. If they require a source
-change, freeze the new revision and repeat its local release checks before
-using this handoff.
+registry destination, ONCE CLI, or target host is configured here. The
+current `gh auth status` succeeds for `sremani`, but a read-only repository
+list finds no Campfire/ONCE destination. Supply and review the destination,
+release version, registry settings, and ONCE host before pushing or deploying.
+The browser and post-browser local gates in
+`/tmp/m8-2a511ac-post-browser-checks.md` are complete. If a publication
+review requires a source change, freeze the new revision and repeat its local
+release checks before using this handoff.
 
 ## Freeze the source being released
 

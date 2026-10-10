@@ -42,15 +42,32 @@ retries; a third WebKit screenshot had a 114-pixel first-attempt
 avatar-edge difference. All three cells then passed separate first-pass
 exact recaptures across six layers and network transcripts, with no
 retries. See [browser evidence](m8-t3-browser.md).
-An uncached repeat-build comparison is prepared at
-`/tmp/m8-t5-2a511ac-reproducibility.py`; its source and inventory preflight
-passes, and the Docker rebuild waits for browser capture to release the
-shared environment. A final-image shared contract and resilience probe at
-`/tmp/m8-t4-2a511ac-probe/run.sh` also passes its offline source/image
-preflight and waits for that Docker interval. M8-T5 remains open for those
-gates and external manifest
-publication and ONCE deployment; no Git remote, registry destination, or
-target host/CLI is configured, and `gh auth status` reports an invalid token.
+The final amd64 static-route sweep is 1,004/1,015 exact with zero fixture
+errors. Its eleven classified differences are ten gzip wire bodies and the
+malformed `/assets/%GG` status/body handled by Caddy before app dispatch;
+raw probes confirm the same Caddy boundary on `%ZZ` and `%2`. The reports
+are `/tmp/m8-t2-2a511ac-assets-live.json` and
+`/tmp/m8-t2-2a511ac-assets-malformed-raw.json`.
+The final amd64 shared two-round benchmark preflight and header and
+60-second resilience probes all pass with `complete: true` against the
+pinned image/source. See `/tmp/m8-t4-2a511ac-probe/` and
+[performance evidence](m8-t4-performance.md). An uncached amd64/arm64
+repeat-build comparison completed at
+`/tmp/campfire-2a511ac-reproducibility.json`: both architectures retain
+identical package inventories, assets, binaries, linked libraries, notices,
+copied files, and OCI labels with zero inventory issues. Their image IDs
+and complete exported filesystems are not byte identical; each architecture
+has 11 content differences in system account files, font/loader caches,
+and package logs. Exported metadata also differs. This supports rebuilding
+the verified application payload from the frozen source, with no claim of
+byte-identical images or future apt repository resolution. The pinned shared
+verification checkout `b7647b4` passes `bin/check` in
+`campfire-m8-check:pinned`; its exit-0 log is
+`/tmp/m8-t5-2a511ac-shared-check.log`. M8-T5 remains open for external
+manifest publication and ONCE deployment, plus review of the recorded
+image-byte limitation. No Git remote, registry destination, target host, or
+ONCE CLI is configured. `gh auth status` now succeeds for `sremani`, but
+`gh repo list sremani` shows no Campfire/ONCE repository target.
 The [publication handoff](m8-t5-publication-handoff.md) records the exact
 source tag, GHCR verification, and ONCE steps once those targets are supplied.
 
