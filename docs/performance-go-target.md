@@ -1,5 +1,8 @@
 # Performance target: approach the Go port
 
+The staged implementation and measurement gates are in the
+[performance escalation plan](performance-escalation-plan.md).
+
 The target is to run the OCaml port slightly below the Go implementation on
 the shared, contract-validated benchmark. Interpret "slightly" provisionally
 as **at least 80% of Go's measured throughput on each of the four authenticated
