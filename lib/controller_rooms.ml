@@ -482,6 +482,7 @@ let webhook_candidates c db room message ~body =
     bot.id<>message.M.Message.creator_id) candidates
 let post_render_reuse = Sys.getenv_opt "CAMPFIRE_POST_RENDER_REUSE" <> Some "0"
 let skip_idle_broadcast = Sys.getenv_opt "CAMPFIRE_SKIP_IDLE_BROADCAST" <> Some "0"
+let central_post_writer_socket = Sys.getenv_opt "CAMPFIRE_POST_WRITER_SOCKET"
 let deliver_webhooks_to_bots c message bots =
   if bots=[] then Lwt.return_unit else
   write c (fun tx -> List.iter
@@ -508,6 +509,18 @@ let message_create c = scoped_room c >>= function
            (match attachment with
             | Upload_attachment file -> with_uploaded_blob c file
                 (fun tx blob_id -> create tx (Some blob_id))
+            | Keep_attachment | Remove_attachment ->
+                (match central_post_writer_socket,body,index_plain with
+                 | Some path,Some body,Some plain when String.length body <= 4096 ->
+                     Post_writer.create_message_async path
+                       {Post_writer.room_id=room.R.Room.id;creator_id;client_message_id;
+                        body;index_plain=plain;now=c.H.now}
+                     >|= fun message ->
+                     Db_remaining.Event.on_push c.H.event_sink
+                       ~room_id:message.M.Message.room_id
+                       ~message_id:message.M.Message.id;
+                     message
+                 | _ -> write c (fun tx -> create tx None))
             | _ -> write c (fun tx -> create tx None)) >>= fun message ->
            let will_broadcast = not skip_idle_broadcast ||
              (match c.H.cable with

@@ -10,6 +10,11 @@
  (libraries campfire alcotest unix threads))
 
 (test
+ (name post_writer_test)
+ (modules post_writer_test)
+ (libraries campfire alcotest sqlite3 unix threads lwt.unix))
+
+(test
  (name m1_t1_test)
  (modules m1_t1_test)
  (libraries campfire alcotest yojson ptime)

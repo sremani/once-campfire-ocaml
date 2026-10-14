@@ -158,8 +158,25 @@ let bus_cmd =
   let info = Cmd.info "bus" ~doc:"Run the local Cable event broker." in
   Cmd.v info Term.(ret (const run $ path))
 
+let post_writer_cmd =
+  let open Cmdliner in
+  let path = Arg.(required & pos 0 (some string) None & info [] ~docv:"SOCKET") in
+  let run path = match Campfire.Config.from_env () with
+    | Error message -> `Error (false,message)
+    | Ok config ->
+        (try
+           Campfire.Runtime_ops.storage_ready config;
+           let runtime = Campfire.Db_runtime.open_db ~readers:1
+             ~environment:config.environment config.storage.database in
+           Fun.protect ~finally:(fun () -> Campfire.Db_runtime.close runtime)
+             (fun () -> Campfire.Post_writer.serve path runtime);
+           `Ok ()
+         with exn -> `Error (false,Printexc.to_string exn)) in
+  let info = Cmd.info "post-writer" ~doc:"Serve ordinary message writes on one SQLite connection." in
+  Cmd.v info Term.(ret (const run $ path))
+
 let () =
   let open Cmdliner in
   let info = Cmd.info "campfire" ~doc:"OCaml port of ONCE Campfire (in progress)." in
   exit (Cmd.eval (Cmd.group info ~default:Term.(ret (const serve $ const None $ const None))
-    [check_cmd; serve_cmd; server_cmd; backup_cmd; bus_cmd]))
+    [check_cmd; serve_cmd; server_cmd; backup_cmd; bus_cmd; post_writer_cmd]))

@@ -12,7 +12,13 @@ if [ "${CAMPFIRE_DIRECT_HTTP:-0}" = "1" ]; then
   workers=${CAMPFIRE_HTTP_WORKERS:-1}
   case "$workers" in 1|2|4) ;; *)
     echo "CAMPFIRE_HTTP_WORKERS must be 1, 2, or 4" >&2; exit 2 ;; esac
-  if [ "$workers" = 1 ]; then exec /usr/local/bin/campfire server; fi
+  if [ "$workers" = 1 ]; then
+    if [ "${CAMPFIRE_CENTRAL_POST_WRITER:-0}" = "1" ]; then
+      echo "CAMPFIRE_CENTRAL_POST_WRITER requires multiple HTTP workers" >&2
+      exit 2
+    fi
+    exec /usr/local/bin/campfire server
+  fi
 
   bus_socket=/rails/storage/thruster/cable-bus.sock
   presence_ready=/rails/storage/thruster/presence-ready
@@ -21,11 +27,31 @@ if [ "${CAMPFIRE_DIRECT_HTTP:-0}" = "1" ]; then
   rm -f "$presence_ready"
   /usr/local/bin/campfire bus "$bus_socket" &
   broker_pid=$!
+  pids=("$broker_pid")
+  if [ "${CAMPFIRE_CENTRAL_POST_WRITER:-0}" = "1" ]; then
+    export CAMPFIRE_POST_WRITER_SOCKET=/rails/storage/thruster/post-writer.sock
+    rm -f "$CAMPFIRE_POST_WRITER_SOCKET"
+    /usr/local/bin/campfire post-writer "$CAMPFIRE_POST_WRITER_SOCKET" &
+    writer_pid=$!
+    writer_ready=0
+    for ((attempt=0; attempt<100; attempt++)); do
+      if [ -S "$CAMPFIRE_POST_WRITER_SOCKET" ]; then writer_ready=1; break; fi
+      if ! kill -0 "$writer_pid" 2>/dev/null; then break; fi
+      sleep 0.05
+    done
+    if [ "$writer_ready" -ne 1 ]; then
+      echo "Campfire central POST writer did not start" >&2
+      kill -s TERM "$writer_pid" "$broker_pid" 2>/dev/null || true
+      wait "$writer_pid" "$broker_pid" 2>/dev/null || true
+      exit 1
+    fi
+    pids+=("$writer_pid")
+  fi
   CAMPFIRE_REUSEPORT=1 CAMPFIRE_CABLE_BUS="$bus_socket" \
     CAMPFIRE_PRESENCE_READY_FILE="$presence_ready" \
     /usr/local/bin/campfire server &
   first_pid=$!
-  pids=("$broker_pid" "$first_pid")
+  pids+=("$first_pid")
   ready=0
   for ((attempt=0; attempt<100; attempt++)); do
     if [ -f "$presence_ready" ]; then ready=1; break; fi
