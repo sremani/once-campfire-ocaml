@@ -215,3 +215,46 @@ comparison rather than a release benchmark. Raw summaries are under
 `once-campfire-verification/tmp/bench/ocaml55-quietcores-{candidate,baseline,candidate-repeat}-20261010/`.
 The candidate is still far below the 80%-of-Go completion target and has not
 been deployed.
+
+## Rung 3 follow-up: reuse SQLite statements on the writer (2026-10-13)
+
+The POST writer profile showed roughly 0.94–0.98 ms of execution per message.
+Search-index insertion averaged about 0.23 ms, rich-text body insertion 0.14
+ms, and unread membership update 0.13 ms. A same-binary A/B/B/A trial that
+moved the index and unread updates into the first transaction improved POST
+by only about 2%, inside run variation, so that change was removed.
+
+An opt-in bounded prepared-statement cache reduced the writer's measured job
+time from about 1.06 to 0.80 ms in an earlier POST-only profile. Caching on
+**all** SQLite connections increased POST throughput by 14% but regressed all
+four GET routes by 4–10% in the quiet-core five-route A/B/B/A sequence; that
+design was rejected. Raw results:
+`once-campfire-verification/tmp/bench/ocaml55-sqlcache-all-{A1,B1,B2,A2}-20261013/`.
+
+The cache now applies only to the exclusive writer connection. It keeps at
+most 512 compiled statements, falls back to a fresh statement for nested use
+of the same SQL, and finalizes statements before closing the connection. The
+same-image A/B/B/A comparison used image
+`sha256:c014d2ee81a06d9d9d2b4ed35ca55458b6bd11d54b0cef3bda4be9044c4d994b`,
+the same pinned fixture, Caddy, server CPUs 2,3,5,6 and client CPUs 0,1,4,7.
+Each run had two four-second rounds at 16 clients. Mean requests/s across the
+four off or on rounds were:
+
+| Route | Cache off | Writer cache on | Change | Mean p99 latency, off → on |
+| --- | ---: | ---: | ---: | ---: |
+| Room show | 5,738 | 5,856 | +2.1% | 4.58 → 4.49 ms |
+| Messages page | 5,490 | 5,574 | +1.5% | 4.77 → 4.75 ms |
+| Sidebar | 6,062 | 6,221 | +2.6% | 4.37 → 4.22 ms |
+| Search | 5,842 | 5,810 | −0.5% | 4.57 → 4.47 ms |
+| Message POST | 966 | 1,103 | +14.1% | 23.09 → 17.88 ms |
+
+Every run had zero errors and invalid responses, passed route contracts and
+the exact acknowledged-write audit. The four GET changes are within observed
+variation; the POST gain exceeded both cache-off runs in both cache-on runs.
+Raw summaries: `once-campfire-verification/tmp/bench/ocaml55-sqlcache-writer-{A1,B1,B2,A2}-20261013/`.
+The full OCaml 5.5.1 forced suite passes with writer caching both enabled and
+disabled. A focused test exercises parameter rebinding, nested use of the
+same SQL, transaction rollback, recovery after a SQLite constraint error, and
+close/reopen. Writer caching is now the default; `CAMPFIRE_SQL_CACHE=0` keeps
+an opt-out. This remains a development image, and the 80%-of-Go target and
+full release-image resilience gate are open.

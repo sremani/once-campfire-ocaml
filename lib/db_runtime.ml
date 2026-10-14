@@ -96,11 +96,11 @@ let check_rc context = function
 
 let exec db sql = check_rc "SQLite exec" (Sqlite3.exec db sql)
 
-(* Reader connections are checked out to one caller at a time, and the writer
-   has exclusive use of its connection. Reusing their compiled SQL avoids
-   preparing the same query on every request. Keep this opt-in until the
-   same-binary benchmark and full correctness gates pass. *)
-let statement_cache_enabled = Sys.getenv_opt "CAMPFIRE_SQL_CACHE" = Some "1"
+(* The writer has exclusive use of its connection. Reusing its compiled SQL
+   avoids preparing the same INSERT and UPDATE on every message. Reader
+   queries deliberately retain the normal prepare/finalize path: caching
+   statements on all connections regressed the four measured GET routes. *)
+let statement_cache_enabled = Sys.getenv_opt "CAMPFIRE_SQL_CACHE" <> Some "0"
 type cached_statement = { statement : Sqlite3.stmt; mutable in_use : bool }
 let statement_caches : (Sqlite3.db * (string, cached_statement) Hashtbl.t) list Atomic.t =
   Atomic.make []
@@ -407,7 +407,6 @@ let open_db ?(readers=8) ?(prepare=true) ?(environment="production") path =
       checkpoint_thread = None; page_size } in
     t.checkpoint_thread <- Some (Thread.create checkpoint_loop t);
     register_statement_cache writer;
-    List.iter register_statement_cache !opened;
     t
   with exn -> ignore (Sqlite3.db_close writer); raise exn
 
@@ -643,9 +642,7 @@ let close t =
     Mutex.unlock t.pool_mutex;
     List.iter Thread.join t.async_threads;
     (match t.checkpoint_thread with Some thread -> Thread.join thread | None -> ());
-    List.iter (fun db ->
-      unregister_statement_cache db;
-      if not (Sqlite3.db_close db) then failwith "reader still busy") readers;
+    List.iter (fun db -> if not (Sqlite3.db_close db) then failwith "reader still busy") readers;
     if not (Sqlite3.db_close t.checkpoint_db) then failwith "checkpointer still busy";
     unregister_statement_cache t.writer;
     if not (Sqlite3.db_close t.writer) then failwith "writer still busy")

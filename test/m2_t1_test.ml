@@ -503,6 +503,63 @@ let test_backup_during_writes () =
         check "source writer finished" (scalar db
           "SELECT amount FROM balanced WHERE id = 1" = "500")))))
 
+exception Statement_probe_rollback
+
+let test_reused_writer_statements () =
+  with_path (fun path ->
+    let runtime = Db_runtime.open_db path in
+    let query = "SELECT value FROM statement_probe WHERE id>=? ORDER BY id LIMIT 1" in
+    let value db id = Db_runtime.query_one db query [Sqlite3.Data.INT id]
+      (fun stmt -> Sqlite3.column_text stmt 0) in
+    Fun.protect ~finally:(fun () -> Db_runtime.close runtime) (fun () ->
+      Db_runtime.write runtime (fun tx ->
+        let db = Db_runtime.conn tx in
+        Db_runtime.exec db
+          "CREATE TABLE statement_probe (id integer PRIMARY KEY, value text NOT NULL)";
+        for id = 1 to 20 do
+          ignore (Db_runtime.execute db
+            "INSERT INTO statement_probe (id, value) VALUES (?, ?)"
+            [Sqlite3.Data.INT (Int64.of_int id);
+             Sqlite3.Data.TEXT (string_of_int id)])
+        done;
+        check "rebound query reads next row" (value db 5L = Some "5");
+        let nested = Db_runtime.query_one db query [Sqlite3.Data.INT 2L]
+          (fun stmt ->
+            let outer = Sqlite3.column_text stmt 0 in
+            check "same SQL nested while active" (value db 19L = Some "19");
+            outer) in
+        check "outer statement remains valid" (nested = Some "2"));
+      (try Db_runtime.write runtime (fun tx ->
+        ignore (Db_runtime.execute (Db_runtime.conn tx)
+          "INSERT INTO statement_probe (id, value) VALUES (?, ?)"
+          [Sqlite3.Data.INT 21L; Sqlite3.Data.TEXT "rollback"]);
+        raise Statement_probe_rollback) with
+        Statement_probe_rollback -> () | exn -> raise exn);
+      Db_runtime.write runtime (fun tx ->
+        check "rollback did not poison bound statement"
+          (value (Db_runtime.conn tx) 21L = None));
+      let rejected = try
+        Db_runtime.write runtime (fun tx ->
+          ignore (Db_runtime.execute (Db_runtime.conn tx)
+            "INSERT INTO statement_probe (id, value) VALUES (?, ?)"
+            [Sqlite3.Data.INT 1L; Sqlite3.Data.TEXT "duplicate"]));
+        false
+      with Failure message -> String.starts_with ~prefix:"SQLite execute:" message in
+      check "constraint failure reported" rejected;
+      Db_runtime.write runtime (fun tx ->
+        ignore (Db_runtime.execute (Db_runtime.conn tx)
+          "INSERT INTO statement_probe (id, value) VALUES (?, ?)"
+          [Sqlite3.Data.INT 22L; Sqlite3.Data.TEXT "recovered"]);
+        check "statement reused after SQLite error"
+          (value (Db_runtime.conn tx) 22L = Some "recovered"));
+      Db_runtime.read runtime (fun db ->
+        check "reader sees reused writer result" (value db 20L = Some "20")));
+    let reopened = Db_runtime.open_db ~prepare:false path in
+    Fun.protect ~finally:(fun () -> Db_runtime.close reopened) (fun () ->
+      Db_runtime.write reopened (fun tx ->
+        check "cache finalized before reopen"
+          (value (Db_runtime.conn tx) 20L = Some "20"))))
+
 let () =
   Alcotest.run "database runtime" [
     "schema", [
@@ -523,5 +580,6 @@ let () =
       Alcotest.test_case "async reads and close" `Quick test_async_reads_and_close;
       Alcotest.test_case "WAL and backup under load" `Slow test_wal_and_backup_under_load;
       Alcotest.test_case "backup during writes" `Quick test_backup_during_writes;
+      Alcotest.test_case "reused writer statements" `Quick test_reused_writer_statements;
     ];
   ]
