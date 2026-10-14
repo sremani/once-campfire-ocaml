@@ -41,7 +41,7 @@ type context = {
   cable : Cable_channels.t option;
   event_sink : Db_remaining.Event.sink;
   private_cache : private_cache_state option;
-  cache_generation : int64 option;
+  cache_generation : int64 option Lazy.t;
   mutable private_ticket : Http_cache.Private.ticket option;
   mutable private_hit : bool;
   mutable page_parts : Http_cache.Page_parts.part list option;
@@ -91,12 +91,27 @@ let respond ?(headers=[]) ~status ~content_type body =
   Cohttp.Response.make ~status:(Cohttp.Code.status_of_code status) ~headers (),
   Cohttp_lwt.Body.of_string body
 
+let fast_stylesheet_scan = Sys.getenv_opt "CAMPFIRE_STYLESHEET_SCAN_FAST" <> Some "0"
+let fast_hex = Sys.getenv_opt "CAMPFIRE_HEX_FAST" <> Some "0"
+
 let html ?(headers=[]) ~status body =
   let stylesheet_tag = "<link rel=\"stylesheet\"" in
+  let tag_length = String.length stylesheet_tag in
+  let body_length = String.length body in
+  let rec matches at index =
+    index = tag_length ||
+    (body.[at + index] = stylesheet_tag.[index] && matches at (index + 1)) in
   let rec has_stylesheet at =
-    at + String.length stylesheet_tag <= String.length body &&
-    (String.sub body at (String.length stylesheet_tag) = stylesheet_tag ||
-     has_stylesheet (at + 1)) in
+    if fast_stylesheet_scan then
+      match String.index_from_opt body at '<' with
+      | None -> false
+      | Some found when found + tag_length <= body_length ->
+          matches found 0 || has_stylesheet (found + 1)
+      | Some _ -> false
+    else
+      at + tag_length <= body_length &&
+      (String.sub body at tag_length = stylesheet_tag ||
+       has_stylesheet (at + 1)) in
   let headers = if String.starts_with ~prefix:"<!DOCTYPE html>" body &&
     has_stylesheet 0 && not (List.mem_assoc "link" headers) then
     ("link", snd (Assets.stylesheet_tags ())) :: headers else headers in
@@ -129,9 +144,11 @@ let error ~status =
     if status = 404 then "Not found" else label) ^ "</h1>")
 
 let hex bytes =
-  let b = Buffer.create (2 * String.length bytes) in
-  String.iter (fun c -> Buffer.add_string b (Printf.sprintf "%02x" (Char.code c))) bytes;
-  Buffer.contents b
+  if fast_hex then Http_cache.hex bytes
+  else (
+    let b = Buffer.create (2 * String.length bytes) in
+    String.iter (fun c -> Buffer.add_string b (Printf.sprintf "%02x" (Char.code c))) bytes;
+    Buffer.contents b)
 
 let load_session ctx = match ctx.session_data with
   | Some data -> data
@@ -192,7 +209,7 @@ let base_url ctx =
   (if ctx.ssl then "https://" else "http://") ^ host
 
 let private_lookup ctx =
-  match ctx.private_cache,ctx.cache_generation,ctx.auth with
+  match ctx.private_cache,Lazy.force ctx.cache_generation,ctx.auth with
   | Some cache,Some generation,Some (Authentication.Authenticated identity)
       when ctx.authenticated_by=Session &&
         Http_cache.Private.eligible_request
@@ -240,12 +257,13 @@ let csrf_check ctx =
 let readonly_auth_enabled = Sys.getenv_opt "CAMPFIRE_AUTH_READ" <> Some "0"
 let joined_user_enabled = Sys.getenv_opt "CAMPFIRE_JOINED_USER" <> Some "0"
 let auth_cache_enabled = Sys.getenv_opt "CAMPFIRE_AUTH_CACHE" <> Some "0"
+let lazy_generation_enabled = Sys.getenv_opt "CAMPFIRE_LAZY_GENERATION" <> Some "0"
 
 let restore_auth ctx =
   let cookie_headers = Cohttp.Header.get_multi (Cohttp.Request.headers ctx.request) "cookie" in
   let user_agent = header ctx "user-agent" in
   let safe = ctx.method_ = "GET" || ctx.method_ = "HEAD" in
-  let cache_slot = match ctx.private_cache, ctx.cache_generation with
+  let cache_slot = match ctx.private_cache, Lazy.force ctx.cache_generation with
     | Some cache, Some generation
         when safe && readonly_auth_enabled && auth_cache_enabled ->
         (match Http_cache.Observer.version cache.observer with
@@ -635,14 +653,17 @@ let handle_uncompressed ~runtime ~secret_key_base ?cable ?private_cache
                match format with
                | Error _ -> Lwt.return (error ~status:406)
                | Ok format ->
+               let cache_generation = lazy (Option.bind private_cache (fun cache ->
+                 Perf_probe.time "cache_version_initial" (fun () ->
+                   Http_cache.Observer.version cache.observer))) in
+               if not lazy_generation_enabled then
+                 ignore (Lazy.force cache_generation);
                let ctx = {
                  request; route; body; raw_post = body;
                  method_ = selected.effective_method; original_method = raw_method; path;
                  params; query_params; request_params; path_params; format; cookies; runtime;
                  cable; event_sink; private_cache;
-                 cache_generation=Option.bind private_cache (fun cache ->
-                   Perf_probe.time "cache_version_initial" (fun () ->
-                     Http_cache.Observer.version cache.observer));
+                 cache_generation;
                  private_ticket=None;private_hit=false;page_parts=None;
                  secret_key_base; remote_ip; now; ssl; force_ssl; auth = None;
                  current_user = None;
@@ -685,6 +706,28 @@ let static_response request =
 let response_header name value (response, body) =
   let headers = Cohttp.Header.replace (Cohttp.Response.headers response) name value in
   {response with headers}, body
+
+let health_fast_enabled = Sys.getenv_opt "CAMPFIRE_HEALTH_FAST" <> Some "0"
+let health_html =
+  "<!DOCTYPE html><html><body style=\"background-color: green\"></body></html>"
+
+let health_gzip_template = lazy (
+  let headers = Cohttp.Header.of_list ["accept-encoding", "gzip"] in
+  let request = Cohttp.Request.make ~headers (Uri.of_string "/up") in
+  Http_cache.finish ~request (html ~status:200 health_html) >>= fun response ->
+  Http_gzip.apply request response >|= response_header "x-cache" "miss")
+
+let health_fast_request ~front_cache ~force_ssl ~ssl request =
+  if not health_fast_enabled || Option.is_none front_cache ||
+     (force_ssl && not ssl) || Cohttp.Request.meth request <> `GET then false
+  else
+    let headers = Cohttp.Request.headers request in
+    Cohttp.Request.resource request = "/up" &&
+    (match Cohttp.Header.get headers "accept" with
+     | None | Some "text/html" | Some "*/*" -> true | Some _ -> false) &&
+    Cohttp.Header.get headers "accept-encoding" = Some "gzip" &&
+    Cohttp.Header.get headers "if-none-match" = None &&
+    Cohttp.Header.get headers "if-modified-since" = None
 
 let static_recheck = Sys.getenv_opt "CAMPFIRE_STATIC_RECHECK" = Some "1"
 let static_path_filter = Sys.getenv_opt "CAMPFIRE_STATIC_PATH_FILTER" <> Some "0"
@@ -788,7 +831,10 @@ let handle ~runtime ~secret_key_base ?cable ?event_sink ?front_cache
                 response,Cohttp_lwt.Body.of_string bytes
           | _ -> Lwt.return (response,body))
      | _ -> Lwt.return (response,body)) in
-  let result = match front_cache with
+  let result = if health_fast_request ~front_cache ~force_ssl ~ssl request then (
+    Perf_probe.bump "health_fast_hit";
+    Lazy.force health_gzip_template)
+  else match front_cache with
   | None -> run ()
   | Some cache ->
       let now = Unix.gettimeofday () in
@@ -849,7 +895,8 @@ let handle ~runtime ~secret_key_base ?cable ?event_sink ?front_cache
     let response,body = if Cohttp.Code.code_of_status
       (Cohttp.Response.status response) = 413 then error ~status:413
       else response,body in
-    let path = Uri.path (Request_uri.get request) in
+    let path = if health_fast_enabled && Cohttp.Request.resource request = "/up"
+      then "/up" else Uri.path (Request_uri.get request) in
     let status = Cohttp.Code.code_of_status (Cohttp.Response.status response) in
     let headers = Cohttp.Response.headers response in
     (* PublicExceptions sets Content-Length: 0 itself. Rack::Deflater leaves
@@ -985,7 +1032,12 @@ let serve ?(port=3000) ?(bind_ip="127.0.0.1") ?front_config ?stop ?track_request
     else if cable_too_large then
       Lwt.return (`Response (error ~status:413))
     else match cable_run with
-    | Some run when Uri.path (Request_uri.get request) = "/cable" ->
+    | Some run when
+        let resource = Cohttp.Request.resource request in
+        resource = "/cable" || String.starts_with ~prefix:"/cable?" resource ||
+        ((not (String.starts_with ~prefix:"/" resource) ||
+          String.contains resource '%') &&
+         Uri.path (Request_uri.get request) = "/cable") ->
         Cable_transport.handle ~config:cable_config request ~run:(run request)
     | _ ->
         handle ~runtime ~secret_key_base ?cable ?event_sink

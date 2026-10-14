@@ -698,3 +698,56 @@ gain. Both changes remain individually switchable while the clean paired
 comparison determines whether to retain them. Raw summaries:
 `tmp/bench/ocaml55-randomfd-{A1,B1,A2}-20261014/` and
 `tmp/bench/ocaml55-pathfast-{A1,B1,A2retry,B2}-20261014/`.
+
+## Clean URI-cache result and remaining POST/health gaps (2026-10-14)
+
+The clean, revision-stamped `5ec12c6` image was paired with the pinned Go
+image on the same four server cores. Both images and their source trees were
+clean. The same fixture, 16 clients, two three-second rounds, response
+contracts, and exact POST write audit passed. Median throughput was:
+
+| Route | OCaml requests/s | Go requests/s | OCaml / Go |
+| --- | ---: | ---: | ---: |
+| Room show | 55,884 | 55,845 | 100.1% |
+| Messages page | 60,705 | 58,087 | 104.5% |
+| Sidebar | 74,626 | 63,847 | 116.9% |
+| Search | 66,918 | 62,352 | 107.3% |
+| Message POST | 2,628 | 6,074 | 43.3% |
+| `/up` | 79,664 | 139,514 | 57.1% |
+
+Raw summary: `tmp/bench/ocaml55-5ec12c6-clean-go-20261014/summary.json`.
+All four authenticated read routes clear the 85% target. The overall target
+remains unmet because writes and `/up` do not.
+
+An isolated POST test on the same image measured 3,594 requests/s with one
+worker, 3,296 with two, and about 2,628 with four. A one-worker profile showed
+about 0.10 ms of actual writer work per message and no significant wait at
+`BEGIN IMMEDIATE`; the four-worker profile showed roughly 0.55–0.9 ms per
+writer job, including 0.3–0.6 ms waiting to begin, plus 1.9–2.6 ms in the
+writer queue. Cross-process SQLite lock contention is a major part of the
+four-worker loss. Raw runs:
+`tmp/bench/ocaml55-post-workers{1,2}-20261014/` and
+`tmp/bench/ocaml55-post-profile-5ec12c6-20261014/`.
+
+Two write experiments were removed after comparison. Moving FTS and unread
+updates into the message transaction changed four-worker POST from 2,831 to
+2,866 requests/s (+1.2%); it also changed the visible in-transaction FTS
+behavior. An extra cross-process file lock around writes fell from 2,742 to
+2,523 requests/s. Neither justified its cost. Raw summaries:
+`tmp/bench/ocaml55-postatomic-{A1,B1}-20261014/` and
+`tmp/bench/ocaml55-writerlock-{A1,B1}-20261014/`.
+
+The `/up` stage profile after URI caching showed a roughly 8 µs route handler,
+2.3 µs SQLite observer check, 3–4 µs gzip step, and 4 µs response finalizer.
+The observer check is now lazy and runs only when private response caching is
+used; an initial same-image throughput comparison was tied on the busy host.
+The allocation sample also found repeated `Printf.sprintf` calls for the
+request ID hex encoding and a substring allocation at each position of the
+HTML stylesheet check. Direct byte conversion and a character scan passed the
+full suite. A cached gzip health response template for ordinary `GET /up`
+requests uses the same HTML, ETag, gzip, and final response-header path while
+other formats and conditional requests use the general handler. Two alternating
+off/on pairs measured 60,919/77,782 and 60,421/81,057 requests/s, a mean
+gain of 30.9%. The host was heavily occupied by unrelated Java jobs, so a
+clean paired Go run is still needed. Raw summaries:
+`tmp/bench/ocaml55-healthtemplate-{A1,B1,A2,B2}-20261014/`.

@@ -294,7 +294,7 @@ let qr_show c =
 let health c =
   if available c [Http_format.Html] then
     response (H.html ~status:200
-      "<!DOCTYPE html><html><body style=\"background-color: green\"></body></html>")
+      H.health_html)
   else if available c [Http_format.Json] then
     let time = Authentication.now_time c.H.now in
     let timestamp = Authentication.utc_rfc3339 ~frac_s:0 time in
