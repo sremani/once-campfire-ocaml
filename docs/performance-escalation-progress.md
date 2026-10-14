@@ -533,3 +533,12 @@ the POST broadcast and response passed the full suite and exact live audits.
 Its on/off bracket was confounded by `/up` drift, so it is retained as an
 allocation cleanup without a claimed throughput gain. Raw summaries are
 under `tmp/bench/ocaml55-{httpaf-dbdomains-w4,inlineauth-*,postrender-*}-20261014/`.
+
+The Tyxml simple streaming printer was retested for message POST with the
+reader domains and auth statement cache enabled. Same-image off/on/off
+medians were 2,827 / 3,070 / 2,874 audited POSTs/s, a roughly 7–9% on
+advantage. `/up` medians were about 36.3k / 37.8k / 38.4k/s, so the POST
+gain did not follow the host control. The printer is now the default;
+`CAMPFIRE_STREAM_HTML=0` restores the Format printer. The forced suite,
+including rendered view goldens, passes with the new default. Raw summaries:
+`tmp/bench/ocaml55-stream-domains-{off-A1,on-B1,off-A2}-20261014/`.

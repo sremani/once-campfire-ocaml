@@ -5,7 +5,7 @@ module H = Tyxml.Html
 module Stream_printer = Xml_print.Make_typed_simple(Tyxml_xml)(H)
 [@@ocaml.warning "-3"]
 
-let stream_html_enabled = Sys.getenv_opt "CAMPFIRE_STREAM_HTML" = Some "1"
+let stream_html_enabled = Sys.getenv_opt "CAMPFIRE_STREAM_HTML" <> Some "0"
 
 type fragment = Fragment of string
 type trusted_html = Trusted_html of string
