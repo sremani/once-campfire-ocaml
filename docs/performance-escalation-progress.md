@@ -646,3 +646,55 @@ which never use the private response cache. A lazy single-check refactor passed
 the full suite, including cache invalidation tests, but an old/new/old direct
 benchmark gave mixed GETs and no convincing POST gain. It was removed. Raw
 summaries: `tmp/bench/ocaml55-lazycache-{old-A1,new-B1,old-A2}-20261014/`.
+
+## Clean coordinated-worker checkpoint and URI parsing (2026-10-14)
+
+The clean `c81ca34` image and Go image were compared on the same pinned four
+server cores with 16 clients, two three-second rounds, the same fixture, full
+route response contracts, and exact POST write audits. All timed requests
+passed. OCaml reached 42.7% of Go on room show, 53.1% on messages, 48.6% on
+sidebar, 41.8% on search, 43.0% on POST, and 29.4% on `/up`. Raw summary:
+`tmp/bench/ocaml55-c81ca34-clean-go-20261014/summary.json`.
+
+A disposable raw Lwt socket server serving only the fixed `/up` response
+reached 697k–734k requests/s on four worker cores. That is a transport ceiling,
+not an application benchmark. A full raw adapter that called the real app
+passed response and write audits but did not improve read throughput; its
+initial writer exposed a 40 ms delayed-ACK stall until TCP_NODELAY was set.
+The parser itself took about 1 µs per request while the app handler remained
+near 100 µs. The adapter is retained under `experiments/raw-http/` and is not
+production capable. Raw summary:
+`tmp/bench/ocaml55-raw-adapter-nodelay-20261014/summary.json`.
+
+On the production Cohttp listener, an allocation sample of 8,644 allocations
+on room traffic attributed 3,515 (40.7%) to `Uri.of_string` stacks. Cohttp's
+`Request.uri` reconstructs the URI every time it is called, and the app called
+it from several middleware and controller modules. A bounded, per-domain cache
+now parses each physically distinct request once while retaining Cohttp's
+exact URI interpretation. `CAMPFIRE_URI_CACHE=0` is the comparison switch.
+The full forced test suite, including different Host headers and cache eviction,
+passed. Raw allocation sample:
+`tmp/bench/runtime/2556108/ocaml-2/logs/memprof-85.txt`.
+
+The same-image A/B/A/B comparison used the four pinned server cores and exact
+response/write audits. A disabled the URI cache; B enabled it. The mean of the
+two run medians was:
+
+| Route | URI cache off | URI cache on | Change |
+| --- | ---: | ---: | ---: |
+| Room show | 29,078 | 57,505 | +97.8% |
+| `/up` | 41,700 | 91,945 | +120.5% |
+| Message POST | 2,697 | 2,824 | +4.7% |
+
+Every timed response was valid, and exact POST write counts passed. These are
+dirty-source development images, not yet a clean paired Go result. Raw
+summaries: `tmp/bench/ocaml55-uricache-{A1,B1,A2,B2}-20261014/`.
+
+Other small experiments: a shared `/dev/urandom` descriptor eliminated repeated
+open/close calls but had no measurable same-image throughput effect. Skipping
+static-file and public-cache checks on known dynamic paths increased room
+throughput by roughly 11% in alternating runs, with no reliable `/up` or POST
+gain. Both changes remain individually switchable while the clean paired
+comparison determines whether to retain them. Raw summaries:
+`tmp/bench/ocaml55-randomfd-{A1,B1,A2}-20261014/` and
+`tmp/bench/ocaml55-pathfast-{A1,B1,A2retry,B2}-20261014/`.

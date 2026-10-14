@@ -35,7 +35,7 @@ let set_blob c =
 let absolute c path = H.base_url c ^ path
 
 let fullpath c =
-  let uri=Cohttp.Request.uri c.H.request in
+  let uri=Request_uri.get c.H.request in
   Uri.path uri ^ (match Uri.verbatim_query uri with
     | None -> "" | Some query -> "?" ^ query)
 

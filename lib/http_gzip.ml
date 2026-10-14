@@ -87,7 +87,7 @@ let apply ?parts request (response, body) =
     match select accept with
     | Identity -> Lwt.return ({response with headers}, body)
     | Unacceptable ->
-        let path = Uri.path (Cohttp.Request.uri request) in
+        let path = Uri.path (Request_uri.get request) in
         let message = "An acceptable encoding for the requested resource " ^ path ^
           " could not be found." in
         let headers = Cohttp.Header.of_list ["content-type", "text/plain";

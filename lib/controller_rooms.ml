@@ -898,7 +898,7 @@ let autocomplete c = match user_id c with
           | Some Http_format.Json ->
             H.set_header c "x-total-count" (string_of_int count);
             if page*20 < count then (
-              let request_uri = Cohttp.Request.uri c.H.request in
+              let request_uri = Request_uri.get c.H.request in
               let uri = Uri.make ~path:(Uri.path request_uri) () in
               let uri = Uri.with_query' uri
                 ([("page",string_of_int (page+1))] @

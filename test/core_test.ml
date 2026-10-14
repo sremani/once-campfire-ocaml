@@ -160,6 +160,26 @@ let test_random_encrypted_cookie_round_trip () =
       ~now:"2026-01-01T12:00:00.000Z" in
   Alcotest.(check bool) "decrypt generated cookie" true (actual = Some value)
 
+let test_request_uri_hosts_and_eviction () =
+  let make host path =
+    let headers = Cohttp.Header.of_list ["host", host] in
+    Cohttp.Request.make ~headers (Uri.of_string path) in
+  let first = make "first.example" "/rooms/1?before=10" in
+  let second = make "second.example" "/rooms/1?before=10" in
+  let first_uri = Campfire.Request_uri.get first in
+  Alcotest.(check bool) "same request reuses URI" true
+    (first_uri == Campfire.Request_uri.get first);
+  Alcotest.(check string) "first host" "first.example"
+    (Option.get (Uri.host first_uri));
+  Alcotest.(check string) "second host" "second.example"
+    (Option.get (Uri.host (Campfire.Request_uri.get second)));
+  for index = 0 to 80 do
+    ignore (Campfire.Request_uri.get
+      (make "later.example" ("/rooms/" ^ string_of_int index)))
+  done;
+  Alcotest.(check bool) "eviction preserves URI" true
+    (Uri.equal first_uri (Campfire.Request_uri.get first))
+
 let () = Alcotest.run "campfire-core" [
   "config", [
     Alcotest.test_case "defaults" `Quick test_config_defaults;
@@ -173,6 +193,7 @@ let () = Alcotest.run "campfire-core" [
   "routes", [
     Alcotest.test_case "upstream positive vectors" `Quick test_route_vectors;
     Alcotest.test_case "unknown routes" `Quick test_unknown_routes;
+    Alcotest.test_case "request URI hosts and eviction" `Quick test_request_uri_hosts_and_eviction;
   ];
   "signed cookies", [
     Alcotest.test_case "PBKDF2 vectors" `Quick test_derived_keys;

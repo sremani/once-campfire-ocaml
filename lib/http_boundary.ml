@@ -27,7 +27,7 @@ let now_time now = match Ptime.of_rfc3339 now with
 let handle ~db ~secret_key_base ~now ~remote_ip ~ssl ~force_ssl request _body =
   let headers = Cohttp.Request.headers request in
   let method_ = method_name request in
-  let path = Uri.path (Cohttp.Request.uri request) in
+  let path = Uri.path (Request_uri.get request) in
   if path <> "/whoami" then
     reply ~status:404 ~content_type:"text/plain; charset=utf-8" "Not found"
   else

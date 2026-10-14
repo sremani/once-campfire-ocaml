@@ -8,9 +8,16 @@ let mutex = Mutex.create ()
 let samples : (string, sample) Hashtbl.t = Hashtbl.create 32
 let events = ref 0
 
+let expand_pid path = match String.index_opt path '%' with
+  | Some at when at + 1 < String.length path && path.[at+1] = 'p' ->
+      String.sub path 0 at ^ string_of_int (Unix.getpid ()) ^
+      String.sub path (at+2) (String.length path-at-2)
+  | _ -> path
+
 let dump () = match Sys.getenv_opt "CAMPFIRE_PROFILE_PATH" with
   | None -> ()
   | Some path ->
+      let path = expand_pid path in
       Mutex.lock mutex;
       let rows = Hashtbl.to_seq samples |> List.of_seq
         |> List.map (fun (name,sample) ->
@@ -74,7 +81,7 @@ let time_lwt name f =
 (* Allocation sampling is diagnostic and stays off in release runs. Keep raw
    stacks in the callback; symbolization and grouping happen after sampling
    stops, so the request path does not format backtraces. *)
-let memprof_path = Sys.getenv_opt "CAMPFIRE_MEMPROF_PATH"
+let memprof_path = Option.map expand_pid (Sys.getenv_opt "CAMPFIRE_MEMPROF_PATH")
 let memprof_mutex = Mutex.create ()
 let memprof_samples : (Printexc.raw_backtrace * int) list ref = ref []
 let memprof_record allocation =
@@ -91,9 +98,12 @@ let dump_memprof path =
   let groups = Hashtbl.create 1024 in
   List.iter (fun (stack, count) ->
     let trace = Printexc.raw_backtrace_to_string stack in
-    let name = match String.index_opt trace '\n' with
-      | None -> trace
-      | Some at -> String.sub trace 0 at in
+    let rec take n = function
+      | _ when n = 0 -> []
+      | [] -> []
+      | row :: rest -> row :: take (n - 1) rest in
+    let name = String.split_on_char '\n' trace
+      |> List.filter ((<>) "") |> take 6 |> String.concat " <- " in
     Hashtbl.replace groups name
       (count + Option.value (Hashtbl.find_opt groups name) ~default:0))
     samples;

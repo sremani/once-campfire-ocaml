@@ -1,7 +1,7 @@
 (test
  (name core_test)
  (modules core_test)
- (libraries campfire alcotest sqlite3 yojson)
+ (libraries campfire alcotest sqlite3 yojson cohttp uri)
  (deps fixtures/routes.json fixtures/rails_compat.json fixtures/schema.sql))
 
 (test

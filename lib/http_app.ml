@@ -421,7 +421,7 @@ let before ?(access=User) ?(csrf=true) () ctx =
         | (User | Bot_allowed), Some (Authentication.Authenticated _) -> Ok ()
         | Bot_allowed, _ when ctx.authenticated_by = Bot_key -> Ok ()
         | _ ->
-            let uri = Cohttp.Request.uri ctx.request in
+            let uri = Request_uri.get ctx.request in
             let path = match Uri.path uri with "" -> "/" | path -> path in
             let path = match Uri.verbatim_query uri with
               | None -> path | Some query -> path ^ "?" ^ query in
@@ -577,7 +577,7 @@ let handle_uncompressed ~runtime ~secret_key_base ?cable ?private_cache
     ?max_body_bytes ~dispatch request body =
   let headers = Cohttp.Request.headers request in
   let content_type = Cohttp.Header.get headers "content-type" in
-  let uri = Cohttp.Request.uri request in
+  let uri = Request_uri.get request in
   let path = Uri.path uri in
   (* Uri.of_string repairs malformed percent escapes. Rails parses the raw
      request target and rejects them, so retain Cohttp's unmodified resource. *)
@@ -672,7 +672,7 @@ let static_response request =
   let headers = Cohttp.Request.headers request in
   let optional name = Cohttp.Header.get headers name in
   let method_ = Cohttp.Code.string_of_method (Cohttp.Request.meth request) in
-  let path = Uri.path (Cohttp.Request.uri request) in
+  let path = Uri.path (Request_uri.get request) in
   match Assets.serve ~method_ ~path ?accept_encoding:(optional "accept-encoding")
       ?range:(optional "range") ?if_modified_since:(optional "if-modified-since") () with
   | None -> None
@@ -687,6 +687,13 @@ let response_header name value (response, body) =
   {response with headers}, body
 
 let static_recheck = Sys.getenv_opt "CAMPFIRE_STATIC_RECHECK" = Some "1"
+let static_path_filter = Sys.getenv_opt "CAMPFIRE_STATIC_PATH_FILTER" <> Some "0"
+let front_private_fast = Sys.getenv_opt "CAMPFIRE_FRONT_PRIVATE_FAST" <> Some "0"
+
+let known_dynamic_path path =
+  path = "/up" || path = "/searches" ||
+  path = "/users/me/sidebar" ||
+  String.starts_with ~prefix:"/rooms/" path
 
 let https_redirect ~trusted_front request =
   let headers = Cohttp.Request.headers request in
@@ -700,7 +707,7 @@ let https_redirect ~trusted_front request =
         (String.sub host (colon + 1) (String.length host - colon - 1)) ->
         String.sub host 0 colon
     | _ -> host in
-  let uri = Cohttp.Request.uri request in
+  let uri = Request_uri.get request in
   let path = match Uri.path uri with "" -> "/" | path -> path in
   let path = match Uri.verbatim_query uri with None -> path
     | Some query -> path ^ "?" ^ query in
@@ -728,7 +735,10 @@ let handle ~runtime ~secret_key_base ?cable ?event_sink ?front_cache
   let is_static = ref false in
   let run () =
     let context = ref None in
-    let static = Perf_probe.time "static_lookup" (fun () -> static_response request) in
+    let static = Perf_probe.time "static_lookup" (fun () ->
+      if static_path_filter && known_dynamic_path
+        (Uri.path (Request_uri.get request)) then None
+      else static_response request) in
     is_static := Option.is_some static;
     let response = match static with
       | Some response -> Lwt.return response
@@ -741,9 +751,10 @@ let handle ~runtime ~secret_key_base ?cable ?event_sink ?front_cache
     public_exception := Cohttp.Header.mem (Cohttp.Response.headers (fst response))
       "x-campfire-public-exception";
     let digestible = match snd response with `Stream _ -> false | _ -> true in
-    (if Option.is_some static then Lwt.return response
-     else Http_cache.finish ~digestible ~request response) >>= fun response ->
-    (match !context with
+    Perf_probe.time_lwt "cache_finish" (fun () ->
+      if Option.is_some static then Lwt.return response
+      else Http_cache.finish ~digestible ~request response) >>= fun response ->
+    Perf_probe.time_lwt "gzip_apply" (fun () -> match !context with
      | Some ctx when ctx.private_hit -> Lwt.return response
      | Some ctx -> Http_gzip.apply ?parts:ctx.page_parts request response
      | None -> Http_gzip.apply request response) >>= fun (response,body) ->
@@ -784,7 +795,10 @@ let handle ~runtime ~secret_key_base ?cable ?event_sink ?front_cache
       let generation = 0L in
       if not (Http_cache.Front.request_allowed request) then
         run () >|= response_header "x-cache" "bypass"
-      else match Http_cache.Front.find cache ~now ~generation request with
+      else match Perf_probe.time "front_find" (fun () ->
+        if front_private_fast && known_dynamic_path
+          (Uri.path (Request_uri.get request)) then None
+        else Http_cache.Front.find cache ~now ~generation request) with
         | Some item ->
             is_static := item.static;
             let not_modified = Http_cache.Front.was_not_modified request item in
@@ -830,11 +844,12 @@ let handle ~runtime ~secret_key_base ?cable ?event_sink ?front_cache
                      ~status ~headers ~body:bytes);
                    Cohttp_lwt.Body.of_string bytes
              else Lwt.return body) >|= fun body -> response, body in
-  result >>= fun (response,body) ->
+  Perf_probe.time_lwt "front_result" (fun () -> result) >>= fun (response,body) ->
+  Perf_probe.time_lwt "response_finalize" (fun () ->
     let response,body = if Cohttp.Code.code_of_status
       (Cohttp.Response.status response) = 413 then error ~status:413
       else response,body in
-    let path = Uri.path (Cohttp.Request.uri request) in
+    let path = Uri.path (Request_uri.get request) in
     let status = Cohttp.Code.code_of_status (Cohttp.Response.status response) in
     let headers = Cohttp.Response.headers response in
     (* PublicExceptions sets Content-Length: 0 itself. Rack::Deflater leaves
@@ -927,7 +942,7 @@ let handle ~runtime ~secret_key_base ?cable ?event_sink ?front_cache
           (* Cohttp.Response carries framing separately from its headers.
              Updating only the header leaves a Chunked writer that sends its
              chunk prefix as apparent body bytes to a fixed-length proxy. *)
-          { response with headers; encoding = Cohttp.Transfer.Fixed length }, body
+          { response with headers; encoding = Cohttp.Transfer.Fixed length }, body)
 
 let serve ?(port=3000) ?(bind_ip="127.0.0.1") ?front_config ?stop ?track_request ?cable_run ?cable_config ?cable ?event_sink
     ?front_cache ?private_cache
@@ -970,7 +985,7 @@ let serve ?(port=3000) ?(bind_ip="127.0.0.1") ?front_config ?stop ?track_request
     else if cable_too_large then
       Lwt.return (`Response (error ~status:413))
     else match cable_run with
-    | Some run when Uri.path (Cohttp.Request.uri request) = "/cable" ->
+    | Some run when Uri.path (Request_uri.get request) = "/cable" ->
         Cable_transport.handle ~config:cable_config request ~run:(run request)
     | _ ->
         handle ~runtime ~secret_key_base ?cable ?event_sink

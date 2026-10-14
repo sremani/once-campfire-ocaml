@@ -359,7 +359,7 @@ module Front = struct
   let request_allowed request =
     let method_ = Cohttp.Code.string_of_method (Cohttp.Request.meth request) in
     let headers = Cohttp.Request.headers request in
-    let uri = Cohttp.Request.uri request in
+    let uri = Request_uri.get request in
     let path = Uri.path uri in
     let query = Option.value (Uri.verbatim_query uri) ~default:"" in
     let length = String.length path + if query="" then 0 else 1+String.length query in
@@ -394,7 +394,7 @@ module Front = struct
     |> List.filter ((<>) "") |> List.sort String.compare
 
   let base_key request =
-    let uri=Cohttp.Request.uri request in
+    let uri=Request_uri.get request in
     let headers=Cohttp.Request.headers request in
     let host=Option.value (Cohttp.Header.get headers "host")
       ~default:(Option.value (Uri.host uri) ~default:"") in
@@ -520,7 +520,7 @@ module Private = struct
     let int64_bytes n = String.init 8 (fun i ->
       Char.chr (Int64.to_int (Int64.logand 255L (Int64.shift_right_logical n (i*8))))) in
     List.iter add [int64_bytes generation;endpoint;int64_bytes user_id;
-      int64_bytes session_id;Uri.to_string (Cohttp.Request.uri request);origin];
+      int64_bytes session_id;Uri.to_string (Request_uri.get request);origin];
     let excluded=["if-none-match";"if-modified-since";"x-request-id";"x-request-start"] in
     let headers=Cohttp.Request.headers request in
     let names=Cohttp.Header.to_list headers |> List.map fst

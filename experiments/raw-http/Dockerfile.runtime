@@ -1,0 +1,10 @@
+ARG RUNTIME_IMAGE=campfire-ocaml:perf-c81ca34
+FROM campfire-ocaml:ocaml55-deps AS build
+WORKDIR /home/opam/campfire
+COPY --chown=opam:opam . .
+RUN cp experiments/raw-http/http_raw.ml lib/http_raw.ml && \
+    sed -i 's/Campfire.Http_app.serve ~runtime/Campfire.Http_raw.serve ~runtime/' bin/main.ml && \
+    opam exec -- dune build --profile release bin/main.exe
+
+FROM ${RUNTIME_IMAGE}
+COPY --from=build /home/opam/campfire/_build/default/bin/main.exe /usr/local/bin/campfire
