@@ -536,7 +536,7 @@ let leave_writer t =
   Condition.broadcast t.scheduler_ready;
   Mutex.unlock t.scheduler_mutex
 
-let write t f =
+let write ?(batch_callbacks=false) ?on_committed t f =
   enter_writer t;
   Mutex.lock t.writer_mutex;
   Fun.protect ~finally:(fun () ->
@@ -559,12 +559,22 @@ let write t f =
           (try exec t.writer "ROLLBACK" with _ -> ());
           raise exn in
     tx.in_transaction <- false;
+    Option.iter (fun callback -> callback ()) on_committed;
     let first_error = ref None in
     Perf_probe.time "db_write_callbacks" (fun () ->
-      List.iter (fun callback ->
-        try callback tx with exn ->
-          if !first_error = None then first_error := Some exn)
-        (List.rev tx.callbacks));
+      if batch_callbacks then (
+        exec t.writer "BEGIN IMMEDIATE";
+        (try
+           List.iter (fun callback -> callback tx) (List.rev tx.callbacks);
+           exec t.writer "COMMIT"
+         with exn ->
+           (try exec t.writer "ROLLBACK" with _ -> ());
+           first_error := Some exn))
+      else
+        List.iter (fun callback ->
+          try callback tx with exn ->
+            if !first_error = None then first_error := Some exn)
+          (List.rev tx.callbacks));
     match !first_error with None -> value | Some exn -> raise exn)
 
 let async_worker t ~writer =

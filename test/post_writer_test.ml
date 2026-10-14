@@ -8,7 +8,7 @@ let rec reference_root path remaining =
       "parity/.seed/default/db/production.sqlite3") then candidate
   else reference_root (Filename.dirname path) (remaining-1)
 
-let with_seed f =
+let with_seed ~batch_callbacks f =
   let reference = reference_root (Sys.getcwd ()) 8 in
   let source = Sqlite3.db_open ~mode:`READONLY
     (Filename.concat reference "parity/.seed/default/db/production.sqlite3") in
@@ -25,6 +25,8 @@ let with_seed f =
   if child = 0 then (
     try
       Unix.putenv "CAMPFIRE_POST_BATCH_DELAY_US" "1000";
+      Unix.putenv "CAMPFIRE_POST_BATCH_CALLBACKS"
+        (if batch_callbacks then "1" else "0");
       let runtime = Db_runtime.open_db ~readers:1 ~prepare:false database in
       Post_writer.serve socket runtime
     with _ -> exit 1)
@@ -43,7 +45,8 @@ let with_seed f =
     Fun.protect ~finally:(fun () -> Db_runtime.close runtime)
       (fun () -> f runtime socket))
 
-let test_creates_and_indexes () = with_seed (fun runtime socket ->
+let test_creates_and_indexes batch_callbacks () =
+  with_seed ~batch_callbacks (fun runtime socket ->
   let room_id,creator_id = Db_runtime.read runtime (fun db ->
     Db_runtime.query_one db
       "SELECT room_id,user_id FROM memberships LIMIT 1" []
@@ -90,6 +93,9 @@ let test_creates_and_indexes () = with_seed (fun runtime socket ->
   Alcotest.(check int) "only successful messages persisted" 5 count)
 
 let () = Alcotest.run "post writer" [
-  "integration", [Alcotest.test_case "create, index, and isolate failures" `Quick
-    test_creates_and_indexes]
+  "integration", [
+    Alcotest.test_case "create, index, and isolate failures" `Quick
+      (test_creates_and_indexes false);
+    Alcotest.test_case "batched callbacks preserve writes" `Quick
+      (test_creates_and_indexes true)]
 ]

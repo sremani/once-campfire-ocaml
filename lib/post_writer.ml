@@ -16,6 +16,7 @@ type request = {
 type reply = Created of Db_messages.Message.t | Failed of string
 
 let max_frame = 64 * 1024
+let batch_callbacks () = Sys.getenv_opt "CAMPFIRE_POST_BATCH_CALLBACKS" = Some "1"
 
 let rec read_exact fd bytes offset remaining =
   if remaining > 0 then
@@ -184,8 +185,9 @@ let serve path runtime =
         let committed = ref false in
         let results = try
           let messages = Perf_probe.time "post_writer_batch_db" (fun () ->
-            Db_runtime.write runtime (fun tx ->
-              Db_runtime.after_commit tx (fun _ -> committed := true);
+            Db_runtime.write ~batch_callbacks:(batch_callbacks () && List.length batch > 1)
+              ~on_committed:(fun () -> committed := true)
+              runtime (fun tx ->
               List.map (fun pending ->
                 let request = pending.request in
                 let now = Db_accounts.now_time request.now in
