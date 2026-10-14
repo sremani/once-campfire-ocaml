@@ -713,9 +713,17 @@ let solo_unfurled ?request_host nodes html ~resolve_sgid =
      | _ -> nodes)
   | _ -> nodes
 
+let fast_autolink_enabled = Sys.getenv_opt "CAMPFIRE_FAST_AUTOLINK" <> Some "0"
+
 let starts_at value at prefix =
   let n = String.length prefix in
-  at + n <= String.length value && String.sub value at n = prefix
+  if not fast_autolink_enabled then
+    at + n <= String.length value && String.sub value at n = prefix
+  else
+    let rec same i =
+      i = n || (String.unsafe_get value (at+i) = String.unsafe_get prefix i &&
+                same (i+1)) in
+    at >= 0 && at + n <= String.length value && same 0
 
 let ascii_word = function
   | 'a'..'z' | 'A'..'Z' | '0'..'9' | '_' -> true
@@ -727,6 +735,12 @@ let autolink_serialized_text text =
   let n = String.length text in
   let lower = String.lowercase_ascii text in
   let out = Buffer.create (n + 32) in
+  let schemes = ["ed2k"; "ftp"; "http"; "https"; "irc"; "mailto";
+    "news"; "gopher"; "nntp"; "telnet"; "webcal"; "xmpp";
+    "callto"; "feed"; "svn"; "urn"; "aim"; "rsync";
+    "tag"; "ssh"; "sftp"; "rtsp"; "afs"; "file"] in
+  let prefixes = if fast_autolink_enabled then
+      List.map (fun scheme -> scheme ^ "://") schemes else [] in
   let token_end from =
     let i = ref from in
     while !i < n && not (List.mem text.[!i] [' '; '\t'; '\r'; '\n'; '\011'; '\012'; '"']) do incr i done;
@@ -788,13 +802,13 @@ let autolink_serialized_text text =
     Buffer.add_string out "</a>" in
   let rec loop i =
     if i >= n then () else
-    let schemes = ["ed2k"; "ftp"; "http"; "https"; "irc"; "mailto";
-      "news"; "gopher"; "nntp"; "telnet"; "webcal"; "xmpp";
-      "callto"; "feed"; "svn"; "urn"; "aim"; "rsync";
-      "tag"; "ssh"; "sftp"; "rtsp"; "afs"; "file"] in
-    let scheme = match List.find_opt (fun scheme ->
-      starts_at lower i (scheme ^ "://")) schemes with
-      | Some scheme -> Some (scheme ^ "://",false)
+    let matching_prefix = if fast_autolink_enabled then
+      List.find_opt (starts_at lower i) prefixes
+      else Option.map (fun scheme -> scheme ^ "://")
+        (List.find_opt (fun scheme ->
+          starts_at lower i (scheme ^ "://")) schemes) in
+    let scheme = match matching_prefix with
+      | Some prefix -> Some (prefix,false)
       | None when starts_at lower i "www." -> Some ("www.",true)
       | None -> None in
     match scheme with

@@ -751,3 +751,50 @@ off/on pairs measured 60,919/77,782 and 60,421/81,057 requests/s, a mean
 gain of 30.9%. The host was heavily occupied by unrelated Java jobs, so a
 clean paired Go run is still needed. Raw summaries:
 `tmp/bench/ocaml55-healthtemplate-{A1,B1,A2,B2}-20261014/`.
+
+## POST allocation profile and idle Cable work (2026-10-14)
+
+The clean `e287572` one-worker POST allocation sample found two repeated costs:
+the URL scanner built every scheme prefix and copied substrings at each text
+character, and message creation encoded Cable JSON even when the local hub had
+no subscribers. The clean sample is at
+`tmp/bench/runtime/3687572/ocaml-2/logs/memprof-1.txt`. URL prefix comparison
+now reads characters directly and prepares scheme prefixes once per body.
+`CAMPFIRE_FAST_AUTOLINK=0` selects the old scanner. The full forced test suite,
+including pinned rich-text output, passed. Same-image POST comparisons were
+interrupted by Java jobs starting and stopping across runs, so this change has
+no isolated throughput claim yet. Raw summaries:
+`tmp/bench/ocaml55-autolink-{A1,B1,A2,B2}-20261014/`.
+
+When there is no cross-process bus and no local Cable stream, message creation
+now avoids the member-ID query and the unused broadcast. It checks stream
+presence after commit; a new subscription after that check can fetch the
+persisted message. With a bus, the broadcast remains enabled. The switch
+`CAMPFIRE_SKIP_IDLE_BROADCAST=0` restores the old path. The full forced test
+suite passed, including Cable integration cases. On one worker, the same-image
+alternating pairs at 16 clients yielded:
+
+| Pair | Broadcast always | Skip idle broadcast | Change |
+| --- | ---: | ---: | ---: |
+| 1 | 3,332 | 4,307 | +29.2% |
+| 2 | 3,184 | 4,505 | +41.5% |
+
+Both candidate runs exceeded both baselines. Every timed response was valid,
+and both exact acknowledged-write audits passed. The host acquired new Java
+jobs during these runs, so a clean revision-stamped Go comparison remains
+necessary. Raw summaries:
+`tmp/bench/ocaml55-skipidle-{A1,B1,A2,B2}-20261014/`.
+
+Several smaller POST probes were removed after testing. Reusing a zlib stream
+passed the full suite but did not improve paired throughput. zlib level 1
+showed only about 3% in one pair. A short SQLite `BEGIN IMMEDIATE` retry first
+caused HTTP 500s when it also disabled busy waiting for post-commit callbacks;
+after that was fixed, a second pair tied the baseline. Pre-sizing Turbo stream
+render buffers fell from 4,613 to 4,405 requests/s in a same-image pair. A
+plain-message presenter shortcut moved work from the reader domain to the HTTP
+domain and regressed one-worker throughput; it was removed. Raw summaries are
+under `tmp/bench/ocaml55-{gzipfast,gzipreuse,fastbusy,turbocap,post-offload}-*`.
+
+The read routes still require several HTTP workers to reach the Go target,
+while POST is fastest with one writer process. A worker and Cable routing
+design that preserves real-time delivery is the next architectural gate.

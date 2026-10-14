@@ -61,6 +61,9 @@ let with_lock t f =
 
 let wake t = t.notify ()
 
+let may_have_subscribers t =
+  Option.is_some t.bus || Cable_ring.stream_count t.hub > 0
+
 let broadcast_local t ~stream ~payload =
   let count = Cable_ring.broadcast t.hub ~stream ~payload in
   if count > 0 then wake t;

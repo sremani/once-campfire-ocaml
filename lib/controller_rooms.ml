@@ -481,6 +481,7 @@ let webhook_candidates c db room message ~body =
   List.filter (fun (bot:U.t) -> U.is_bot bot && U.is_active bot &&
     bot.id<>message.M.Message.creator_id) candidates
 let post_render_reuse = Sys.getenv_opt "CAMPFIRE_POST_RENDER_REUSE" <> Some "0"
+let skip_idle_broadcast = Sys.getenv_opt "CAMPFIRE_SKIP_IDLE_BROADCAST" <> Some "0"
 let deliver_webhooks_to_bots c message bots =
   if bots=[] then Lwt.return_unit else
   write c (fun tx -> List.iter
@@ -508,10 +509,15 @@ let message_create c = scoped_room c >>= function
             | Upload_attachment file -> with_uploaded_blob c file
                 (fun tx blob_id -> create tx (Some blob_id))
             | _ -> write c (fun tx -> create tx None)) >>= fun message ->
+           let will_broadcast = not skip_idle_broadcast ||
+             (match c.H.cable with
+              | None -> false
+              | Some cable -> Cable_channels.may_have_subscribers cable) in
            read c (fun db ->
              Perf_probe.time "post_present" (fun () ->
                View_presenter.message c db room message),
-             Perf_probe.time "post_member_ids" (fun () -> R.Room.user_ids db room),
+             (if will_broadcast then Perf_probe.time "post_member_ids"
+                (fun () -> R.Room.user_ids db room) else []),
              Perf_probe.time "post_webhook_candidates" (fun () ->
                webhook_candidates c db room message ~body)) >>= fun (view,member_ids,bots) ->
            let item_html, response_html = Perf_probe.time "post_response_render"
@@ -522,7 +528,7 @@ let message_create c = scoped_room c >>= function
                else
                  Views.render (Views.message_item view),
                  Views.message_create_stream ~room:rendered_room view) in
-           Perf_probe.time "post_broadcast" (fun () ->
+           if will_broadcast then Perf_probe.time "post_broadcast" (fun () ->
              with_cable c (fun cable -> Cable_broadcasts.message_create cable
                ~room ~message ~member_ids
                ~html:item_html));
