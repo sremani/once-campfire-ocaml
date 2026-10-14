@@ -963,3 +963,32 @@ WebSocket load, and mixed route concurrency have different costs. The
 level 6, as recorded above. Raw artifact:
 `tmp/bench/ocaml55-6649f5d-clean-go-20261014/summary.json` in the
 verification repository; per-round JSON files hold the audits.
+
+## Latest Go GitHub rerun under host contention (2026-10-14)
+
+`git fetch origin main` confirmed that upstream Go `main` still points to
+`c4ab53d00b0a19a55962e03d18057ca6c3da9437`, the exact clean source and
+image revision in the comparison above. The committed OCaml source was rebuilt
+with revision `5ffa5d5` (documentation only since `6649f5d`). The same
+three-round, 16-client, four-server-core benchmark and settings were rerun.
+Both source/image pairs were clean and `release_comparable=true`; all 7,384,970
+timed responses passed with zero HTTP errors or invalid bodies, and every
+acknowledged POST matched its persisted row.
+
+| Route | Go median req/s | OCaml median req/s | OCaml / Go |
+| --- | ---: | ---: | ---: |
+| Room show | 28,054 | 40,309 | 143.7% |
+| Messages page | 30,310 | 42,972 | 141.8% |
+| Sidebar | 33,342 | 45,127 | 135.3% |
+| Search | 32,870 | 44,480 | 135.3% |
+| Message POST | 3,638 | 2,828 | 77.7% |
+| `/up` | 71,943 | 195,116 | 271.2% |
+
+This run is materially affected by unrelated Java builds: the host load
+average reached about 47, and Go room throughput drifted from 23,630 to
+35,020 requests/s across rounds. Go POST fell from 6,144/s in the earlier
+quiet comparison to 3,638/s here; OCaml POST fell from 5,452/s to 2,828/s.
+The 77.7% POST ratio is an observed result under contention, not a reliable
+replacement for the quiet 88.7% comparison. Raw artifact:
+`tmp/bench/ocaml55-5ffa5d5-latest-go-rerun-20261014/summary.json` in the
+verification repository, with per-round response and write audits beside it.
