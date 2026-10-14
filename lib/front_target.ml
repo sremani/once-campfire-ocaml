@@ -12,6 +12,30 @@ exception Header_limit
 let max_header_bytes = 64 * 1024
 let max_header_lines = 256
 let header_fast_enabled = Sys.getenv_opt "CAMPFIRE_HEADER_FAST" <> Some "0"
+let health_html =
+  "<!DOCTYPE html><html><body style=\"background-color: green\"></body></html>"
+let health_gzip = lazy (Http_gzip.compress health_html)
+let health_etag = lazy (Option.get (Http_cache.rack_etag health_html))
+
+let health_request_id incoming = match incoming with
+  | Some id when String.trim id <> "" ->
+      String.to_seq id |> List.of_seq
+      |> List.filter (function
+           | 'a'..'z' | 'A'..'Z' | '0'..'9' | '_' | '-' | '@' -> true
+           | _ -> false)
+      |> List.to_seq |> String.of_seq
+      |> fun id -> String.sub id 0 (min 255 (String.length id))
+  | _ ->
+      let bytes = Secure_random.bytes 16 in
+      let chars = "0123456789abcdef" in
+      let out = Bytes.create 36 in
+      let j = ref 0 in
+      String.iteri (fun i c ->
+        if List.mem i [4;6;8;10] then (Bytes.set out !j '-'; incr j);
+        let n = Char.code c in
+        Bytes.set out !j chars.[n lsr 4]; incr j;
+        Bytes.set out !j chars.[n land 15]; incr j) bytes;
+      Bytes.unsafe_to_string out
 
 type phase = Initial | Headers | Body | Response | Idle | Upgrade
 
@@ -34,7 +58,7 @@ let remaining = function
       let seconds = deadline -. Unix.gettimeofday () in
       if seconds <= 0. then raise Deadline else seconds
 
-let serve ?stop ~socket ~read_timeout ~write_timeout ~idle_timeout ~callback () =
+let serve ?stop ?(raw_health=false) ~socket ~read_timeout ~write_timeout ~idle_timeout ~callback () =
   let on_client flow ic oc =
     let clock = {
       phase=Initial;
@@ -149,7 +173,102 @@ let serve ?stop ~socket ~read_timeout ~write_timeout ~idle_timeout ~callback () 
     let module Request = Cohttp.Request.Make (Timed_io) in
     let module Response = Cohttp.Response.Make (Timed_io) in
     let conn = flow,Cohttp.Connection.create () in
+    let try_raw_health () =
+      if not raw_health then Lwt.return_false else
+      (match clock.phase with
+       | Idle -> within (float idle_timeout) (fun () -> fill ic)
+       | Initial | Headers -> within (remaining clock.header_deadline) (fun () -> fill ic)
+       | _ -> fill ic) >>= function
+      | false -> Lwt.return_false
+      | true ->
+          if clock.phase = Idle then (
+            clock.header_deadline <-
+              (if read_timeout > 0 then
+                 Some (Unix.gettimeofday () +. float read_timeout)
+               else None);
+            clock.header_bytes <- 0;
+            clock.header_lines <- 0);
+          clock.phase <- Headers;
+          let prefix = "GET /up HTTP/1.1\r\n" in
+          let prefix_length = String.length prefix in
+          if !input_end - !input_start < prefix_length ||
+             not (Bytes.sub_string input !input_start prefix_length = prefix)
+          then Lwt.return_false
+          else
+            let rec header_end i =
+              if i + 3 >= !input_end then None
+              else if Bytes.get input i = '\r' && Bytes.get input (i+1) = '\n' &&
+                      Bytes.get input (i+2) = '\r' && Bytes.get input (i+3) = '\n'
+              then Some (i+4) else header_end (i+1) in
+            let rec await_header () = match header_end !input_start with
+              | Some finish -> Lwt.return_some finish
+              | None when !input_end = Bytes.length input && !input_start > 0 ->
+                  let unread = !input_end - !input_start in
+                  Bytes.blit input !input_start input 0 unread;
+                  input_start := 0;
+                  input_end := unread;
+                  await_header ()
+              | None when !input_end = Bytes.length input -> Lwt.return_none
+              | None ->
+                  within (remaining clock.header_deadline) (fun () ->
+                    Lwt_io.read_into ic input !input_end
+                      (Bytes.length input - !input_end))
+                  >>= fun count ->
+                  input_end := !input_end + count;
+                  if count = 0 then Lwt.return_none else await_header () in
+            await_header () >>= function
+            | None -> Lwt.return_false
+            | Some finish ->
+                let text = Bytes.sub_string input !input_start (finish - !input_start) in
+                let lines = String.split_on_char '\n' text in
+                let headers = List.filter_map (fun line ->
+                  match String.index_opt line ':' with
+                  | None -> None
+                  | Some at -> Some (String.lowercase_ascii
+                      (String.sub line 0 at),
+                      String.trim (String.sub line (at+1)
+                        (String.length line-at-1)))) lines in
+                let header name = List.assoc_opt name headers in
+                let accepted =
+                  (match header "accept" with
+                   | None | Some "text/html" | Some "*/*" -> true
+                   | _ -> false) &&
+                  header "accept-encoding" = Some "gzip" &&
+                  header "if-none-match" = None &&
+                  header "if-modified-since" = None &&
+                  header "transfer-encoding" = None &&
+                  header "content-length" = None &&
+                  (match header "connection" with
+                   | None | Some "keep-alive" -> true | _ -> false) in
+                if not accepted then Lwt.return_false else
+                let started = Unix.gettimeofday () in
+                let id = health_request_id (header "x-request-id") in
+                let gzip = Lazy.force health_gzip in
+                let response = Buffer.create 512 in
+                Buffer.add_string response
+                  "HTTP/1.1 200 OK\r\ncontent-type: text/html; charset=utf-8\r\netag: ";
+                Buffer.add_string response (Lazy.force health_etag);
+                Buffer.add_string response
+                  "\r\ncache-control: max-age=0, private, must-revalidate\r\nvary: Accept-Encoding\r\ncontent-encoding: gzip\r\nx-cache: miss\r\nx-request-id: ";
+                Buffer.add_string response id;
+                Buffer.add_string response "\r\nx-runtime: ";
+                Buffer.add_string response
+                  (Printf.sprintf "%.6f" (max 0. (Unix.gettimeofday () -. started)));
+                Buffer.add_string response "\r\ntransfer-encoding: chunked\r\n\r\n";
+                Buffer.add_string response (Printf.sprintf "%x\r\n" (String.length gzip));
+                Buffer.add_string response gzip;
+                Buffer.add_string response "\r\n0\r\n\r\n";
+                input_start := finish;
+                clock.phase <- Response;
+                within (float write_timeout) (fun () ->
+                  Lwt_io.write oc (Buffer.contents response) >>= fun () ->
+                  Lwt_io.flush oc) >|= fun () ->
+                clock.phase <- Idle;
+                clock.header_deadline <- None;
+                true in
     let rec serve_one () =
+      try_raw_health () >>= fun handled ->
+      if handled then serve_one () else
       Perf_probe.time_lwt "http_request_read" (fun () -> Request.read ic) >>= function
       | `Eof | `Invalid _ -> Lwt.return_unit
       | `Ok request ->

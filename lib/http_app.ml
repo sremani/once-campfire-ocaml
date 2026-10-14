@@ -708,8 +708,7 @@ let response_header name value (response, body) =
   {response with headers}, body
 
 let health_fast_enabled = Sys.getenv_opt "CAMPFIRE_HEALTH_FAST" <> Some "0"
-let health_html =
-  "<!DOCTYPE html><html><body style=\"background-color: green\"></body></html>"
+let health_html = Front_target.health_html
 
 let health_gzip_template = lazy (
   let headers = Cohttp.Header.of_list ["accept-encoding", "gzip"] in
@@ -1057,6 +1056,9 @@ let serve ?(port=3000) ?(bind_ip="127.0.0.1") ?front_config ?stop ?track_request
       >>= fun () ->
       Lwt_unix.listen socket 128;
       Front_target.serve ?stop ~socket
+        ~raw_health:(not force_ssl &&
+          Sys.getenv_opt "CAMPFIRE_DIRECT_HTTP" = Some "1" &&
+          Sys.getenv_opt "CAMPFIRE_RAW_HEALTH" <> Some "0")
         ~read_timeout:target_limits.http_read_timeout
         ~write_timeout:target_limits.http_write_timeout
         ~idle_timeout:target_limits.http_idle_timeout
