@@ -176,6 +176,7 @@ val search_index_with : context:context -> query:string -> ?q:string ->
   ?recent_searches:string list -> ?return_to_room_id:int64 ->
   results:message list -> unit -> string
 val turbo_stream : action:string -> target:string -> fragment -> string
+val message_create_renderings : room:room -> message -> string * string
 val message_create_stream : room:room -> message -> string
 val message_destroy_stream : message -> string
 val room_refresh_stream : room:room -> created:message list -> updated:message list -> string

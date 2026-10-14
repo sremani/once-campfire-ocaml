@@ -4216,9 +4216,12 @@ let search_index ~context ~query ~results =
 let turbo_stream ~action ~target content =
   render (elt "turbo-stream" ["action",action;"target",target]
     [elt "template" [] [content]])
+let message_create_renderings ~room message =
+  let item = render (message_item message) in
+  item, turbo_stream ~action:"append" ~target:(room_dom_id room "messages")
+    (raw (Trusted_html item))
 let message_create_stream ~room message =
-  turbo_stream ~action:"append" ~target:(room_dom_id room "messages")
-    (message_item message)
+  snd (message_create_renderings ~room message)
 let message_destroy_stream message =
   render (elt "turbo-stream" ["action","remove";
     "target",message_dom_id message ""] [])

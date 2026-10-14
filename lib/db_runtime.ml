@@ -101,7 +101,7 @@ let exec db sql = check_rc "SQLite exec" (Sqlite3.exec db sql)
    queries deliberately retain the normal prepare/finalize path: caching
    statements on all connections regressed the four measured GET routes. *)
 let statement_cache_enabled = Sys.getenv_opt "CAMPFIRE_SQL_CACHE" <> Some "0"
-let auth_statement_cache_enabled = Sys.getenv_opt "CAMPFIRE_AUTH_STMT_CACHE" = Some "1"
+let auth_statement_cache_enabled = Sys.getenv_opt "CAMPFIRE_AUTH_STMT_CACHE" <> Some "0"
 type cached_statement = { statement : Sqlite3.stmt; mutable in_use : bool }
 type statement_cache = {
   statements : (string, cached_statement) Hashtbl.t;

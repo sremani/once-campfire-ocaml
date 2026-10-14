@@ -480,6 +480,7 @@ let webhook_candidates c db room message ~body =
       | Some _ -> M.Message.mentionees ~rich_text db message in
   List.filter (fun (bot:U.t) -> U.is_bot bot && U.is_active bot &&
     bot.id<>message.M.Message.creator_id) candidates
+let post_render_reuse = Sys.getenv_opt "CAMPFIRE_POST_RENDER_REUSE" <> Some "0"
 let deliver_webhooks_to_bots c message bots =
   if bots=[] then Lwt.return_unit else
   write c (fun tx -> List.iter
@@ -513,14 +514,20 @@ let message_create c = scoped_room c >>= function
              Perf_probe.time "post_member_ids" (fun () -> R.Room.user_ids db room),
              Perf_probe.time "post_webhook_candidates" (fun () ->
                webhook_candidates c db room message ~body)) >>= fun (view,member_ids,bots) ->
+           let item_html, response_html = Perf_probe.time "post_response_render"
+             (fun () ->
+               let rendered_room = View_presenter.room room in
+               if post_render_reuse then
+                 Views.message_create_renderings ~room:rendered_room view
+               else
+                 Views.render (Views.message_item view),
+                 Views.message_create_stream ~room:rendered_room view) in
            Perf_probe.time "post_broadcast" (fun () ->
              with_cable c (fun cable -> Cable_broadcasts.message_create cable
                ~room ~message ~member_ids
-               ~html:(Views.message_item view |> Views.render)));
+               ~html:item_html));
            deliver_webhooks_to_bots c message bots >>= fun () ->
-           Perf_probe.time "post_response_render" (fun () ->
-             turbo_only c (Views.message_create_stream
-               ~room:(View_presenter.room room) view)))
+           turbo_only c response_html)
 let message_show c = scope_or_404 c (fun _ room ->
   message_or_404 c room "id" (fun message ->
     if not (accepts c Http_format.Html) then error 406 else

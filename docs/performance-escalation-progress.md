@@ -466,3 +466,70 @@ Raw summaries: `tmp/bench/ocaml55-{domains-direct4-r1,threads-direct4-r1,domains
 Next: profile the domain-backed POST path; reduce HTTP and view work; build a
 correct multi-process state and Cable topology; then compare a clean release
 against Go on a quiet, matched host. The existing 85% gate is not met.
+
+## Paired Go gap and statement-cache gain (2026-10-14)
+
+An alternating OCaml/Go, two-round comparison used the pinned fixture,
+identical server/client CPU sets, authenticated route contracts, and exact
+acknowledged-write audits. OCaml used four direct diagnostic processes with
+one reader domain each. Go used its release image. Median requests/s were:
+
+| Route | OCaml diagnostic | Go | OCaml / Go |
+| --- | ---: | ---: | ---: |
+| Room show | 22,443 | 52,286 | 42.9% |
+| Messages page | 22,075 | 51,382 | 43.0% |
+| Sidebar | 22,714 | 60,051 | 37.8% |
+| Search | 23,790 | 59,897 | 39.7% |
+| Message POST | 2,791 | 6,092 | 45.8% |
+
+Raw summary:
+`once-campfire-verification/tmp/bench/ocaml55-domains-direct4-go-paired-20261014/summary.json`.
+This topology is not release compatible because Cable, jobs, presence, and
+rate limits remain process-local. The clean one-process release remains much
+slower. The paired run establishes the size of the request-path gap on the
+current host, not a shippable speedup.
+
+The domain-backed POST profile measured about 0.12 ms per complete writer
+job, three reader jobs per request, roughly 1.2 ms of writer queue plus work,
+and roughly 0.84 ms per reader queue plus work under load. View construction,
+broadcast, and Turbo response rendering each consumed about 0.09–0.13 ms per
+request. These are overlapping elapsed timings; the write-ceiling probe
+confirms the SQLite transaction is not the 5,123/s bottleneck. Raw profile:
+`tmp/bench/runtime/733238/ocaml-{1,2}/db/profile.tsv`.
+
+A one-worker room-view allocation profile found 54,484 private-cache hits in
+54,493 checks. The room action averaged about 19 µs; the authenticated
+session SQL averaged about 12 µs, while its reader job took about 21 µs and
+the queue plus job about 310 µs. HTTP parsing through Angstrom dominated the
+sampled allocation stacks. Raw profile:
+`tmp/bench/runtime/891606/ocaml-2/logs/{profile.tsv,memprof.txt}`.
+
+The existing selective authentication statement cache was retested with
+domain workers. It avoids preparing the session lookup on every request and
+is now enabled by default; `CAMPFIRE_AUTH_STMT_CACHE=0` remains the comparison
+switch. A same-image off/on/off sequence passed all route contracts and write
+audits. Median requests/s were:
+
+| Route | Off A1 | On B1 | Off A2 |
+| --- | ---: | ---: | ---: |
+| Room show | 22,381 | 25,603 | 22,580 |
+| Messages page | 21,894 | 25,829 | 21,326 |
+| Sidebar | 22,273 | 27,954 | 24,594 |
+| Search | 22,045 | 27,580 | 24,153 |
+| Message POST | 2,852 | 2,936 | 2,819 |
+
+Every on GET beat both off medians; POST is effectively unchanged. `/up`
+rose across the bracket, from about 35.6k to 38.0k to 41.1k/s, so host
+conditions do not explain the GET drop on returning to off. The forced
+OCaml 5.5.1 suite passes with the cache default on. Raw summaries:
+`tmp/bench/ocaml55-{inlineauth-off-A1,authstmt-domains-on-B1,authstmt-domains-off-A2}-20261014/`.
+
+The HTTP/af plus domains diagnostic measured about 21–26k GETs/s and 2,851
+POSTs/s, similar to Cohttp plus domains under host drift. It still lacks
+production WebSocket and shutdown support, so there is no transport switch.
+The opt-in inline session read improved some GETs 4–9%, left room flat, and
+slightly lowered POST; it was removed. Reusing one rendered message item for
+the POST broadcast and response passed the full suite and exact live audits.
+Its on/off bracket was confounded by `/up` drift, so it is retained as an
+allocation cleanup without a claimed throughput gain. Raw summaries are
+under `tmp/bench/ocaml55-{httpaf-dbdomains-w4,inlineauth-*,postrender-*}-20261014/`.
