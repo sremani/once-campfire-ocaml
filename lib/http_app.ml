@@ -9,12 +9,17 @@ type authenticated_by = Nothing | Session | Bot_key
 type private_cache_state = {
   store : Http_cache.Private.t;
   observer : Http_cache.Observer.t;
+  auth_entries : (string list, Authentication.authenticated * Db_accounts.User.t) Hashtbl.t;
+  mutable auth_generation : int64 option;
+  auth_mutex : Mutex.t;
 }
 
 let create_private_cache ~capacity runtime =
   if capacity <= 0 then None else
   Option.map (fun observer ->
-    {store=Http_cache.Private.create ~capacity;observer})
+    {store=Http_cache.Private.create ~capacity;observer;
+     auth_entries=Hashtbl.create 64;auth_generation=None;
+     auth_mutex=Mutex.create ()})
     (Http_cache.Observer.open_db runtime.Db_runtime.path)
 let close_private_cache cache = Http_cache.Observer.close cache.observer
 
@@ -234,10 +239,54 @@ let csrf_check ctx =
 
 let readonly_auth_enabled = Sys.getenv_opt "CAMPFIRE_AUTH_READ" <> Some "0"
 let joined_user_enabled = Sys.getenv_opt "CAMPFIRE_JOINED_USER" <> Some "0"
+let auth_cache_enabled = Sys.getenv_opt "CAMPFIRE_AUTH_CACHE" <> Some "0"
 
 let restore_auth ctx =
   let cookie_headers = Cohttp.Header.get_multi (Cohttp.Request.headers ctx.request) "cookie" in
   let user_agent = header ctx "user-agent" in
+  let safe = ctx.method_ = "GET" || ctx.method_ = "HEAD" in
+  let cache_slot = match ctx.private_cache, ctx.cache_generation with
+    | Some cache, Some generation
+        when safe && readonly_auth_enabled && auth_cache_enabled ->
+        (match Http_cache.Observer.version cache.observer with
+         | Some current when current = generation -> Some (cache,generation)
+         | _ -> None)
+    | _ -> None in
+  let cache_get () = match cache_slot with
+    | None -> None
+    | Some (cache,generation) ->
+        Mutex.lock cache.auth_mutex;
+        Fun.protect ~finally:(fun () -> Mutex.unlock cache.auth_mutex) (fun () ->
+          if cache.auth_generation <> Some generation then (
+            Hashtbl.clear cache.auth_entries;
+            cache.auth_generation <- Some generation);
+          match Hashtbl.find_opt cache.auth_entries cookie_headers with
+          | Some (identity,user) when not (Authentication.needs_refresh
+              ~now:ctx.now identity.session) ->
+              (match Authentication.cookie cookie_headers "session_token" with
+               | Some raw ->
+                   (match Signed_cookie.verify ~secret_key_base:ctx.secret_key_base
+                       ~name:"session_token" ~raw ~now:ctx.now with
+                    | Some token when Eqaf.equal token identity.session.token ->
+                        let rails_session = Authentication.read_rails_session_headers
+                          ~secret_key_base:ctx.secret_key_base ~now:ctx.now
+                          cookie_headers in
+                        Some ({identity with rails_session},user)
+                    | _ -> None)
+               | None -> None)
+          | _ -> None) in
+  let cache_put identity user = match cache_slot with
+    | None -> ()
+    | Some (cache,generation) ->
+        if Http_cache.Observer.version cache.observer = Some generation then (
+          Mutex.lock cache.auth_mutex;
+          Fun.protect ~finally:(fun () -> Mutex.unlock cache.auth_mutex) (fun () ->
+            if cache.auth_generation <> Some generation then (
+              Hashtbl.clear cache.auth_entries;
+              cache.auth_generation <- Some generation);
+            if Hashtbl.length cache.auth_entries >= 256 then
+              Hashtbl.clear cache.auth_entries;
+            Hashtbl.replace cache.auth_entries cookie_headers (identity,user))) in
   let finish ~load_user = function
   | Error _ -> Lwt.return (Error (error ~status:500))
   | Ok (Authentication.Authenticated identity as outcome) ->
@@ -265,8 +314,14 @@ let restore_auth ctx =
     >>= finish ~load_user:(fun user_id ->
       Db_runtime.read_async ctx.runtime (fun db ->
         Db_accounts.User.find_by_id db user_id)) in
-  if not readonly_auth_enabled then restore_on_writer ()
-  else
+  match cache_get () with
+  | Some (identity,user) ->
+      Perf_probe.bump "auth_cache_hit";
+      finish ~load_user:(fun _ -> Lwt.return_some user)
+        (Ok (Authentication.Authenticated identity))
+  | None when not readonly_auth_enabled -> restore_on_writer ()
+  | None ->
+    Perf_probe.bump "auth_cache_miss";
     Db_runtime.read_async ctx.runtime (fun db ->
       let result = Authentication.restore_headers_readonly ~db
         ~secret_key_base:ctx.secret_key_base ~now:ctx.now ~method_:ctx.method_
@@ -280,6 +335,10 @@ let restore_auth ctx =
         | _ -> None in
       result,user) >>= function
     | Ok Authentication.Refresh_due, _ -> restore_on_writer ()
+    | Ok (Authentication.Ready (Authentication.Authenticated identity as outcome)),
+      Some user ->
+        cache_put identity user;
+        finish ~load_user:(fun _ -> Lwt.return_some user) (Ok outcome)
     | Ok (Authentication.Ready outcome), user ->
         finish ~load_user:(fun _ -> Lwt.return user) (Ok outcome)
     | Error error, _ ->
@@ -627,6 +686,8 @@ let response_header name value (response, body) =
   let headers = Cohttp.Header.replace (Cohttp.Response.headers response) name value in
   {response with headers}, body
 
+let static_recheck = Sys.getenv_opt "CAMPFIRE_STATIC_RECHECK" = Some "1"
+
 let https_redirect ~trusted_front request =
   let headers = Cohttp.Request.headers request in
   let host = Option.value ~default:"localhost"
@@ -664,9 +725,11 @@ let handle ~runtime ~secret_key_base ?cable ?event_sink ?front_cache
     | _ -> false in
   if declared_too_large then Lwt.return (error ~status:413) else
   let public_exception = ref false in
+  let is_static = ref false in
   let run () =
     let context = ref None in
     let static = Perf_probe.time "static_lookup" (fun () -> static_response request) in
+    is_static := Option.is_some static;
     let response = match static with
       | Some response -> Lwt.return response
       | None -> Perf_probe.time_lwt "app_route" (fun () ->
@@ -723,6 +786,7 @@ let handle ~runtime ~secret_key_base ?cable ?event_sink ?front_cache
         run () >|= response_header "x-cache" "bypass"
       else match Http_cache.Front.find cache ~now ~generation request with
         | Some item ->
+            is_static := item.static;
             let not_modified = Http_cache.Front.was_not_modified request item in
             let status = if not_modified then 304 else item.status in
             let headers = Cohttp.Header.replace item.headers "x-cache" "hit" in
@@ -761,7 +825,8 @@ let handle ~runtime ~secret_key_base ?cable ?event_sink ?front_cache
                     (was_stream && Some length <> declared)
                  then Lwt.return body
                  else Cohttp_lwt.Body.to_string body >|= fun bytes ->
-                   ignore (Http_cache.Front.store cache ~now ~generation request
+                   ignore (Http_cache.Front.store cache ~now ~generation
+                     ~static:!is_static request
                      ~status ~headers ~body:bytes);
                    Cohttp_lwt.Body.of_string bytes
              else Lwt.return body) >|= fun body -> response, body in
@@ -822,7 +887,9 @@ let handle ~runtime ~secret_key_base ?cable ?event_sink ?front_cache
       Cohttp.Header.add headers "content-transfer-encoding" "binary"
     else headers in
     let response = { response with headers } in
-    let response,body = if Option.is_some (static_response request) then response,body else
+    let was_static = if static_recheck then Option.is_some (static_response request)
+      else !is_static in
+    let response,body = if was_static then response,body else
       let incoming = Cohttp.Header.get (Cohttp.Request.headers request) "x-request-id" in
       let request_id = match incoming with
         | Some id when String.trim id <> "" ->

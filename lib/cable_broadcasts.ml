@@ -49,10 +49,12 @@ let maintain_scroll = ["maintain_scroll", Some "true"]
 
 let message_create t ~(room:R.t) ~(message:M.t) ~member_ids ~html =
   let _ = message in
-  ignore (room_message t room (action_tag ~action:"append"
-    ~target:(room_dom_id room "messages") ~html ()));
-  List.iter (fun user_id ->
-    ignore (C.unread_room t ~user_id ~room_id:room.id)) member_ids
+  let append = message_stream room, `String (action_tag ~action:"append"
+    ~target:(room_dom_id room "messages") ~html ()) in
+  let unreads = List.map (fun user_id ->
+    "user_" ^ i64 user_id ^ "_unreads",
+    `Assoc ["roomId", `Int (Int64.to_int room.id)]) member_ids in
+  ignore (C.broadcast_batch_json t (append :: unreads))
 
 let unread_room t ~(room:R.t) ~member_ids =
   List.iter (fun user_id ->

@@ -66,7 +66,12 @@ let serve database port =
          Fun.protect ~finally:(fun () ->
            if !close_runtime then Campfire.Db_runtime.close runtime) (fun () ->
            Campfire.Runtime_ops.boot_check runtime;
-           Campfire.Runtime_ops.reset_presence runtime;
+           if Sys.getenv_opt "CAMPFIRE_RESET_PRESENCE" <> Some "0" then
+             Campfire.Runtime_ops.reset_presence runtime;
+           Option.iter (fun path ->
+             let fd = Unix.openfile path
+               [Unix.O_WRONLY;Unix.O_CREAT;Unix.O_TRUNC] 0o600 in
+             Unix.close fd) (Sys.getenv_opt "CAMPFIRE_PRESENCE_READY_FILE");
            let storage=Campfire.Storage_disk.create
              ~root:config.storage.files ~name:"local" in
            Campfire.Storage_http.register storage;
@@ -86,6 +91,11 @@ let serve database port =
            let cable = Campfire.Cable_channels.create ~db:runtime
              ~secret_key_base:config.secret_key_base
              ~now:Campfire.Http_app.now_utc () in
+           let bus = Option.map (fun path ->
+             Campfire.Cable_bus.connect path
+               ~receive:(Campfire.Cable_channels.receive_remote cable))
+             (Sys.getenv_opt "CAMPFIRE_CABLE_BUS") in
+           Option.iter (Campfire.Cable_channels.attach_bus cable) bus;
            let jobs=Campfire.App_jobs.start ~config ~runtime ~storage ~cable () in
            Fun.protect ~finally:(fun () ->
              let drained = Lwt_main.run (Lwt_preemptive.detach (fun () ->
@@ -93,7 +103,8 @@ let serve database port =
                  ~deadline:(Unix.gettimeofday () +. 10.)) ()) in
              if not drained then (
                close_runtime := false;
-               Logs.warn (fun m -> m "jobs or Web Push still active after shutdown grace")))
+               Logs.warn (fun m -> m "jobs or Web Push still active after shutdown grace"));
+             Option.iter Campfire.Cable_bus.close bus)
              (fun () ->
                let stopped, stop = Lwt.wait () in
                let drain = Campfire.Runtime_ops.Drain.create () in
@@ -138,8 +149,17 @@ let server_cmd =
   let info = Cmd.info "server" ~doc:"Serve the OCaml Campfire application." in
   Cmd.v info Term.(ret (const serve $ const None $ const None))
 
+let bus_cmd =
+  let open Cmdliner in
+  let path = Arg.(required & pos 0 (some string) None & info [] ~docv:"SOCKET") in
+  let run path =
+    try Campfire.Cable_bus.serve path
+    with exn -> `Error (false, Printexc.to_string exn) in
+  let info = Cmd.info "bus" ~doc:"Run the local Cable event broker." in
+  Cmd.v info Term.(ret (const run $ path))
+
 let () =
   let open Cmdliner in
   let info = Cmd.info "campfire" ~doc:"OCaml port of ONCE Campfire (in progress)." in
   exit (Cmd.eval (Cmd.group info ~default:Term.(ret (const serve $ const None $ const None))
-    [check_cmd; serve_cmd; server_cmd; backup_cmd]))
+    [check_cmd; serve_cmd; server_cmd; backup_cmd; bus_cmd]))

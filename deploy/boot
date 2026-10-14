@@ -9,7 +9,56 @@ if [ "${CAMPFIRE_DIRECT_HTTP:-0}" = "1" ]; then
   fi
   export TARGET_BIND="${CAMPFIRE_DIRECT_BIND:-0.0.0.0}"
   export TARGET_PORT="${HTTP_PORT:-80}"
-  exec /usr/local/bin/campfire server
+  workers=${CAMPFIRE_HTTP_WORKERS:-1}
+  case "$workers" in 1|2|4) ;; *)
+    echo "CAMPFIRE_HTTP_WORKERS must be 1, 2, or 4" >&2; exit 2 ;; esac
+  if [ "$workers" = 1 ]; then exec /usr/local/bin/campfire server; fi
+
+  bus_socket=/rails/storage/thruster/cable-bus.sock
+  presence_ready=/rails/storage/thruster/presence-ready
+  rate_limit_dir=$(mktemp -d /tmp/campfire-rate-limits.XXXXXX)
+  export CAMPFIRE_RATE_LIMIT_DIR="$rate_limit_dir"
+  rm -f "$presence_ready"
+  /usr/local/bin/campfire bus "$bus_socket" &
+  broker_pid=$!
+  CAMPFIRE_REUSEPORT=1 CAMPFIRE_CABLE_BUS="$bus_socket" \
+    CAMPFIRE_PRESENCE_READY_FILE="$presence_ready" \
+    /usr/local/bin/campfire server &
+  first_pid=$!
+  pids=("$broker_pid" "$first_pid")
+  ready=0
+  for ((attempt=0; attempt<100; attempt++)); do
+    if [ -f "$presence_ready" ]; then ready=1; break; fi
+    if ! kill -0 "$broker_pid" 2>/dev/null ||
+       ! kill -0 "$first_pid" 2>/dev/null; then break; fi
+    sleep 0.05
+  done
+  if [ "$ready" -ne 1 ]; then
+    echo "Campfire first worker did not finish presence reset" >&2
+    for pid in "${pids[@]}"; do kill -s TERM "$pid" 2>/dev/null || true; done
+    for pid in "${pids[@]}"; do wait "$pid" 2>/dev/null || true; done
+    rm -rf "$rate_limit_dir"
+    exit 1
+  fi
+  for ((i=1; i<workers; i++)); do
+    CAMPFIRE_REUSEPORT=1 CAMPFIRE_CABLE_BUS="$bus_socket" \
+      CAMPFIRE_RESET_PRESENCE=0 /usr/local/bin/campfire server &
+    pids+=("$!")
+  done
+  received_signal=""
+  signal_workers() {
+    for pid in "${pids[@]}"; do kill -s TERM "$pid" 2>/dev/null || true; done
+  }
+  trap 'received_signal=TERM; signal_workers' TERM
+  trap 'received_signal=INT; signal_workers' INT
+  wait -n "${pids[@]}"
+  status=$?
+  signal_workers
+  for pid in "${pids[@]}"; do wait "$pid" 2>/dev/null || true; done
+  rm -rf "$rate_limit_dir"
+  if [ -n "$received_signal" ]; then exit 0; fi
+  if [ "$status" -eq 0 ]; then status=1; fi
+  exit "$status"
 fi
 /usr/local/bin/campfire server &
 app_pid=$!

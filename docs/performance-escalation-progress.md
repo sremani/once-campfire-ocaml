@@ -591,6 +591,56 @@ process-global, so copying the listener onto domains is not a valid route to
 parallel HTTP handling. Database work remains parallel on domains; HTTP
 parallelism requires coordinated processes or a domain-aware I/O rewrite.
 
+## Coordinated direct workers and current limits (2026-10-14)
+
+The direct listener now has an opt-in two- or four-worker mode. A Unix-domain
+broker carries ordered Cable broadcasts and disconnects between workers. It
+tracks confirmed stream subscriptions and avoids forwarding message batches to
+workers with no interested WebSocket client. A shared, file-locked login
+counter preserves the ten-attempt window across processes. Focused tests cover
+framing, subscription transitions, real WebSocket typing and disconnect frames,
+and the cross-process login limit. The full 5.5.1 suite passed.
+
+The same fixture and exact POST write audit passed every timed run. An
+old/new/old comparison of broker subscription filtering measured POST medians
+of 1,372 / 1,662 / 1,540 requests/s. The host was unusually loaded, but the
+filtered run exceeded both baselines; `/up` did not follow that pattern. Raw
+summaries are `tmp/bench/ocaml55-broker-filter-{old-A1,new-B1,old-A2}-20261014/`.
+This mode remains short of the Go target and has not replaced the default.
+
+The four-worker POST profile attributed about 0.36 ms per request to Cable
+broadcasting before subscription filtering and roughly 3 ms to SQLite writer
+queue time under contention. Raw profile is
+`tmp/bench/runtime/1561003/ocaml-{1,2}/logs/profile.tsv`.
+
+Authenticated room GETs mostly hit the private response cache, but each hit
+previously queued a database session lookup. A generation-checked local session
+cache now skips that lookup while still verifying signed and encrypted cookies
+and checking the hourly refresh deadline. It invalidates on SQLite changes.
+`CAMPFIRE_AUTH_CACHE=0` is the comparison switch. The same-image off/on/off
+room medians were 11,748 / 12,819 / 12,543 requests/s under a heavily loaded
+host, so the throughput gain is not yet established. An instrumented run showed
+18,329 cache hits and two misses in one worker snapshot; room before-action
+time fell from about 0.224 ms to 0.012 ms per request. The CPU reduction is
+promising, but a quieter paired Go comparison is still required. Raw summaries
+are `tmp/bench/ocaml55-authcache-{off-A1,on-B1,off-A2}-20261014/` and raw
+profiles are in `tmp/bench/runtime/{1856866,1872126}/`.
+
+The first complete paired candidate/Go run on the heavily loaded host passed
+all route contracts and exact POST write audits. Four coordinated OCaml workers
+reached 50.3% of Go on room show, 55.8% on messages, 56.4% on sidebar, 48.8%
+on search, and 52.6% on POST. `/up` was only about 27% of Go, exposing the
+HTTP parser and response path even without authentication or SQLite. These are
+development-image numbers; the 85% completion gate remains unmet. Raw summary:
+`tmp/bench/ocaml55-coordinated-go-paired-20261014/summary.json`.
+
+The HTTP handler was also doing a second static-file lookup while finalizing
+every dynamic response. The first lookup result now travels with the response,
+including public-cache hits. Same-image old/new/old room medians were
+21,498 / 24,707 / 23,644 requests/s; `/up` did not show the same direction,
+so the room gain is modest and still needs a quieter repeat. Raw summaries:
+`tmp/bench/ocaml55-staticreuse-{old-A1,new-B1,old-A2}-20261014/`.
+
 The profiler showed a SQLite observer generation check even on `/up` and POST,
 which never use the private response cache. A lazy single-check refactor passed
 the full suite, including cache invalidation tests, but an old/new/old direct

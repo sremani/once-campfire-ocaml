@@ -5,6 +5,11 @@
  (deps fixtures/routes.json fixtures/rails_compat.json fixtures/schema.sql))
 
 (test
+ (name cable_bus_test)
+ (modules cable_bus_test)
+ (libraries campfire alcotest unix threads))
+
+(test
  (name m1_t1_test)
  (modules m1_t1_test)
  (libraries campfire alcotest yojson ptime)
@@ -519,3 +524,8 @@
  (name m8_t1_session_chain_test)
  (modules m8_t1_session_chain_test)
  (libraries campfire alcotest sqlite3 yojson cohttp cohttp-lwt lwt.unix uri))
+
+(test
+ (name session_rate_limit_test)
+ (modules session_rate_limit_test)
+ (libraries campfire alcotest unix))

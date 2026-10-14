@@ -146,17 +146,9 @@ let session_new c =
   if count = 0 then redirect c "/first_run"
   else render_session_new c ~status:200 owner
 
-let rate_limits : (string, int * float) Hashtbl.t = Hashtbl.create 64
-let rate_mutex = Mutex.create ()
 let session_rate_limit c =
   let now = Authentication.now_time c.H.now |> Ptime.to_float_s in
-  Mutex.lock rate_mutex;
-  let count, expires = match Hashtbl.find_opt rate_limits c.H.remote_ip with
-    | Some (count, expires) when expires > now -> count + 1, expires
-    | _ -> 1, now +. 180. in
-  Hashtbl.replace rate_limits c.H.remote_ip (count, expires);
-  Mutex.unlock rate_mutex;
-  count > 10
+  Session_rate_limit.hit ~now ~ip:c.H.remote_ip
 let session_reject c status =
   read c (fun db -> List.find_opt U.is_administrator
     (U.active_ordered_without_bots db)) >>= fun owner ->

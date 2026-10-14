@@ -25,6 +25,7 @@ type t = {
   mutex : Mutex.t;
   connections : connection list ref;
   hub : Cable_ring.t;
+  mutable bus : Cable_bus.client option;
   notify : unit -> unit;
   started : float;
   mutable stopping : bool;
@@ -51,7 +52,8 @@ let create ~db ~secret_key_base ~now () =
     List.iter (fun c -> Lwt_condition.broadcast c.wake ()) live) in
   {db; secret_key_base; now; mutex; connections;
    notify=(fun () -> Lwt_unix.send_notification notification);
-   hub=Cable_ring.create (); started = Unix.gettimeofday (); stopping=false}
+   hub=Cable_ring.create (); bus=None;
+   started = Unix.gettimeofday (); stopping=false}
 
 let with_lock t f =
   Mutex.lock t.mutex;
@@ -59,19 +61,33 @@ let with_lock t f =
 
 let wake t = t.notify ()
 
-let broadcast t ~stream ~payload =
+let broadcast_local t ~stream ~payload =
   let count = Cable_ring.broadcast t.hub ~stream ~payload in
   if count > 0 then wake t;
   count
 
+let broadcast t ~stream ~payload =
+  let count = broadcast_local t ~stream ~payload in
+  Option.iter (fun bus -> Cable_bus.publish bus
+    (Cable_bus.Broadcast (stream,payload))) t.bus;
+  count
+
+let broadcast_batch t events =
+  let count = List.fold_left (fun count (stream,payload) ->
+    count + broadcast_local t ~stream ~payload) 0 events in
+  Option.iter (fun bus -> Cable_bus.publish bus (Cable_bus.Batch events)) t.bus;
+  count
+
 let broadcast_json t ~stream value = broadcast t ~stream ~payload:(encode value)
+let broadcast_batch_json t events =
+  broadcast_batch t (List.map (fun (stream,value) -> stream,encode value) events)
 let read_room t ~user_id ~room_id =
   broadcast_json t ~stream:("user_" ^ Int64.to_string user_id ^ "_reads")
     (`Assoc ["room_id", as_int room_id])
 let unread_room t ~user_id ~room_id =
   broadcast_json t ~stream:("user_" ^ Int64.to_string user_id ^ "_unreads")
     (`Assoc ["roomId", as_int room_id])
-let disconnect_user t ~user_id ~reconnect =
+let disconnect_user_local t ~user_id ~reconnect =
   let count, wake_needed = with_lock t (fun () ->
     let wake_needed = ref false in
     let count = List.fold_left (fun n c ->
@@ -82,6 +98,39 @@ let disconnect_user t ~user_id ~reconnect =
     count, !wake_needed) in
   if wake_needed then wake t;
   count
+
+let disconnect_user t ~user_id ~reconnect =
+  let count = disconnect_user_local t ~user_id ~reconnect in
+  Option.iter (fun bus -> Cable_bus.publish bus
+    (Cable_bus.Disconnect (user_id,reconnect))) t.bus;
+  count
+
+let receive_remote t = function
+  | Cable_bus.Broadcast (stream,payload) ->
+      ignore (broadcast_local t ~stream ~payload)
+  | Cable_bus.Batch events ->
+      List.iter (fun (stream,payload) ->
+        ignore (broadcast_local t ~stream ~payload)) events
+  | Cable_bus.Disconnect (user_id,reconnect) ->
+      ignore (disconnect_user_local t ~user_id ~reconnect)
+  | Cable_bus.Track _ | Cable_bus.Subscribe _ | Cable_bus.Unsubscribe _
+  | Cable_bus.Ack _ -> invalid_arg "unexpected Cable bus control frame"
+
+let attach_bus t bus =
+  if Option.is_some t.bus then invalid_arg "Cable bus already attached";
+  Cable_bus.track bus;
+  t.bus <- Some bus
+
+let subscribe_cursor t ~stream ~identifier =
+  let cursor = Cable_ring.subscribe t.hub ~stream ~identifier in
+  Option.iter (fun bus -> Cable_bus.subscribe bus stream) t.bus;
+  cursor
+
+let unsubscribe_cursor t cursor =
+  if cursor.Cable_ring.active then (
+    Cable_ring.unsubscribe t.hub cursor;
+    Option.iter (fun bus -> Cable_bus.unsubscribe bus
+      cursor.Cable_ring.stream.name) t.bus)
 
 let restart t =
   let count = with_lock t (fun () ->
@@ -193,7 +242,7 @@ let add_subscription t c identifier params =
        | None -> Lwt.return_some (identifier_frame identifier "reject_subscription")
        | Some (streams, room_id) ->
            let cursors = List.map (fun stream ->
-             Cable_ring.subscribe t.hub ~stream ~identifier) streams in
+             subscribe_cursor t ~stream ~identifier) streams in
            let sub = {identifier; channel; streams; cursors; base_streams=streams; room_id} in
            with_lock t (fun () -> c.subscriptions <- c.subscriptions @ [sub]);
            (match channel, room_id with
@@ -233,7 +282,7 @@ let remove_subscription t c identifier =
     let found = List.find_opt (fun sub -> sub.identifier = identifier) c.subscriptions in
     c.subscriptions <- List.filter (fun sub -> sub.identifier <> identifier) c.subscriptions;
     found) in
-  Option.iter (fun sub -> List.iter (Cable_ring.unsubscribe t.hub) sub.cursors) removed;
+  Option.iter (fun sub -> List.iter (unsubscribe_cursor t) sub.cursors) removed;
   match removed with
   | Some sub when sub.channel = "PresenceChannel" -> presence_change t c sub "absent"
   | _ -> Lwt.return_unit
@@ -265,7 +314,7 @@ let perform t c identifier data =
           Lwt.return_unit
       | "PresenceChannel", "subscribed" ->
           let cursors = List.map (fun stream ->
-            Cable_ring.subscribe t.hub ~stream ~identifier:sub.identifier) sub.base_streams in
+            subscribe_cursor t ~stream ~identifier:sub.identifier) sub.base_streams in
           with_lock t (fun () ->
             sub.streams <- sub.streams @ sub.base_streams;
             sub.cursors <- sub.cursors @ cursors);
@@ -274,7 +323,7 @@ let perform t c identifier data =
         | "UnreadRoomsChannel" | "RoomMessagesChannel" | "Turbo::StreamsChannel"),
         "subscribed" ->
           let cursors = List.map (fun stream ->
-            Cable_ring.subscribe t.hub ~stream ~identifier:sub.identifier) sub.base_streams in
+            subscribe_cursor t ~stream ~identifier:sub.identifier) sub.base_streams in
           with_lock t (fun () ->
             sub.streams <- sub.streams @ sub.base_streams;
             sub.cursors <- sub.cursors @ cursors);
@@ -345,7 +394,7 @@ let cleanup t c =
     c.alive <- false;
     t.connections := List.filter (fun other -> other != c) !(t.connections);
     let subs = c.subscriptions in c.subscriptions <- []; subs) in
-  List.iter (fun sub -> List.iter (Cable_ring.unsubscribe t.hub) sub.cursors) subs;
+  List.iter (fun sub -> List.iter (unsubscribe_cursor t) sub.cursors) subs;
   Lwt_list.iter_s (fun sub ->
     if sub.channel = "PresenceChannel" then presence_change t c sub "absent"
     else Lwt.return_unit) subs

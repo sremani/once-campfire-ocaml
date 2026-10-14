@@ -66,6 +66,12 @@ under the M7-T1 acceptance checks.
 For a private HTTP deployment such as a Tailscale-only hostname, set
 `DISABLE_SSL=1 CAMPFIRE_DIRECT_HTTP=1` and leave `TLS_DOMAIN` unset. The app
 then listens directly on `HTTP_PORT` (80 by default) and Caddy does not run.
+Set `CAMPFIRE_HTTP_WORKERS=2` or `4` to start that many direct listeners on the
+same port. The boot script starts one local Cable broker, waits for the first
+worker to reset presence, and shares the login rate-limit window across all
+workers. The default remains one worker. This topology is still a performance
+candidate; use the full benchmark and WebSocket checks before promoting it to
+a published image.
 `CAMPFIRE_DIRECT_BIND` defaults to `0.0.0.0` inside the container; restrict
 the published host port to the Tailscale interface or with a host firewall.
 This mode keeps the single application process and its in-process Cable and

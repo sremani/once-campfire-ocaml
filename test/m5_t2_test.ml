@@ -27,6 +27,19 @@ let with_seed f =
       [temp; temp^"-wal"; temp^"-shm"])
     (fun () -> f db)
 
+let with_bus_broker f =
+  let directory = Filename.temp_file "campfire-channel-bus-" "" in
+  Sys.remove directory;
+  Unix.mkdir directory 0o700;
+  let path = Filename.concat directory "bus.sock" in
+  let broker = Unix.fork () in
+  if broker = 0 then (try Cable_bus.serve path with _ -> exit 1)
+  else Fun.protect ~finally:(fun () ->
+    (try Unix.kill broker Sys.sigterm with _ -> ());
+    ignore (Unix.waitpid [] broker);
+    if Sys.file_exists path then Unix.unlink path;
+    Unix.rmdir directory) (fun () -> f path)
+
 let check label expected actual = Alcotest.(check string) label expected actual
 let frame opcode content =
   let n = String.length content in
@@ -150,6 +163,45 @@ let test_channels () = with_seed (fun db ->
     check "remote A" expected remote_a;
     check "remote B" expected remote_b;
     Lwt.return_unit)))
+
+let test_cross_worker_channels () = with_bus_broker (fun path -> with_seed (fun db ->
+  let user,room = Db_runtime.read db (fun conn ->
+    Db_accounts.User.find conn 127326141L,
+    Db_rooms.Room.find conn 654632876L) in
+  let session = Db_runtime.write db (fun tx ->
+    Db_accounts.Session.start (Db_runtime.conn tx) ~now ~user_id:user.id
+      ~user_agent:None ~ip_address:None) in
+  let cookie = "session_token=" ^ Authentication.issue_token_cookie
+    ~secret_key_base:secret ~now session.token in
+  let make () = Cable_channels.create ~db ~secret_key_base:secret
+    ~now:(fun () -> now) () in
+  let first = make () and second = make () in
+  let first_bus = Cable_bus.connect path
+    ~receive:(Cable_channels.receive_remote first) in
+  Fun.protect ~finally:(fun () -> Cable_bus.close first_bus) (fun () ->
+    Cable_channels.attach_bus first first_bus;
+    let second_bus = Cable_bus.connect path
+      ~receive:(Cable_channels.receive_remote second) in
+    Fun.protect ~finally:(fun () -> Cable_bus.close second_bus) (fun () ->
+      Cable_channels.attach_bus second second_bus;
+      Lwt_main.run (Lwt_unix.with_timeout 5. (fun () ->
+        connect first ~cookie () >>= fun a ->
+        connect second ~cookie () >>= fun b ->
+        receive a >>= fun _ -> receive b >>= fun _ ->
+        let typing = identifier "TypingNotificationsChannel"
+          ["room_id",`Int (Int64.to_int room.id)] in
+        subscribe a typing >>= fun () -> receive a >>= fun confirmed_a ->
+        subscribe b typing >>= fun () -> receive b >>= fun confirmed_b ->
+        check "first worker subscription" (confirm typing) confirmed_a;
+        check "second worker subscription" (confirm typing) confirmed_b;
+        perform a typing "start" >>= fun () ->
+        receive a >>= fun local -> receive b >>= fun remote ->
+        check "cross-worker typing frame" local remote;
+        ignore (Cable_channels.disconnect_user first
+          ~user_id:user.id ~reconnect:true);
+        receive a >>= fun local_disconnect ->
+        receive b >|= fun remote_disconnect ->
+        check "cross-worker disconnect" local_disconnect remote_disconnect))))))
 
 let test_unauthorized () = with_seed (fun db ->
   let t = Cable_channels.create ~db ~secret_key_base:secret ~now:(fun () -> now) () in
@@ -469,7 +521,8 @@ let test_live_http_to_two_sockets () = with_seed (fun db ->
     (fun () -> Lwt.wakeup_later wake_stop (); Lwt.return_unit)))
 
 let () = Alcotest.run "M5 channels" [
-  "socket", [Alcotest.test_case "two clients and remote disconnect" `Quick test_channels;
+  "socket", [Alcotest.test_case "cross-worker Cable frames" `Quick test_cross_worker_channels;
+             Alcotest.test_case "two clients and remote disconnect" `Quick test_channels;
              Alcotest.test_case "unauthorized" `Quick test_unauthorized;
              Alcotest.test_case "presence and streams" `Quick test_presence_and_stream_guard;
              Alcotest.test_case "after-commit revocation" `Quick test_after_commit_revocation;

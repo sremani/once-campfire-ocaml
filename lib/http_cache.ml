@@ -346,6 +346,7 @@ module Front = struct
   let entry_overhead = 256
 
   type item = { status:int; headers:Cohttp.Header.t; body:string;
+    static:bool;
     variant:(string * string) list; expires_at:float; mutable accessed_at:float;
     size:int; generation:int64 }
   type t = { capacity:int; max_item_size:int; items:(string,item) Hashtbl.t;
@@ -434,7 +435,7 @@ module Front = struct
       n+String.length name+String.length value) 0 variant in
     String.length body + String.length key + header_size + variant_size + entry_overhead
 
-  let store t ~now ~generation request ~status ~headers ~body =
+  let store t ~now ~generation ?(static=false) request ~status ~headers ~body =
     match lifetime status headers with
     | None -> false
     | Some _ when not (request_allowed request) -> false
@@ -457,7 +458,7 @@ module Front = struct
               | Some _ -> choice) t.items None |> Option.get |> fst in
             remove t victim
           done;
-          Hashtbl.add t.items key {status;headers;body;variant;
+          Hashtbl.add t.items key {status;headers;body;variant;static;
             expires_at=now+.float_of_int seconds;accessed_at=now;size;generation};
           t.size<-t.size+size; true)
 
