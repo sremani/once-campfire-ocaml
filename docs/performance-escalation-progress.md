@@ -825,3 +825,60 @@ query), gains of 20.2% and 22.6%. Every timed response was valid and each
 exact acknowledged-write audit passed. These are development comparisons;
 the clean Go ratio still needs an uncontended run. Raw summaries:
 `tmp/bench/ocaml55-brokerinterest-{A1,B1,A2,B2}-20261014/`.
+
+## Direct health and central POST writer (2026-10-14)
+
+The direct listener now serves the ordinary gzip `GET /up` request from a
+validated raw HTTP fast path. Its fallback retains Cohttp for conditional and
+other health requests. A repeated request on one persistent connection,
+plain fallback, and conditional `304` were checked live; the full forced
+suite passed. Same-image health A/B measurements under concurrent host load
+rose from 59,767/69,500 to 145,462/165,040 requests/s. The clean paired
+Go/OCaml run at `05a3434` measured about 205,000 OCaml versus 72,600 Go
+health requests/s, while shared Java load heavily depressed Go's earlier
+139,514/s quiet result. The source is `lib/front_target.ml`; the switch is
+`CAMPFIRE_RAW_HEALTH=0`.
+
+An opt-in central POST writer now batches ordinary plain messages from four
+HTTP workers through a Unix socket. It preserves exact acknowledged writes,
+FTS visibility, and isolation when one item in a batch fails. The full forced
+suite and the new integration test pass. `CAMPFIRE_CENTRAL_POST_WRITER=1`
+enables it in coordinated direct mode. Under the same heavy host load it
+raised four-worker POST from about 2,231 to 2,445 requests/s. Quieter local
+runs reached about 3,900/s. The clean, audited all-route paired run under
+heavy Java load measured 2,721 OCaml versus 3,725 Go POSTs/s (73%); the
+quiet paired POST-only run measured 3,736/3,077 OCaml versus 5,643/5,360 Go.
+These are not an 85% pass. Raw summaries are under
+`tmp/bench/ocaml55-61b203c-clean-go-20261014/` and
+`tmp/bench/ocaml55-05a3434-post-quiet-go-20261014/`.
+
+The POST profile now shows three reader jobs plus one writer or writer RPC
+per request. In the four-worker central-writer profile, one writer batch
+averaged 314 µs for about 1.8 messages, and each HTTP worker still spent
+roughly 350–580 µs awaiting each reader job. Per-process CPU and overlapping
+stage times do not identify a single saturated writer: it used roughly
+2.2 seconds of CPU while writing about 17,450 messages in the sampled round.
+Profiles are at `tmp/bench/runtime/1427076/ocaml-2/db/stages-*.txt`.
+Increasing reader domains from two to four lowered one-worker POST to
+2,795/s under load. Disabling DB domains halved one-worker POST to about
+1,482/s. Lwt 6.1.2 also rejects concurrent `Lwt_main.run` across domains,
+so a direct multicore HTTP loop needs a different runtime or process design.
+
+The central writer now offers `CAMPFIRE_POST_BATCH_CALLBACKS=1`, grouping
+post-commit FTS and unread updates from a batch in one second transaction.
+Two same-image A/B/A/B pairs measured 2,699/2,848/2,770/2,871 POSTs/s
+under shifting host load, a small and consistent gain. The grouped path is
+opt-in pending a clean comparison. It marks the primary commit before running
+callbacks to avoid replaying a committed message if the second transaction
+fails. Both callback modes pass the writer integration test and the full
+forced suite. Raw summaries: `tmp/bench/ocaml55-callbackbatch-{A1,B1,A2,B2}-20261014/`.
+
+`CAMPFIRE_GZIP_LEVEL=1` is an opt-in response compression tradeoff: paired
+POST runs at level 6/1/6/1 measured 2,755/2,873/2,812/2,971 requests/s.
+The typical response grew from about 1,981 to 2,250 bytes, so level 6 stays
+the default. Exact response contracts and write audits passed. A direct
+plain-message presenter showed only a marginal, inconsistent gain and was
+removed. Caching static reaction HTML passed the rendered goldens but was
+flat in its first paired POST run and was removed. Checking WAL size every
+16 writes also failed to improve throughput and was removed. Raw summaries:
+`tmp/bench/ocaml55-{gzip1,plainpresent,staticreaction,checkpointstat}-*-20261014/`.
