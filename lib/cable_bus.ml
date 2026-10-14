@@ -68,8 +68,24 @@ type peer = {
   mutable tracking : bool;
 }
 
+let interest_file path = path ^ ".interests"
+
+(* The broker sets this one-byte, shared mapping before acknowledging a new
+   subscription. Workers can therefore skip the request/response broker query
+   on an idle POST without losing a subscription that already completed. A
+   stale true value only causes an unnecessary broadcast. *)
+let map_interest path ~create =
+  let fd = Unix.openfile (interest_file path)
+    (if create then [Unix.O_RDWR;Unix.O_CREAT;Unix.O_TRUNC] else [Unix.O_RDWR])
+    0o600 in
+  Fun.protect ~finally:(fun () -> Unix.close fd) (fun () ->
+    if create then ignore (Unix.write_substring fd "\001" 0 1);
+    Unix.map_file fd Bigarray.int8_unsigned Bigarray.c_layout true [|1|]
+    |> Bigarray.array1_of_genarray)
+
 let serve path =
   if Sys.file_exists path then Unix.unlink path;
+  let interest = map_interest path ~create:true in
   let listener = Unix.socket Unix.PF_UNIX Unix.SOCK_STREAM 0 in
   Fun.protect ~finally:(fun () -> Unix.close listener) (fun () ->
     Unix.bind listener (Unix.ADDR_UNIX path);
@@ -77,10 +93,16 @@ let serve path =
     Unix.listen listener 16;
     let peers = ref [] in
     let peers_mutex = Mutex.create () in
+    let update_interest () =
+      let any = List.exists (fun peer ->
+        not peer.tracking || Hashtbl.length peer.interests > 0) !peers in
+      Bigarray.Array1.set interest 0 (if any then 1 else 0) in
     let detach peer =
       Mutex.lock peers_mutex;
       let attached = List.memq peer !peers in
-      if attached then peers := List.filter (fun other -> other != peer) !peers;
+      if attached then (
+        peers := List.filter (fun other -> other != peer) !peers;
+        update_interest ());
       Mutex.unlock peers_mutex;
       if attached then (
         (try Unix.shutdown peer.fd Unix.SHUTDOWN_ALL with _ -> ());
@@ -92,12 +114,14 @@ let serve path =
        | Track token ->
            Mutex.lock peers_mutex;
            peer.tracking <- true;
+           update_interest ();
            Mutex.unlock peers_mutex;
            acknowledge token
        | Subscribe (stream,token) ->
            Mutex.lock peers_mutex;
            let count = Option.value (Hashtbl.find_opt peer.interests stream) ~default:0 in
            Hashtbl.replace peer.interests stream (count + 1);
+           update_interest ();
            Mutex.unlock peers_mutex;
            acknowledge token
        | Unsubscribe stream ->
@@ -105,6 +129,7 @@ let serve path =
            let count = Option.value (Hashtbl.find_opt peer.interests stream) ~default:0 in
            if count <= 1 then Hashtbl.remove peer.interests stream
            else Hashtbl.replace peer.interests stream (count - 1);
+           update_interest ();
            Mutex.unlock peers_mutex
        | QueryInterests token ->
            Mutex.lock peers_mutex;
@@ -137,6 +162,7 @@ let serve path =
         interests=Hashtbl.create 16;tracking=false} in
       Mutex.lock peers_mutex;
       peers := peer :: !peers;
+      update_interest ();
       Mutex.unlock peers_mutex;
       ignore (Thread.create (fun () ->
         (try client_loop peer with _ -> ());
@@ -154,6 +180,8 @@ type client = {
   mutable next_token : int;
   last_ack : int ref;
   last_interests : (int * bool) ref;
+  shared_interest : (int, Bigarray.int8_unsigned_elt, Bigarray.c_layout)
+    Bigarray.Array1.t option;
 }
 
 let connect path ~receive =
@@ -165,6 +193,10 @@ let connect path ~receive =
         Thread.delay 0.01;
         wait (remaining - 1) in
   (try wait 500 with exn -> Unix.close fd; raise exn);
+  let shared_interest = try
+    if Sys.getenv_opt "CAMPFIRE_SHARED_INTERESTS" = Some "1" then
+      Some (map_interest path ~create:false) else None
+    with exn -> Unix.close fd; raise exn in
   let stopped = Atomic.make false in
   let ack_mutex = Mutex.create () in
   let ack_condition = Condition.create () in
@@ -191,7 +223,7 @@ let connect path ~receive =
         exit 1)) () in
   {fd;write_mutex=Mutex.create ();stopped;reader;
     control_mutex=Mutex.create ();ack_mutex;ack_condition;
-    next_token=0;last_ack;last_interests}
+    next_token=0;last_ack;last_interests;shared_interest}
 
 let publish client event =
   if Atomic.get client.stopped then invalid_arg "Cable bus stopped";
@@ -218,6 +250,9 @@ let subscribe client stream =
 let unsubscribe client stream = publish client (Unsubscribe stream)
 
 let any_remote_interests client =
+  match client.shared_interest with
+  | Some interest -> Bigarray.Array1.get interest 0 <> 0
+  | None ->
   Mutex.lock client.control_mutex;
   Fun.protect ~finally:(fun () -> Mutex.unlock client.control_mutex) (fun () ->
     client.next_token <- client.next_token + 1;

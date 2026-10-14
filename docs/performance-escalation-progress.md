@@ -882,3 +882,39 @@ removed. Caching static reaction HTML passed the rendered goldens but was
 flat in its first paired POST run and was removed. Checking WAL size every
 16 writes also failed to improve throughput and was removed. Raw summaries:
 `tmp/bench/ocaml55-{gzip1,plainpresent,staticreaction,checkpointstat}-*-20261014/`.
+
+## Route-aware HTTP dispatch and Cable interest flag (2026-10-14)
+
+An adjacent quiet POST-only anchor measured 6,136 Go requests/s. The best
+four-worker central-writer setting, with 250 µs of batch coalescing, measured
+4,254 OCaml requests/s (69%). A one-worker OCaml process on the same four
+assigned cores then reached 5,546 requests/s, over 90% of that Go anchor.
+This isolated the multi-worker coordination cost. The 250 µs batch setting
+improved central POST against its zero-delay baseline in repeated audited
+runs; 500 µs regressed. Raw summaries are under
+`tmp/bench/ocaml55-batchdelay-*-20261014/`,
+`tmp/bench/go-post-anchor-20261014/`, and
+`tmp/bench/ocaml55-cpugzip-A1-20261014/`.
+
+The opt-in `CAMPFIRE_HTTP_DISPATCH=1` mode now transfers accepted TCP sockets
+over Unix datagrams to four HTTP workers. Connections beginning with `POST `
+go to the worker with a local SQLite writer; other connections rotate among
+all four. The initial bytes remain unread for the existing timed Cohttp
+listener. A connection that switches methods later retains normal route
+behavior, with the central writer available on reader workers. The pinned
+fixture preflight and exact POST write audits passed. Dispatch alone remained
+near 4,200 POSTs/s: the router correctly sent all profiled POSTs to the
+writer worker, but each POST still synchronously queried the Cable broker
+for subscription interest. The profile is
+`tmp/bench/runtime/1958208/ocaml-2/db/stages-17.txt`.
+
+`CAMPFIRE_SHARED_INTERESTS=1` replaces that per-POST broker round trip with
+a one-byte shared mapping. The broker writes its conservative global interest
+flag before acknowledging a subscription. A stale true value only causes an
+extra broadcast. The full forced suite passes with the flag both enabled
+and disabled, including cross-worker Cable fanout tests. On the same image,
+the audited POST medians moved from 4,190 with synchronous queries to 5,439
+with the shared flag; a subsequent flagged run measured 4,878 during renewed
+host drift. The change is a strong local gain, while an 85% release claim
+still requires a clean paired Go comparison with all routes and checks.
+Raw summaries are `tmp/bench/ocaml55-sharedinterest-{B1,A1,B2}-20261014/`.

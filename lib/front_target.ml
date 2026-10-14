@@ -58,8 +58,9 @@ let remaining = function
       let seconds = deadline -. Unix.gettimeofday () in
       if seconds <= 0. then raise Deadline else seconds
 
-let serve ?stop ?(raw_health=false) ~socket ~read_timeout ~write_timeout ~idle_timeout ~callback () =
-  let on_client flow ic oc =
+let serve ?stop ?(raw_health=false) ?socket ?worker_socket
+    ~read_timeout ~write_timeout ~idle_timeout ~callback () =
+  let on_client peer ic oc =
     let clock = {
       phase=Initial;
       header_deadline=(if read_timeout > 0 then
@@ -172,7 +173,7 @@ let serve ?stop ?(raw_health=false) ~socket ~read_timeout ~write_timeout ~idle_t
     end in
     let module Request = Cohttp.Request.Make (Timed_io) in
     let module Response = Cohttp.Response.Make (Timed_io) in
-    let conn = flow,Cohttp.Connection.create () in
+    let conn = peer,Cohttp.Connection.create () in
     let try_raw_health () =
       if not raw_health then Lwt.return_false else
       (match clock.phase with
@@ -347,8 +348,51 @@ let serve ?stop ?(raw_health=false) ~socket ~read_timeout ~write_timeout ~idle_t
           Logs.warn (fun log -> log "Target HTTP connection closed: %s"
             (Printexc.to_string error));
           Lwt.return_unit) in
-  Conduit_lwt_unix.serve ?stop
-    ~on_exn:(fun error -> Logs.warn (fun log ->
-      log "Target accept error: %s" (Printexc.to_string error)))
-    ~ctx:(Lazy.force Conduit_lwt_unix.default_ctx)
-    ~mode:(`TCP (`Socket socket)) on_client
+  match socket,worker_socket with
+  | Some socket,None ->
+      Conduit_lwt_unix.serve ?stop
+        ~on_exn:(fun error -> Logs.warn (fun log ->
+          log "Target accept error: %s" (Printexc.to_string error)))
+        ~ctx:(Lazy.force Conduit_lwt_unix.default_ctx)
+        ~mode:(`TCP (`Socket socket))
+        (fun flow ic oc ->
+          let peer = match flow with
+            | Conduit_lwt_unix.TCP tcp -> Ipaddr.to_string tcp.ip
+            | _ -> "127.0.0.1" in
+          on_client peer ic oc)
+  | None,Some path ->
+      if Sys.file_exists path then Unix.unlink path;
+      let mailbox = Lwt_unix.socket Unix.PF_UNIX Unix.SOCK_DGRAM 0 in
+      Lwt.finalize (fun () ->
+        Lwt_unix.bind mailbox (Unix.ADDR_UNIX path) >>= fun () ->
+        Unix.chmod path 0o600;
+        let rec receive () =
+          let data = Bytes.create 1 in
+          let vectors = Lwt_unix.IO_vectors.create () in
+          Lwt_unix.IO_vectors.append_bytes vectors data 0 1;
+          let next = Lwt_unix.recv_msg ~socket:mailbox ~io_vectors:vectors
+            >|= fun (_,fds) -> Some fds in
+          (match stop with
+           | None -> next
+           | Some stopped -> Lwt.pick [next; (stopped >|= fun () -> None)])
+          >>= function
+          | None -> Lwt.return_unit
+          | Some fds ->
+              List.iter (fun raw ->
+                let peer = match Unix.getpeername raw with
+                  | Unix.ADDR_INET (ip,_) -> Unix.string_of_inet_addr ip
+                  | _ -> "127.0.0.1" in
+                let input = Lwt_io.of_unix_fd ~mode:Lwt_io.input raw in
+                let output_fd = Unix.dup raw in
+                let output = Lwt_io.of_unix_fd ~mode:Lwt_io.output output_fd in
+                Lwt.async (fun () ->
+                  Lwt.finalize
+                    (fun () -> on_client peer input output)
+                    (fun () -> Lwt_io.close output >>= fun () ->
+                      Lwt_io.close input))) fds;
+              receive () in
+        receive ())
+        (fun () -> Lwt_unix.close mailbox >>= fun () ->
+          if Sys.file_exists path then Unix.unlink path;
+          Lwt.return_unit)
+  | _ -> invalid_arg "exactly one HTTP listener mode is required"

@@ -175,8 +175,25 @@ let post_writer_cmd =
   let info = Cmd.info "post-writer" ~doc:"Serve ordinary message writes on one SQLite connection." in
   Cmd.v info Term.(ret (const run $ path))
 
+let fd_router_cmd =
+  let open Cmdliner in
+  let directory = Arg.(required & pos 0 (some string) None & info [] ~docv:"DIRECTORY") in
+  let run directory =
+    try
+      let front = Campfire.Front_config.from_env () in
+      let workers = match Sys.getenv_opt "CAMPFIRE_HTTP_WORKERS" with
+        | Some raw -> int_of_string raw | None -> 4 in
+      Lwt_main.run (Campfire.Fd_router.serve ~bind_ip:front.target_bind
+        ~port:front.target_port ~read_timeout:front.http_read_timeout
+        ~directory ~workers);
+      `Ok ()
+    with exn -> `Error (false,Printexc.to_string exn) in
+  let info = Cmd.info "fd-router" ~doc:"Dispatch direct HTTP connections to Campfire workers." in
+  Cmd.v info Term.(ret (const run $ directory))
+
 let () =
   let open Cmdliner in
   let info = Cmd.info "campfire" ~doc:"OCaml port of ONCE Campfire (in progress)." in
   exit (Cmd.eval (Cmd.group info ~default:Term.(ret (const serve $ const None $ const None))
-    [check_cmd; serve_cmd; server_cmd; backup_cmd; bus_cmd; post_writer_cmd]))
+    [check_cmd; serve_cmd; server_cmd; backup_cmd; bus_cmd; post_writer_cmd;
+     fd_router_cmd]))

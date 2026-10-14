@@ -13,6 +13,9 @@ if [ "${CAMPFIRE_DIRECT_HTTP:-0}" = "1" ]; then
   case "$workers" in 1|2|4) ;; *)
     echo "CAMPFIRE_HTTP_WORKERS must be 1, 2, or 4" >&2; exit 2 ;; esac
   if [ "$workers" = 1 ]; then
+    if [ "${CAMPFIRE_HTTP_DISPATCH:-0}" = "1" ]; then
+      echo "CAMPFIRE_HTTP_DISPATCH requires multiple HTTP workers" >&2; exit 2
+    fi
     if [ "${CAMPFIRE_CENTRAL_POST_WRITER:-0}" = "1" ]; then
       echo "CAMPFIRE_CENTRAL_POST_WRITER requires multiple HTTP workers" >&2
       exit 2
@@ -47,9 +50,19 @@ if [ "${CAMPFIRE_DIRECT_HTTP:-0}" = "1" ]; then
     fi
     pids+=("$writer_pid")
   fi
-  CAMPFIRE_REUSEPORT=1 CAMPFIRE_CABLE_BUS="$bus_socket" \
-    CAMPFIRE_PRESENCE_READY_FILE="$presence_ready" \
-    /usr/local/bin/campfire server &
+  dispatch=${CAMPFIRE_HTTP_DISPATCH:-0}
+  if [ "$dispatch" = 1 ]; then
+    rm -f /rails/storage/thruster/fd-worker-*.sock
+    env -u CAMPFIRE_POST_WRITER_SOCKET \
+      CAMPFIRE_DISPATCH_WORKER_SOCKET=/rails/storage/thruster/fd-worker-0.sock \
+      CAMPFIRE_CABLE_BUS="$bus_socket" \
+      CAMPFIRE_PRESENCE_READY_FILE="$presence_ready" \
+      /usr/local/bin/campfire server &
+  else
+    CAMPFIRE_REUSEPORT=1 CAMPFIRE_CABLE_BUS="$bus_socket" \
+      CAMPFIRE_PRESENCE_READY_FILE="$presence_ready" \
+      /usr/local/bin/campfire server &
+  fi
   first_pid=$!
   pids+=("$first_pid")
   ready=0
@@ -67,10 +80,38 @@ if [ "${CAMPFIRE_DIRECT_HTTP:-0}" = "1" ]; then
     exit 1
   fi
   for ((i=1; i<workers; i++)); do
-    CAMPFIRE_REUSEPORT=1 CAMPFIRE_CABLE_BUS="$bus_socket" \
-      CAMPFIRE_RESET_PRESENCE=0 /usr/local/bin/campfire server &
+    if [ "$dispatch" = 1 ]; then
+      CAMPFIRE_DISPATCH_WORKER_SOCKET="/rails/storage/thruster/fd-worker-$i.sock" \
+        CAMPFIRE_CABLE_BUS="$bus_socket" CAMPFIRE_RESET_PRESENCE=0 \
+        /usr/local/bin/campfire server &
+    else
+      CAMPFIRE_REUSEPORT=1 CAMPFIRE_CABLE_BUS="$bus_socket" \
+        CAMPFIRE_RESET_PRESENCE=0 /usr/local/bin/campfire server &
+    fi
     pids+=("$!")
   done
+  if [ "$dispatch" = 1 ]; then
+    dispatch_ready=0
+    for ((attempt=0; attempt<100; attempt++)); do
+      dispatch_ready=1
+      for ((i=0; i<workers; i++)); do
+        if [ ! -S "/rails/storage/thruster/fd-worker-$i.sock" ]; then
+          dispatch_ready=0; break
+        fi
+      done
+      if [ "$dispatch_ready" -eq 1 ]; then break; fi
+      sleep 0.05
+    done
+    if [ "$dispatch_ready" -ne 1 ]; then
+      echo "Campfire HTTP dispatcher workers did not start" >&2
+      for pid in "${pids[@]}"; do kill -s TERM "$pid" 2>/dev/null || true; done
+      for pid in "${pids[@]}"; do wait "$pid" 2>/dev/null || true; done
+      rm -rf "$rate_limit_dir"
+      exit 1
+    fi
+    /usr/local/bin/campfire fd-router /rails/storage/thruster &
+    pids+=("$!")
+  fi
   received_signal=""
   signal_workers() {
     for pid in "${pids[@]}"; do kill -s TERM "$pid" 2>/dev/null || true; done

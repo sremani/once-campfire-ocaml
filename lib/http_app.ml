@@ -1008,10 +1008,7 @@ let serve ?(port=3000) ?(bind_ip="127.0.0.1") ?front_config ?stop ?track_request
         create_private_cache ~capacity:(mb * 1024 * 1024) runtime in
   let target_limits = Option.value front_config
     ~default:(Front_config.from_env ()) in
-  let callback (flow, _) request body =
-    let peer = match flow with
-      | Conduit_lwt_unix.TCP tcp -> Ipaddr.to_string tcp.ip
-      | _ -> "127.0.0.1" in
+  let callback (peer, _) request body =
     let request,remote_ip,ssl,trusted_front = match front_config with
       | None -> request,peer,ssl,false
       | Some config ->
@@ -1045,18 +1042,25 @@ let serve ?(port=3000) ?(bind_ip="127.0.0.1") ?front_config ?stop ?track_request
           ~action_not_found_pages ?max_body_bytes ~dispatch request body
         >|= fun response -> `Response response in
     match track_request with None -> respond () | Some track -> track respond in
-  let socket = Lwt_unix.socket
-    (if String.contains bind_ip ':' then Unix.PF_INET6 else Unix.PF_INET)
-    Unix.SOCK_STREAM 0 in
-  Lwt_unix.setsockopt socket Unix.SO_REUSEADDR true;
-  if Sys.getenv_opt "CAMPFIRE_REUSEPORT" = Some "1" then
-    Lwt_unix.setsockopt socket Unix.SO_REUSEPORT true;
+  let worker_socket = Sys.getenv_opt "CAMPFIRE_DISPATCH_WORKER_SOCKET" in
+  let socket = match worker_socket with
+    | Some _ -> None
+    | None ->
+        let socket = Lwt_unix.socket
+          (if String.contains bind_ip ':' then Unix.PF_INET6 else Unix.PF_INET)
+          Unix.SOCK_STREAM 0 in
+        Lwt_unix.setsockopt socket Unix.SO_REUSEADDR true;
+        if Sys.getenv_opt "CAMPFIRE_REUSEPORT" = Some "1" then
+          Lwt_unix.setsockopt socket Unix.SO_REUSEPORT true;
+        Some socket in
   Lwt.finalize
     (fun () ->
-      Lwt_unix.bind socket (Unix.ADDR_INET (Unix.inet_addr_of_string bind_ip,port))
-      >>= fun () ->
-      Lwt_unix.listen socket 128;
-      Front_target.serve ?stop ~socket
+      (match socket with
+       | Some socket ->
+           Lwt_unix.bind socket (Unix.ADDR_INET (Unix.inet_addr_of_string bind_ip,port))
+           >>= fun () -> Lwt_unix.listen socket 128; Lwt.return_unit
+       | None -> Lwt.return_unit) >>= fun () ->
+      Front_target.serve ?stop ?socket ?worker_socket
         ~raw_health:(not force_ssl &&
           Sys.getenv_opt "CAMPFIRE_DIRECT_HTTP" = Some "1" &&
           Sys.getenv_opt "CAMPFIRE_RAW_HEALTH" <> Some "0")
@@ -1065,7 +1069,10 @@ let serve ?(port=3000) ?(bind_ip="127.0.0.1") ?front_config ?stop ?track_request
         ~idle_timeout:target_limits.http_idle_timeout
         ~callback ())
     (fun () ->
-      Lwt.catch (fun () -> Lwt_unix.close socket) (fun _ -> Lwt.return_unit)
+      (match socket with
+       | Some socket -> Lwt.catch (fun () -> Lwt_unix.close socket)
+           (fun _ -> Lwt.return_unit)
+       | None -> Lwt.return_unit)
       >>= fun () ->
       (match private_cache with None -> Option.iter close_private_cache owned_private_cache
        | Some _ -> ());

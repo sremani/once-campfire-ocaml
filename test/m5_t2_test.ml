@@ -38,6 +38,8 @@ let with_bus_broker f =
     (try Unix.kill broker Sys.sigterm with _ -> ());
     ignore (Unix.waitpid [] broker);
     if Sys.file_exists path then Unix.unlink path;
+    if Sys.file_exists (Cable_bus.interest_file path) then
+      Unix.unlink (Cable_bus.interest_file path);
     Unix.rmdir directory) (fun () -> f path)
 
 let check label expected actual = Alcotest.(check string) label expected actual
