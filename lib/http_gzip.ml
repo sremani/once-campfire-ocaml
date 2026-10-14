@@ -2,7 +2,13 @@
 
 open Lwt.Infix
 
-external compress : string -> string = "campfire_gzip"
+external compress_level : string -> int -> string = "campfire_gzip"
+
+let level = match Sys.getenv_opt "CAMPFIRE_GZIP_LEVEL" with
+  | Some "1" -> 1
+  | _ -> 6
+
+let compress input = compress_level input level
 
 type encoding = Gzip | Identity | Unacceptable
 

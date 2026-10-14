@@ -10,8 +10,8 @@
 
 /* zlib is the distribution's gzip implementation. The per-call stream has no
    shared state, so compression is safe across Cohttp request workers. */
-CAMLprim value campfire_gzip(value input) {
-  CAMLparam1(input);
+CAMLprim value campfire_gzip(value input, value level) {
+  CAMLparam2(input, level);
   CAMLlocal1(result);
   mlsize_t input_len = caml_string_length(input);
   if (input_len > UINT_MAX) caml_invalid_argument("gzip input too large");
@@ -24,7 +24,7 @@ CAMLprim value campfire_gzip(value input) {
   stream.avail_in = (uInt)input_len;
   stream.next_out = (Bytef *)Bytes_val(result);
   stream.avail_out = (uInt)bound;
-  if (deflateInit2(&stream, 6, Z_DEFLATED, 15 + 16, 8, Z_DEFAULT_STRATEGY) != Z_OK)
+  if (deflateInit2(&stream, Int_val(level), Z_DEFLATED, 15 + 16, 8, Z_DEFAULT_STRATEGY) != Z_OK)
     caml_failwith("gzip init failed");
   int code = deflate(&stream, Z_FINISH);
   deflateEnd(&stream);
