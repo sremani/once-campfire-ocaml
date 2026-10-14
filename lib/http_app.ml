@@ -263,7 +263,8 @@ let restore_auth ctx =
   let cookie_headers = Cohttp.Header.get_multi (Cohttp.Request.headers ctx.request) "cookie" in
   let user_agent = header ctx "user-agent" in
   let safe = ctx.method_ = "GET" || ctx.method_ = "HEAD" in
-  let cache_slot = match ctx.private_cache, Lazy.force ctx.cache_generation with
+  let cache_slot = if not safe then None else
+    match ctx.private_cache, Lazy.force ctx.cache_generation with
     | Some cache, Some generation
         when safe && readonly_auth_enabled && auth_cache_enabled ->
         (match Http_cache.Observer.version cache.observer with
