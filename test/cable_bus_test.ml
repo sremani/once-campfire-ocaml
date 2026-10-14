@@ -43,9 +43,14 @@ let fanout () = with_broker (fun path ->
   Fun.protect ~finally:(fun () -> Cable_bus.close a) (fun () ->
     let b = Cable_bus.connect path ~receive:add_b in
     Fun.protect ~finally:(fun () -> Cable_bus.close b) (fun () ->
+      Cable_bus.track a;
       Cable_bus.track b;
+      Alcotest.(check bool) "no remote subscriptions" false
+        (Cable_bus.any_remote_interests a);
       Cable_bus.subscribe b "room";
       Cable_bus.subscribe b "user";
+      Alcotest.(check bool) "remote subscriptions visible" true
+        (Cable_bus.any_remote_interests a);
       let message = String.make 65536 'x' in
       Cable_bus.publish a (Cable_bus.Broadcast ("room",message));
       Alcotest.(check bool) "large broadcast reaches peer" true
@@ -62,6 +67,8 @@ let fanout () = with_broker (fun path ->
       Cable_bus.unsubscribe b "room";
       Cable_bus.unsubscribe b "user";
       Cable_bus.track b;
+      Alcotest.(check bool) "remote subscriptions removed" false
+        (Cable_bus.any_remote_interests a);
       Cable_bus.publish a (Cable_bus.Broadcast ("room","unsubscribed"));
       Thread.delay 0.02;
       Alcotest.(check int) "unsubscribed peer skipped" 2
@@ -97,9 +104,13 @@ let cable_delivery () = with_broker (fun path ->
         ~receive:(Cable_channels.receive_remote second) in
       Fun.protect ~finally:(fun () -> Cable_bus.close second_client) (fun () ->
         Cable_channels.attach_bus second second_client;
+        Alcotest.(check bool) "idle remote hub" false
+          (Cable_channels.may_have_subscribers first);
         let subscriber = Cable_ring.subscribe second.hub
           ~stream:"room:messages" ~identifier:"peer" in
         Cable_bus.subscribe second_client "room:messages";
+        Alcotest.(check bool) "subscribed remote hub" true
+          (Cable_channels.may_have_subscribers first);
         ignore (Cable_channels.broadcast first
           ~stream:"room:messages" ~payload:"{\"ok\":true}");
         let rec receive remaining =

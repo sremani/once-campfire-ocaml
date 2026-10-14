@@ -62,7 +62,8 @@ let with_lock t f =
 let wake t = t.notify ()
 
 let may_have_subscribers t =
-  Option.is_some t.bus || Cable_ring.stream_count t.hub > 0
+  Cable_ring.stream_count t.hub > 0 ||
+  Option.fold ~none:false ~some:Cable_bus.any_remote_interests t.bus
 
 let broadcast_local t ~stream ~payload =
   let count = Cable_ring.broadcast t.hub ~stream ~payload in
@@ -117,7 +118,8 @@ let receive_remote t = function
   | Cable_bus.Disconnect (user_id,reconnect) ->
       ignore (disconnect_user_local t ~user_id ~reconnect)
   | Cable_bus.Track _ | Cable_bus.Subscribe _ | Cable_bus.Unsubscribe _
-  | Cable_bus.Ack _ -> invalid_arg "unexpected Cable bus control frame"
+  | Cable_bus.Ack _ | Cable_bus.QueryInterests _ | Cable_bus.Interests _ ->
+      invalid_arg "unexpected Cable bus control frame"
 
 let attach_bus t bus =
   if Option.is_some t.bus then invalid_arg "Cable bus already attached";

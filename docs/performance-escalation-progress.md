@@ -810,3 +810,18 @@ the live one-worker fixture, two alternating pairs measured 2,520/2,831 and
 2,998/2,923 requests/s (old/new); Java load changed across runs, so there
 is no end-to-end gain claim. All live responses and exact write audits passed.
 Raw summaries: `tmp/bench/ocaml55-plainascii-{A1,B1,A2,B2}-20261014/`.
+
+The existing cross-process Cable broker already tracks subscriptions but
+previously required every POST worker to build and publish a message batch.
+Workers now ask the broker for current remote interest when their local hub is
+empty. The broker answers conservatively while any peer has not registered
+interest tracking. The query is serialized with subscribe acknowledgements;
+when no peer is interested, the POST skips the member lookup and broadcast.
+Cross-worker subscription and delivery tests plus the full forced suite pass.
+
+On the same four-worker image, two alternating pairs under heavy shared-host
+load gave 2,011/2,417 and 1,893/2,320 POSTs/s (always broadcast/interest
+query), gains of 20.2% and 22.6%. Every timed response was valid and each
+exact acknowledged-write audit passed. These are development comparisons;
+the clean Go ratio still needs an uncontended run. Raw summaries:
+`tmp/bench/ocaml55-brokerinterest-{A1,B1,A2,B2}-20261014/`.

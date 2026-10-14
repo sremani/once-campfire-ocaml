@@ -10,6 +10,8 @@ type event =
   | Subscribe of string * int
   | Unsubscribe of string
   | Ack of int
+  | QueryInterests of int
+  | Interests of int * bool
 
 (* A 16 MiB accepted HTML request can expand substantially when escaped into a
    Turbo stream. Keep a bounded frame large enough for that supported path. *)
@@ -104,7 +106,14 @@ let serve path =
            if count <= 1 then Hashtbl.remove peer.interests stream
            else Hashtbl.replace peer.interests stream (count - 1);
            Mutex.unlock peers_mutex
-       | Ack _ -> failwith "unexpected Cable bus acknowledgement"
+       | QueryInterests token ->
+           Mutex.lock peers_mutex;
+           let interested = List.exists (fun other ->
+             other != peer &&
+             (not other.tracking || Hashtbl.length other.interests > 0)) !peers in
+           Mutex.unlock peers_mutex;
+           write_frame peer.fd peer.write_mutex (Interests (token,interested))
+       | Ack _ | Interests _ -> failwith "unexpected Cable bus reply"
        | (Broadcast _ | Batch _ | Disconnect _) as event ->
            let interested other =
              if not other.tracking then true else
@@ -144,6 +153,7 @@ type client = {
   ack_condition : Condition.t;
   mutable next_token : int;
   last_ack : int ref;
+  last_interests : (int * bool) ref;
 }
 
 let connect path ~receive =
@@ -159,12 +169,18 @@ let connect path ~receive =
   let ack_mutex = Mutex.create () in
   let ack_condition = Condition.create () in
   let last_ack = ref 0 in
+  let last_interests = ref (0,false) in
   let reader = Thread.create (fun () ->
     try while not (Atomic.get stopped) do
       match read_frame fd with
       | Ack token ->
           Mutex.lock ack_mutex;
           last_ack := token;
+          Condition.broadcast ack_condition;
+          Mutex.unlock ack_mutex
+      | Interests (token,interested) ->
+          Mutex.lock ack_mutex;
+          last_interests := token,interested;
           Condition.broadcast ack_condition;
           Mutex.unlock ack_mutex
       | event -> receive event
@@ -175,7 +191,7 @@ let connect path ~receive =
         exit 1)) () in
   {fd;write_mutex=Mutex.create ();stopped;reader;
     control_mutex=Mutex.create ();ack_mutex;ack_condition;
-    next_token=0;last_ack}
+    next_token=0;last_ack;last_interests}
 
 let publish client event =
   if Atomic.get client.stopped then invalid_arg "Cable bus stopped";
@@ -200,6 +216,19 @@ let track client = sync_control client (fun token -> Track token)
 let subscribe client stream =
   sync_control client (fun token -> Subscribe (stream,token))
 let unsubscribe client stream = publish client (Unsubscribe stream)
+
+let any_remote_interests client =
+  Mutex.lock client.control_mutex;
+  Fun.protect ~finally:(fun () -> Mutex.unlock client.control_mutex) (fun () ->
+    client.next_token <- client.next_token + 1;
+    let token = client.next_token in
+    publish client (QueryInterests token);
+    Mutex.lock client.ack_mutex;
+    Fun.protect ~finally:(fun () -> Mutex.unlock client.ack_mutex) (fun () ->
+      while fst !(client.last_interests) < token do
+        Condition.wait client.ack_condition client.ack_mutex
+      done;
+      snd !(client.last_interests)))
 
 let close client =
   Atomic.set client.stopped true;
