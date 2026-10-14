@@ -54,6 +54,7 @@ let serve ~bind_ip ~port ~read_timeout ~directory ~workers =
     Lwt_unix.listen listener 128;
     let rec accept () =
       Lwt_unix.accept listener >>= fun (fd,_) ->
+      Lwt_unix.setsockopt fd Unix.TCP_NODELAY true;
       if !pending >= 512 then
         Lwt_unix.close fd >>= accept
       else (

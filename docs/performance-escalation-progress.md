@@ -918,3 +918,16 @@ with the shared flag; a subsequent flagged run measured 4,878 during renewed
 host drift. The change is a strong local gain, while an 85% release claim
 still requires a clean paired Go comparison with all routes and checks.
 Raw summaries are `tmp/bench/ocaml55-sharedinterest-{B1,A1,B2}-20261014/`.
+
+The first clean three-round paired comparison of revision `33dc041` measured
+5,381 OCaml versus 5,967 Go POSTs/s at the median (90.2%), with exact write
+audits. The four authenticated GETs fell to roughly 392 requests/s, however.
+The router's accepted TCP sockets lacked `TCP_NODELAY`: small responses then
+waited for the client's delayed ACK for about 40 ms. Setting `TCP_NODELAY` on
+each accepted socket raised focused room-show throughput to a 61,006/s median
+across three rounds, versus about 392/s before the fix. A router integration
+test now checks the transferred socket option, POST/GET worker selection, and
+preservation of the peeked request bytes. The full forced suite passes. Raw
+summaries: `tmp/bench/ocaml55-33dc041-clean-go-20261014/` and
+`tmp/bench/ocaml55-dispatch-nodelay-room-20261014/`. A clean paired all-route
+comparison of the fixed revision is still required for the 85% gate.

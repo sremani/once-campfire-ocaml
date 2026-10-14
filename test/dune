@@ -10,6 +10,11 @@
  (libraries campfire alcotest unix threads))
 
 (test
+ (name fd_router_test)
+ (modules fd_router_test)
+ (libraries campfire alcotest unix lwt.unix))
+
+(test
  (name post_writer_test)
  (modules post_writer_test)
  (libraries campfire alcotest sqlite3 unix threads lwt.unix))
