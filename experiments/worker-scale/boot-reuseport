@@ -1,0 +1,27 @@
+#!/bin/bash
+# Diagnostic only. Each process has local Cable and jobs; this does not form a
+# correct multi-worker release topology. The kernel distributes connections.
+set -uo pipefail
+cd /rails
+
+workers=${CAMPFIRE_WORKERS:-1}
+case "$workers" in 1|2|4) ;; *) echo "CAMPFIRE_WORKERS must be 1, 2, or 4" >&2; exit 2 ;; esac
+target_port=${THRUSTER_TARGET_PORT:-${TARGET_PORT:-3000}}
+case "$target_port" in *[!0-9]*|'') echo "invalid target port" >&2; exit 2 ;; esac
+
+pids=()
+for ((i=0; i<workers; i++)); do
+  CAMPFIRE_REUSEPORT=1 /usr/local/bin/campfire serve --port "$target_port" &
+  pids+=("$!")
+done
+
+signal_children() {
+  for pid in "${pids[@]}"; do kill -s TERM "$pid" 2>/dev/null || true; done
+}
+trap signal_children TERM INT
+wait -n "${pids[@]}"
+status=$?
+signal_children
+for pid in "${pids[@]}"; do wait "$pid" 2>/dev/null || true; done
+if [ "$status" -eq 0 ]; then status=1; fi
+exit "$status"

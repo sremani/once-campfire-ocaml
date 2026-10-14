@@ -2,11 +2,20 @@
    assembled through the constructors below, except at the explicit trusted rich
    text boundary. Message fragments contain relative links for cache safety. *)
 module H = Tyxml.Html
+module Stream_printer = Xml_print.Make_typed_simple(Tyxml_xml)(H)
+[@@ocaml.warning "-3"]
+
+let stream_html_enabled = Sys.getenv_opt "CAMPFIRE_STREAM_HTML" = Some "1"
 
 type fragment = Fragment of string
 type trusted_html = Trusted_html of string
 let render (Fragment html) = html
-let from_elt elt = Fragment (Format.asprintf "%a" (H.pp_elt ()) elt)
+let from_elt elt =
+  if stream_html_enabled then (
+    let buffer = Buffer.create 128 in
+    Stream_printer.print_list ~output:(Buffer.add_string buffer) [elt];
+    Fragment (Buffer.contents buffer))
+  else Fragment (Format.asprintf "%a" (H.pp_elt ()) elt)
 let text value = from_elt (H.txt value)
 let concat parts = Fragment (String.concat "" (List.map render parts))
 let raw (Trusted_html value) = Fragment value
@@ -15,7 +24,11 @@ let attr (name, value) = H.Unsafe.string_attrib name value
 let elt name attributes children =
   let nodes = List.map (fun child -> H.Unsafe.data (render child)) children in
   from_elt (H.Unsafe.node name ~a:(List.map attr attributes) nodes)
-let void name attributes = from_elt (H.Unsafe.leaf name ~a:(List.map attr attributes) ())
+let void name attributes =
+  let Fragment html = from_elt (H.Unsafe.leaf name ~a:(List.map attr attributes) ()) in
+  if stream_html_enabled && String.ends_with ~suffix:" />" html then
+    Fragment (String.sub html 0 (String.length html - 3) ^ "/>")
+  else Fragment html
 let a href children = elt "a" ["href",href] children
 let cls name class_name children = elt name ["class",class_name] children
 let id name identifier children = elt name ["id",identifier] children

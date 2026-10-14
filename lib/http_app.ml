@@ -134,8 +134,9 @@ let load_session ctx = match ctx.session_data with
       let raw = match Cookie_http.get ctx.cookies "_campfire_session" with
         | None -> []
         | Some value ->
-            (match Encrypted_cookie.decrypt ~secret_key_base:ctx.secret_key_base
-               ~name:"_campfire_session" ~raw:value ~now:ctx.now with
+            (match Perf_probe.time "ctx_rails_cookie" (fun () ->
+               Encrypted_cookie.decrypt ~secret_key_base:ctx.secret_key_base
+                 ~name:"_campfire_session" ~raw:value ~now:ctx.now) with
              | Some (`Assoc data) -> data | _ -> []) in
       let data = if List.mem_assoc "session_id" raw then raw
         else ("session_id", `String (hex (Secure_random.bytes 16))) :: raw in
@@ -193,7 +194,8 @@ let private_lookup ctx =
           ~endpoint:ctx.route.endpoint ~original_method:ctx.original_method
           ~raw_post:ctx.raw_post ctx.request ->
       if flash ctx <> [] then (Perf_probe.bump "private_flash"; None) else
-      (match Http_cache.Observer.version cache.observer with
+      (match Perf_probe.time "cache_version_check" (fun () ->
+         Http_cache.Observer.version cache.observer) with
        | Some current when current=generation ->
            (match Http_cache.Private.key ~generation
                ~endpoint:ctx.route.endpoint ~user_id:identity.user.id
@@ -231,6 +233,7 @@ let csrf_check ctx =
   | Error rejection -> ctx.skip_cookie_commit <- true; Error (error ~status:rejection.status)
 
 let readonly_auth_enabled = Sys.getenv_opt "CAMPFIRE_AUTH_READ" <> Some "0"
+let joined_user_enabled = Sys.getenv_opt "CAMPFIRE_JOINED_USER" <> Some "0"
 
 let restore_auth ctx =
   let cookie_headers = Cohttp.Header.get_multi (Cohttp.Request.headers ctx.request) "cookie" in
@@ -270,7 +273,10 @@ let restore_auth ctx =
         ~remote_ip:ctx.remote_ip ~user_agent ~cookie_headers in
       let user = match result with
         | Ok (Authentication.Ready (Authentication.Authenticated identity)) ->
-            Db_accounts.User.find_by_id db identity.user.id
+            if joined_user_enabled then
+              Some (Db_accounts.User.of_authenticated identity)
+            else Perf_probe.time "auth_user_sql" (fun () ->
+              Db_accounts.User.find_by_id db identity.user.id)
         | _ -> None in
       result,user) >>= function
     | Ok Authentication.Refresh_due, _ -> restore_on_writer ()
@@ -287,6 +293,14 @@ let reject_banned_ip ctx =
         ctx.skip_cookie_commit <- true;
         Error (respond ~status:429 ~content_type:"text/html" ""))
       else Ok ()
+
+(* Auth restoration checks bans for unsafe methods in the same reader job as
+   the session lookup. Public endpoints do not restore auth, so they still
+   need their own ban lookup. The opt-in old path supports bracketed profiles. *)
+let ban_preflight ctx access =
+  if access = Public || Sys.getenv_opt "CAMPFIRE_BAN_PREFLIGHT" = Some "1"
+  then reject_banned_ip ctx
+  else Lwt.return (Ok ())
 
 let restore_bot_key ctx =
   match Http_params.find "bot_key" ctx.params with
@@ -325,7 +339,7 @@ let before ?(access=User) ?(csrf=true) () ctx =
     | None, None -> "0" in
   set_header ctx "x-version" version;
   Option.iter (set_header ctx "x-rev") (Sys.getenv_opt "GIT_REVISION");
-  reject_banned_ip ctx >>= function
+  ban_preflight ctx access >>= function
   | Error _ as rejection -> Lwt.return rejection
   | Ok () ->
   let auth_needed = access <> Public in
@@ -434,6 +448,7 @@ let body_params ~method_ content_type body =
   | _ -> Ok []
 
 let read_body_bounded ~limit body =
+  if body = `Empty then Lwt.return (Ok "") else
   let stream = Cohttp_lwt.Body.to_stream body in
   let buffer = Buffer.create (min limit 8192) in
   let rec read size =
@@ -567,7 +582,8 @@ let handle_uncompressed ~runtime ~secret_key_base ?cable ?private_cache
                  params; query_params; request_params; path_params; format; cookies; runtime;
                  cable; event_sink; private_cache;
                  cache_generation=Option.bind private_cache (fun cache ->
-                   Http_cache.Observer.version cache.observer);
+                   Perf_probe.time "cache_version_initial" (fun () ->
+                     Http_cache.Observer.version cache.observer));
                  private_ticket=None;private_hit=false;page_parts=None;
                  secret_key_base; remote_ip; now; ssl; force_ssl; auth = None;
                  current_user = None;
@@ -899,6 +915,8 @@ let serve ?(port=3000) ?(bind_ip="127.0.0.1") ?front_config ?stop ?track_request
     (if String.contains bind_ip ':' then Unix.PF_INET6 else Unix.PF_INET)
     Unix.SOCK_STREAM 0 in
   Lwt_unix.setsockopt socket Unix.SO_REUSEADDR true;
+  if Sys.getenv_opt "CAMPFIRE_REUSEPORT" = Some "1" then
+    Lwt_unix.setsockopt socket Unix.SO_REUSEPORT true;
   Lwt.finalize
     (fun () ->
       Lwt_unix.bind socket (Unix.ADDR_INET (Unix.inet_addr_of_string bind_ip,port))

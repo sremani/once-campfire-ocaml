@@ -27,20 +27,59 @@ let pattern_segments pattern =
   in
   normalized_path pattern
 
+(* Route declarations do not change while the server runs. Splitting every
+   declaration for every request dominated the route lookup allocation profile. *)
+let compiled_routes =
+  List.map (fun (verb, pattern, endpoint, defaults) ->
+      (verb, pattern_segments pattern, endpoint, defaults)) Route_catalog.routes
+
+let first_literal = function
+  | [] -> Some ""
+  | first :: _ when String.length first > 0 &&
+      (first.[0] = ':' || first.[0] = '*' ||
+       (String.length first > 1 && first.[0] = '@' && first.[1] = ':')) -> None
+  | first :: _ -> Some first
+
+(* Preserve catalog order inside each bucket. Dynamic first segments remain in
+   every bucket, so they retain the same precedence as the Rails declaration. *)
+let indexed_catalog =
+  let verbs = List.map (fun (verb, _, _, _) -> verb) compiled_routes
+    |> List.sort_uniq String.compare in
+  List.map (fun verb ->
+    let routes = List.filter (fun (candidate, _, _, _) -> candidate = verb)
+        compiled_routes in
+    let generic = List.filter (fun (_, pattern, _, _) ->
+        first_literal pattern = None) routes in
+    let literals = List.filter_map (fun (_, pattern, _, _) ->
+        first_literal pattern) routes |> List.sort_uniq String.compare in
+    let buckets = Hashtbl.create (List.length literals) in
+    List.iter (fun literal ->
+      Hashtbl.add buckets literal (List.filter (fun (_, pattern, _, _) ->
+        match first_literal pattern with
+        | None -> true | Some first -> first = literal) routes)) literals;
+    verb, routes, generic, buckets) verbs
+
+let route_index_enabled = Sys.getenv_opt "CAMPFIRE_ROUTE_INDEX" <> Some "0"
+
+type path_segment = { raw : string; decoded : string }
+let decode_segment raw = { raw; decoded = Uri.pct_decode raw }
+
+
 let rec match_segments patterns segments params =
   match patterns, segments with
   | [], [] -> Some params
   | pattern :: rest, segment :: tail when String.length pattern > 0 && pattern.[0] = '*' ->
       if rest <> [] then None
       else Some ((String.sub pattern 1 (String.length pattern - 1),
-                  String.concat "/" (List.map Uri.pct_decode (segment :: tail))) :: params)
+                  String.concat "/" (List.map (fun segment -> segment.decoded)
+                    (segment :: tail))) :: params)
   | pattern :: rest, segment :: tail ->
-      let decoded = Uri.pct_decode segment in
+      let decoded = segment.decoded in
       let len = String.length pattern in
-      if len > 0 && pattern.[0] = ':' && not (String.contains segment '.') then
+      if len > 0 && pattern.[0] = ':' && not (String.contains segment.raw '.') then
         match_segments rest tail ((String.sub pattern 1 (len - 1), decoded) :: params)
-      else if len > 1 && pattern.[0] = '@' && pattern.[1] = ':' && String.length segment > 1 && segment.[0] = '@' then
-        match_segments rest tail ((String.sub pattern 2 (len - 2), Uri.pct_decode (String.sub segment 1 (String.length segment - 1))) :: params)
+      else if len > 1 && pattern.[0] = '@' && pattern.[1] = ':' && String.length segment.raw > 1 && segment.raw.[0] = '@' then
+        match_segments rest tail ((String.sub pattern 2 (len - 2), Uri.pct_decode (String.sub segment.raw 1 (String.length segment.raw - 1))) :: params)
       else if pattern = decoded then match_segments rest tail params
       else None
   | _ -> None
@@ -57,10 +96,22 @@ let lookup_catalog method_ path =
          | None -> [(segments, None)]
          | Some value -> [(List.rev (base :: rest), Some value); (segments, None)])
   in
+  let candidates = List.map (fun (path, format) ->
+      List.map decode_segment path, format) candidates in
+  let routes = if not route_index_enabled then compiled_routes else
+    match List.find_opt (fun (verb, _, _, _) -> verb = method_) indexed_catalog with
+    | None -> []
+    | Some (_, all, generic, buckets) ->
+        let first = match candidates with
+          | (segment :: _, _) :: _ -> segment.decoded
+          | _ -> "" in
+        let one_segment_format = match candidates with
+          | ([_], Some _) :: _ -> true | _ -> false in
+        if one_segment_format then all else
+        Option.value (Hashtbl.find_opt buckets first) ~default:generic in
   let rec find_route = function
     | [] -> None
     | (verb, pattern, endpoint, defaults) :: rest when verb = method_ ->
-        let pattern = pattern_segments pattern in
         let rec find_candidate = function
           | [] -> find_route rest
           | (segments, format) :: candidates ->
@@ -76,7 +127,7 @@ let lookup_catalog method_ path =
         find_candidate candidates
     | _ :: rest -> find_route rest
   in
-  find_route Route_catalog.routes
+  find_route routes
 
 (** Rails [recognize_path] checks that the target controller resolves. The pinned
     Rails reference declares [rooms/settings#show], but has no corresponding

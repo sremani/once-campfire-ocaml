@@ -391,8 +391,9 @@ module Hooks = struct
       ~name:"attachment" with
     | None -> None
     | Some attachment -> Some (attachment, Attachment.blob db attachment)
-  let create_message ?rich_text tx ~now ~sink attrs =
-    Db_messages.Message.create ?rich_text ~on_push:(Event.on_push sink) tx ~now attrs
+  let create_message ?rich_text ?index_plain tx ~now ~sink attrs =
+    Db_messages.Message.create ?rich_text ?index_plain
+      ~on_push:(Event.on_push sink) tx ~now attrs
   let replace_message_attachment ?rich_text tx ~now ~sink message blob_id =
     Db_messages.Message.replace_attachment ?rich_text ~on_purge:(Event.on_purge sink)
       tx ~now message blob_id

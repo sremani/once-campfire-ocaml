@@ -177,7 +177,13 @@ let message (ctx : Http_app.context) db (room_row : R.Room.t)
     | None -> missing_user | Some row -> user ctx row in
   let boosts = if unrenderable then [] else
     M.Boost.for_message_ordered db row.id |> List.map (boost ctx db) in
-  let raw_body = Option.value ~default:"" (M.Message.body_html db row) in
+  let body = M.Message.body_html db row in
+  let raw_body = Option.value ~default:"" body in
+  let plain = if unrenderable then "" else
+    let text = Option.map ((rich_text ctx).M.to_plain_text db) body in
+    match text with
+    | Some text when String.trim text <> "" -> text
+    | _ -> Option.value ~default:"" (M.Message.attachment_filename db row) in
   let editable_body = if unrenderable then "" else match Rich_text.editable_value
       ~resolve_sgid:(mention_resolver ctx db)
       ~resolve_gid:(gid_resolver ctx db)
@@ -213,7 +219,7 @@ let message (ctx : Http_app.context) db (room_row : R.Room.t)
             V.Media_attachment (attachment,
               {preview_url;is_video;width;height}))
     | None ->
-        (match M.Message.sound ~rich_text:(rich_text ctx) db row with
+        (match M.sound_in plain with
          | Some sound -> V.Rich_sound {
              url=Assets.asset_path (M.Sound.asset_path sound);
              image=Option.map (fun (image:M.Sound.image) ->
@@ -221,17 +227,15 @@ let message (ctx : Http_app.context) db (room_row : R.Room.t)
                image.width,image.height) sound.image;
              text=sound.text}
          | None ->
-             let html=Option.value ~default:"" (M.Message.body_html db row) in
              let presented=Rich_text.present_message
                ~resolve_sgid:(mention_resolver ctx db)
                ~resolve_gid:(gid_resolver ctx db)
-               ?request_host:(request_host ctx) html in
+               ?request_host:(request_host ctx) raw_body in
              V.Text (V.trusted_html_of_sanitized presented)) in
   { V.id=row.id; client_message_id=row.client_message_id;
     room_id=row.room_id; room_name=message_room_name db room_row;
     creator; created_at_iso=iso_time row.created_at;
     created_at_ms=milliseconds row.created_at;
     updated_at_ms=milliseconds row.updated_at;
-    all_emoji=(not unrenderable &&
-      all_emoji (M.Message.plain_text_body ~rich_text:(rich_text ctx) db row));
+    all_emoji=(not unrenderable && all_emoji plain);
     content; editable_body; boosts }

@@ -101,18 +101,35 @@ let exec db sql = check_rc "SQLite exec" (Sqlite3.exec db sql)
    queries deliberately retain the normal prepare/finalize path: caching
    statements on all connections regressed the four measured GET routes. *)
 let statement_cache_enabled = Sys.getenv_opt "CAMPFIRE_SQL_CACHE" <> Some "0"
+let auth_statement_cache_enabled = Sys.getenv_opt "CAMPFIRE_AUTH_STMT_CACHE" = Some "1"
 type cached_statement = { statement : Sqlite3.stmt; mutable in_use : bool }
-let statement_caches : (Sqlite3.db * (string, cached_statement) Hashtbl.t) list Atomic.t =
+type statement_cache = {
+  statements : (string, cached_statement) Hashtbl.t;
+  automatic : bool;
+}
+let statement_caches : (Sqlite3.db * statement_cache) list Atomic.t =
+  Atomic.make []
+let automatic_statement_caches : (Sqlite3.db * statement_cache) list Atomic.t =
   Atomic.make []
 
-let register_statement_cache db =
+let atomic_add registry item =
+  let rec add () =
+    let before = Atomic.get registry in
+    if not (Atomic.compare_and_set registry before (item :: before)) then add () in
+  add ()
+
+let atomic_remove registry db =
+  let rec remove () =
+    let before = Atomic.get registry in
+    let after = List.filter (fun (registered, _) -> registered != db) before in
+    if not (Atomic.compare_and_set registry before after) then remove () in
+  remove ()
+
+let register_statement_cache ?(automatic=true) db =
   if statement_cache_enabled then
-    let cache = Hashtbl.create 128 in
-    let rec add () =
-      let before = Atomic.get statement_caches in
-      if not (Atomic.compare_and_set statement_caches before ((db, cache) :: before))
-      then add () in
-    add ()
+    let cache = { statements = Hashtbl.create 128; automatic } in
+    (atomic_add statement_caches (db, cache);
+     if automatic then atomic_add automatic_statement_caches (db, cache))
 
 let unregister_statement_cache db =
   if statement_cache_enabled then (
@@ -123,24 +140,27 @@ let unregister_statement_cache db =
       if Atomic.compare_and_set statement_caches before after then cache
       else remove () in
     let cache = remove () in
+    atomic_remove automatic_statement_caches db;
     Option.iter (fun (_, cache) ->
-      Hashtbl.iter (fun _ entry -> ignore (Sqlite3.finalize entry.statement)) cache) cache)
+      Hashtbl.iter (fun _ entry -> ignore (Sqlite3.finalize entry.statement))
+        cache.statements) cache)
 
-let with_statement db sql f =
+let with_statement_impl ~explicit db sql f =
   let cached =
     if not statement_cache_enabled then None else (
+        let registry = if explicit then statement_caches else automatic_statement_caches in
         match List.find_opt (fun (registered, _) -> registered == db)
-          (Atomic.get statement_caches) with
+          (Atomic.get registry) with
         | None -> None
         | Some (_, cache) ->
-            match Hashtbl.find_opt cache sql with
+            match Hashtbl.find_opt cache.statements sql with
             | Some entry when not entry.in_use ->
                 entry.in_use <- true;
                 Perf_probe.bump "sql_cache_hit";
                 Some entry
-            | None when Hashtbl.length cache < 512 ->
+            | None when Hashtbl.length cache.statements < 512 ->
                 let entry = {statement=Sqlite3.prepare db sql;in_use=true} in
-                Hashtbl.add cache sql entry;
+                Hashtbl.add cache.statements sql entry;
                 Perf_probe.bump "sql_cache_miss";
                 Some entry
             | _ -> Perf_probe.bump "sql_cache_fallback"; None) in
@@ -154,6 +174,9 @@ let with_statement db sql f =
         (try ignore (Sqlite3.clear_bindings entry.statement) with _ -> ());
         entry.in_use <- false)
         (fun () -> f entry.statement)
+
+let with_statement db sql f = with_statement_impl ~explicit:false db sql f
+let with_cached_statement db sql f = with_statement_impl ~explicit:true db sql f
 
 let bind stmt params =
   check_rc "SQLite bind" (Sqlite3.bind_values stmt params)
@@ -372,8 +395,15 @@ let after_write_checkpoint t =
 
 let open_reader path =
   let db = Sqlite3.db_open ~mode:`NO_CREATE path in
-  try configure_connection db ~reader:true; db
+  try
+    configure_connection db ~reader:true;
+    if auth_statement_cache_enabled then register_statement_cache ~automatic:false db;
+    db
   with exn -> ignore (Sqlite3.db_close db); raise exn
+
+let close_reader db =
+  if auth_statement_cache_enabled then unregister_statement_cache db;
+  Sqlite3.db_close db
 
 let open_db ?(readers=8) ?(prepare=true) ?(environment="production") path =
   let readers = max 1 readers in
@@ -385,7 +415,7 @@ let open_db ?(readers=8) ?(prepare=true) ?(environment="production") path =
     let opened = ref [] in
     (try
        for _ = 1 to readers do opened := open_reader path :: !opened done
-     with exn -> List.iter (fun db -> ignore (Sqlite3.db_close db)) !opened; raise exn);
+     with exn -> List.iter (fun db -> ignore (close_reader db)) !opened; raise exn);
     let checkpoint_db = Sqlite3.db_open ~mode:`NO_CREATE path in
     (try configure_connection checkpoint_db ~reader:false
      with exn -> ignore (Sqlite3.db_close checkpoint_db); raise exn);
@@ -423,7 +453,7 @@ let read t f =
     else if Hashtbl.mem t.owners thread then (
       Mutex.unlock t.pool_mutex;
       let db = open_reader t.path in
-      Fun.protect ~finally:(fun () -> ignore (Sqlite3.db_close db)) (fun () -> f db))
+      Fun.protect ~finally:(fun () -> ignore (close_reader db)) (fun () -> f db))
     else if (match ticket, t.queued_readers with
       | None, [] -> true
       | Some mine, head :: _ -> mine == head
@@ -503,16 +533,19 @@ let write t f =
   enter_writer t;
   Mutex.lock t.writer_mutex;
   Fun.protect ~finally:(fun () ->
-    after_write_checkpoint t;
+    Perf_probe.time "db_write_checkpoint" (fun () ->
+      after_write_checkpoint t);
     Mutex.unlock t.writer_mutex;
     leave_writer t) (fun () ->
     if t.closed then invalid_arg "database closed";
-    exec t.writer "BEGIN IMMEDIATE";
+    Perf_probe.time "db_write_begin" (fun () ->
+      exec t.writer "BEGIN IMMEDIATE");
     let tx = {db = t.writer; in_transaction = true; callbacks = []} in
     let value =
-      match f tx with
+      match Perf_probe.time "db_write_tx_body" (fun () -> f tx) with
       | value ->
-          (try exec t.writer "COMMIT" with exn ->
+          (try Perf_probe.time "db_write_commit" (fun () ->
+             exec t.writer "COMMIT") with exn ->
             (try exec t.writer "ROLLBACK" with _ -> ()); raise exn);
           value
       | exception exn ->
@@ -520,10 +553,11 @@ let write t f =
           raise exn in
     tx.in_transaction <- false;
     let first_error = ref None in
-    List.iter (fun callback ->
-      try callback tx with exn ->
-        if !first_error = None then first_error := Some exn)
-      (List.rev tx.callbacks);
+    Perf_probe.time "db_write_callbacks" (fun () ->
+      List.iter (fun callback ->
+        try callback tx with exn ->
+          if !first_error = None then first_error := Some exn)
+        (List.rev tx.callbacks));
     match !first_error with None -> value | Some exn -> raise exn)
 
 let async_worker t ~writer =
@@ -642,7 +676,7 @@ let close t =
     Mutex.unlock t.pool_mutex;
     List.iter Thread.join t.async_threads;
     (match t.checkpoint_thread with Some thread -> Thread.join thread | None -> ());
-    List.iter (fun db -> if not (Sqlite3.db_close db) then failwith "reader still busy") readers;
+    List.iter (fun db -> if not (close_reader db) then failwith "reader still busy") readers;
     if not (Sqlite3.db_close t.checkpoint_db) then failwith "checkpointer still busy";
     unregister_statement_cache t.writer;
     if not (Sqlite3.db_close t.writer) then failwith "writer still busy")

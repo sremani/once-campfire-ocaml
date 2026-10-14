@@ -462,13 +462,25 @@ let message_params c = match object_param c "message" with
       let attachment=attachment_change fields in
       if attachment=Invalid_attachment then Error 500
       else Ok (field fields "body",field fields "client_message_id",attachment)
-let deliver_webhooks_to_bots c room message =
+let plain_before_write_enabled = Sys.getenv_opt "CAMPFIRE_PLAIN_BEFORE_WRITE" <> Some "0"
+let plain_index_hint body attachment =
+  match body, attachment with
+  | Some html, (Keep_attachment | Remove_attachment)
+      when plain_before_write_enabled && not (String.contains html '<') ->
+      Some (match Rich_text.to_plain_text html with
+        | Ok plain -> plain | Error error -> invalid_arg error)
+  | _ -> None
+
+let webhook_candidates c db room message ~body =
   let rich_text=App_jobs.rich_text ~secret_key_base:c.H.secret_key_base in
-  read c (fun db ->
-    let candidates=if R.Room.direct room then R.Room.active_bots db room
-      else M.Message.mentionees ~rich_text db message in
-    List.filter (fun (bot:U.t) -> U.is_bot bot && U.is_active bot &&
-      bot.id<>message.M.Message.creator_id) candidates) >>= fun bots ->
+  let candidates=if R.Room.direct room then R.Room.active_bots db room
+    else match body with
+      | None -> []
+      | Some html when not (String.contains html '<') -> []
+      | Some _ -> M.Message.mentionees ~rich_text db message in
+  List.filter (fun (bot:U.t) -> U.is_bot bot && U.is_active bot &&
+    bot.id<>message.M.Message.creator_id) candidates
+let deliver_webhooks_to_bots c message bots =
   if bots=[] then Lwt.return_unit else
   write c (fun tx -> List.iter
     (Db_remaining.Hooks.deliver_webhook_later tx
@@ -484,8 +496,10 @@ let message_create c = scoped_room c >>= function
        | Error 400,_ -> public_error c 400
        | Error code,_ -> error code | _,None -> error 500
        | Ok (body,client_message_id,attachment),Some creator_id ->
+           let index_plain = plain_index_hint body attachment in
            let create tx attachment_blob_id =
-             Db_remaining.Hooks.create_message ~rich_text:(rich_text c) tx
+             Db_remaining.Hooks.create_message ~rich_text:(rich_text c)
+               ?index_plain tx
                ~sink:c.H.event_sink ~now:(Db_accounts.now_time c.H.now)
                {room_id=room.R.Room.id;creator_id;client_message_id;body;
                 attachment_blob_id} in
@@ -495,11 +509,12 @@ let message_create c = scoped_room c >>= function
             | _ -> write c (fun tx -> create tx None)) >>= fun message ->
            read c (fun db ->
              View_presenter.message c db room message,
-             R.Room.user_ids db room) >>= fun (view,member_ids) ->
+             R.Room.user_ids db room,
+             webhook_candidates c db room message ~body) >>= fun (view,member_ids,bots) ->
            with_cable c (fun cable -> Cable_broadcasts.message_create cable
              ~room ~message ~member_ids
              ~html:(Views.message_item view |> Views.render));
-           deliver_webhooks_to_bots c room message >>= fun () ->
+           deliver_webhooks_to_bots c message bots >>= fun () ->
            turbo_only c (Views.message_create_stream
              ~room:(View_presenter.room room) view))
 let message_show c = scope_or_404 c (fun _ room ->
@@ -704,21 +719,24 @@ let bot_create c = bot_room c (fun room ->
   then action_head c 422 else match user_id c with
   | None -> error 500
   | Some creator_id ->
+      let body = if String.trim body="" then None else Some body in
+      let index_plain = plain_index_hint body attachment in
       let create tx attachment_blob_id = Db_remaining.Hooks.create_message
-        ~rich_text:(rich_text c) tx
+        ~rich_text:(rich_text c) ?index_plain tx
         ~sink:c.H.event_sink ~now:(Db_accounts.now_time c.H.now)
         {room_id=room.R.Room.id;creator_id;client_message_id=None;
-         body=(if String.trim body="" then None else Some body);attachment_blob_id} in
+         body;attachment_blob_id} in
       (match attachment with
        | Upload_attachment file -> with_uploaded_blob c file
            (fun tx blob_id -> create tx (Some blob_id))
        | _ -> write c (fun tx -> create tx None)) >>= fun message ->
       read c (fun db -> View_presenter.message c db room message,
-        R.Room.user_ids db room) >>= fun (view,member_ids) ->
+        R.Room.user_ids db room,
+        webhook_candidates c db room message ~body) >>= fun (view,member_ids,bots) ->
       with_cable c (fun cable -> Cable_broadcasts.message_create cable
         ~room ~message ~member_ids
         ~html:(Views.message_item view |> Views.render));
-      deliver_webhooks_to_bots c room message >>= fun () ->
+      deliver_webhooks_to_bots c message bots >>= fun () ->
       let location = absolute c ("/messages/" ^ Int64.to_string message.M.Message.id) in
       response (H.respond ~headers:["location",location] ~status:201
         ~content_type:"application/json" ""))

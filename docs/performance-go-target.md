@@ -5,15 +5,15 @@ The staged implementation and measurement gates are in the
 
 The target is to run the OCaml port slightly below the Go implementation on
 the shared, contract-validated benchmark. Interpret "slightly" provisionally
-as **at least 80% of Go's measured throughput on each of the four authenticated
+as **at least 85% of Go's measured throughput on each of the four authenticated
 GET routes and the message POST route**. Keep zero invalid responses and exact
 acknowledged-write audits. A faster response that fails a route contract does
 not count.
 
 The published Go reference reports 16 clients and four server cores on an AMD
 Ryzen AI MAX+ 395. Its rates are 53,060 room views/s, 54,800 message pages/s,
-59,144 sidebars/s, 60,509 searches/s, and 9,021 message posts/s. An 80% floor
-against those numbers would be 42,448, 43,840, 47,315, 48,407, and 7,217
+59,144 sidebars/s, 60,509 searches/s, and 9,021 message posts/s. An 85% floor
+against those numbers would be 45,101, 46,580, 50,273, 51,433, and 7,668
 requests/s respectively. These are planning numbers, not a final acceptance
 comparison: the current OCaml image and published Go image were measured at
 different times. A first same-host comparison follows; repeat it on a quiet
@@ -145,7 +145,7 @@ buffered OCaml image served 4,877, 3,846, 6,215, 4,465, and 1,079 respectively:
 was 138,205/s versus OCaml's 14,472/s. Raw results:
 `tmp/bench/perf-go-buffered-20261010/`.
 
-The transport change is a measured gain, but does not meet the 80% target.
+The transport change is a measured gain, but does not meet the 85% target.
 The quiet-host comparison makes the remaining gap clear. The next experiment
 should measure CPU time across Cohttp parsing, session restoration, cache
 lookup, and response writing, then test a process or OCaml 5 domain model with

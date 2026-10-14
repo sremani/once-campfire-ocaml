@@ -8,6 +8,16 @@ type user_status = Active | Deactivated | Banned
 
 type user = { id : int64; name : string; status : user_status }
 
+type user_details = {
+  email_address : string option;
+  password_digest : string option;
+  role : int;
+  bio : string option;
+  bot_token : string option;
+  created_at : string;
+  updated_at : string;
+}
+
 type session = {
   id : int64;
   user_id : int64;
@@ -19,6 +29,7 @@ type session = {
 
 type authenticated = {
   user : user;
+  user_details : user_details;
   session : session;
   rails_session : Yojson.Basic.t option;
   (** A fresh raw signed value is issued when activity is refreshed. *)
@@ -90,8 +101,11 @@ let column_option stmt n = match Sqlite3.column stmt n with
   | _ -> Some (Sqlite3.column_text stmt n)
 
 let with_statement db query f =
-  let stmt = Sqlite3.prepare db query in
-  Fun.protect ~finally:(fun () -> ignore (Sqlite3.finalize stmt)) (fun () -> f stmt)
+  if Db_runtime.auth_statement_cache_enabled then
+    Db_runtime.with_cached_statement db query f
+  else
+    let stmt = Sqlite3.prepare db query in
+    Fun.protect ~finally:(fun () -> ignore (Sqlite3.finalize stmt)) (fun () -> f stmt)
 
 let check_rc context = function
   | Sqlite3.Rc.OK -> ()
@@ -101,16 +115,18 @@ let bind_text stmt n value = check_rc "bind" (Sqlite3.bind stmt n (Sqlite3.Data.
 let bind_int64 stmt n value = check_rc "bind" (Sqlite3.bind stmt n (Sqlite3.Data.INT value))
 
 let banned_ip db ip =
+  Perf_probe.time "auth_ban_sql" (fun () ->
   with_statement db "SELECT 1 FROM bans WHERE ip_address = ? LIMIT 1" (fun stmt ->
     bind_text stmt 1 ip;
     match Sqlite3.step stmt with
     | Sqlite3.Rc.ROW -> true
     | Sqlite3.Rc.DONE -> false
-    | rc -> failwith ("ban lookup: " ^ Sqlite3.Rc.to_string rc))
+    | rc -> failwith ("ban lookup: " ^ Sqlite3.Rc.to_string rc)))
 
 let find_session db token =
+  Perf_probe.time "auth_session_sql" (fun () ->
   with_statement db
-    "SELECT s.id,s.user_id,s.token,s.ip_address,s.user_agent,s.last_active_at,u.id,u.name,u.status FROM sessions s LEFT JOIN users u ON u.id=s.user_id WHERE s.token=? LIMIT 1"
+    "SELECT s.id,s.user_id,s.token,s.ip_address,s.user_agent,s.last_active_at,u.id,u.name,u.status,u.email_address,u.password_digest,u.role,u.bio,u.bot_token,u.created_at,u.updated_at FROM sessions s LEFT JOIN users u ON u.id=s.user_id WHERE s.token=? LIMIT 1"
     (fun stmt ->
       bind_text stmt 1 token;
       match Sqlite3.step stmt with
@@ -130,10 +146,20 @@ let find_session db token =
                 let status = match Sqlite3.column_int stmt 8 with
                   | 0 -> Active | 1 -> Deactivated | 2 -> Banned
                   | n -> failwith ("unknown user status " ^ string_of_int n) in
-                Some { id = Sqlite3.column_int64 stmt 6;
-                       name = Sqlite3.column_text stmt 7; status } in
+                let user = { id = Sqlite3.column_int64 stmt 6;
+                             name = Sqlite3.column_text stmt 7; status } in
+                let details = {
+                  email_address = column_option stmt 9;
+                  password_digest = column_option stmt 10;
+                  role = Sqlite3.column_int stmt 11;
+                  bio = column_option stmt 12;
+                  bot_token = column_option stmt 13;
+                  created_at = Sqlite3.column_text stmt 14;
+                  updated_at = Sqlite3.column_text stmt 15;
+                } in
+                Some (user, details) in
           Some (session, user)
-      | rc -> failwith ("session lookup: " ^ Sqlite3.Rc.to_string rc))
+      | rc -> failwith ("session lookup: " ^ Sqlite3.Rc.to_string rc)))
 
 let needs_refresh ~now session =
   match parse_time session.last_active_at with
@@ -178,15 +204,16 @@ let restore_headers_step ~may_refresh ~db ~secret_key_base ~now ~method_
     else match cookie cookie_headers "session_token" with
       | None -> Ok (Ready (Unauthenticated Missing_cookie))
       | Some raw ->
-          match Signed_cookie.verify ~secret_key_base ~name:"session_token" ~raw ~now with
+          match Perf_probe.time "auth_signed_cookie" (fun () ->
+            Signed_cookie.verify ~secret_key_base ~name:"session_token" ~raw ~now) with
           | None -> Ok (Ready (Unauthenticated Invalid_cookie))
           | Some token ->
               match find_session db token with
               | None -> Ok (Ready (Unauthenticated Revoked_session))
               | Some (_, None) -> Ok (Ready (Unauthenticated Revoked_session))
-              | Some (_, Some {status = (Deactivated | Banned); _}) ->
+              | Some (_, Some ({status = (Deactivated | Banned); _}, _)) ->
                   Ok (Ready (Unauthenticated Inactive_user))
-              | Some (session, Some user) ->
+              | Some (session, Some (user, user_details)) ->
                   let refresh_due = needs_refresh ~now session in
                   if refresh_due && not may_refresh then Ok Refresh_due else
                   let session = if refresh_due then
@@ -194,9 +221,10 @@ let restore_headers_step ~may_refresh ~db ~secret_key_base ~now ~method_
                     else session in
                   let refreshed_token_cookie = if refresh_due then
                     Some (issue_token_cookie ~secret_key_base ~now token) else None in
-                  let rails_session = read_rails_session_headers ~secret_key_base ~now cookie_headers in
+                  let rails_session = Perf_probe.time "auth_rails_cookie" (fun () ->
+                    read_rails_session_headers ~secret_key_base ~now cookie_headers) in
                   Ok (Ready (Authenticated
-                    {user; session; rails_session; refreshed_token_cookie}))
+                    {user; user_details; session; rails_session; refreshed_token_cookie}))
   with
   | Sqlite3.SqliteError error | Failure error -> Error error
 

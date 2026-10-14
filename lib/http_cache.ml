@@ -574,26 +574,41 @@ end
     start from its own baseline and could not invalidate completed responses. *)
 module Observer = struct
   type t = { db:Sqlite3.db; mutex:Mutex.t;
+    statement:Sqlite3.stmt option;
     mutable data_version:int64; mutable generation:int64 }
 
-  let read_version db =
-    let statement=Sqlite3.prepare db "PRAGMA data_version" in
-    Fun.protect ~finally:(fun () -> ignore (Sqlite3.finalize statement))
-      (fun () -> match Sqlite3.step statement with
+  let prepared_enabled = Sys.getenv_opt "CAMPFIRE_OBSERVER_STMT" <> Some "0"
+
+  let step_version statement =
+    match Sqlite3.step statement with
        | Sqlite3.Rc.ROW -> Some (Sqlite3.column_int64 statement 0)
-       | _ -> None)
+       | _ -> None
+
+  let read_version db = function
+    | Some statement ->
+        ignore (Sqlite3.reset statement);
+        Fun.protect ~finally:(fun () -> ignore (Sqlite3.reset statement))
+          (fun () -> step_version statement)
+    | None ->
+        let statement=Sqlite3.prepare db "PRAGMA data_version" in
+        Fun.protect ~finally:(fun () -> ignore (Sqlite3.finalize statement))
+          (fun () -> step_version statement)
 
   let open_db path =
     let db=Sqlite3.db_open ~mode:`READONLY path in
-    match read_version db with
+    let statement = if prepared_enabled then
+      Some (Sqlite3.prepare db "PRAGMA data_version") else None in
+    match read_version db statement with
     | Some data_version ->
-        Some {db;mutex=Mutex.create ();data_version;generation=0L}
-    | None -> ignore (Sqlite3.db_close db); None
+        Some {db;mutex=Mutex.create ();statement;data_version;generation=0L}
+    | None ->
+        Option.iter (fun statement -> ignore (Sqlite3.finalize statement)) statement;
+        ignore (Sqlite3.db_close db); None
 
   let version t =
     Mutex.lock t.mutex;
     Fun.protect ~finally:(fun () -> Mutex.unlock t.mutex) (fun () ->
-      match read_version t.db with
+      match read_version t.db t.statement with
       | None -> None
       | Some current ->
           if current<>t.data_version then (
@@ -601,5 +616,7 @@ module Observer = struct
             t.generation<-Int64.succ t.generation);
           Some t.generation)
 
-  let close t = ignore (Sqlite3.db_close t.db)
+  let close t =
+    Option.iter (fun statement -> ignore (Sqlite3.finalize statement)) t.statement;
+    ignore (Sqlite3.db_close t.db)
 end

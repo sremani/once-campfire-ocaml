@@ -223,6 +223,26 @@ let test_typed_hook_adapters () = with_seed "default" (fun rt ->
   check "webhook event adapter" (List.mem
     (R.Event.DeliverWebhook {bot_id=bot.id;message_id=42L}) !events))
 
+let test_precomputed_search_index () = with_seed "default" (fun rt ->
+  let body = "hello &amp; goodbye\n" in
+  let plain = match Rich_text.to_plain_text body with
+    | Ok value -> value | Error error -> failwith error in
+  let rich_text = Rich_text.db_adapter ~resolve_sgid:(fun _ _ -> None) in
+  let create ?index_plain client_message_id =
+    Db_runtime.write rt (fun tx -> M.create ~rich_text ?index_plain tx ~now
+      {M.room_id=designers;creator_id=david;client_message_id=Some client_message_id;
+       body=Some body;attachment_blob_id=None}) in
+  let cached = create ~index_plain:plain "m2-t5-precomputed-index" in
+  let ordinary = create "m2-t5-ordinary-index" in
+  Db_runtime.read rt (fun db ->
+    let index message = Db_runtime.query_one db
+      "SELECT body FROM message_search_index WHERE rowid=?"
+      [Sqlite3.Data.INT message.M.id] (fun row -> Sqlite3.column_text row 0)
+      |> Option.get in
+    Alcotest.(check string) "precomputed index matches ordinary conversion"
+      (index ordinary) (index cached));
+  Db_runtime.write rt (fun tx -> M.destroy tx ~now cached; M.destroy tx ~now ordinary))
+
 let test_ban_hook_transaction () = with_seed "default" (fun rt ->
   let events=ref [] in
   let sink event=events:=!events@[event] in
@@ -270,5 +290,6 @@ let () = Alcotest.run "M2-T5 remaining models" [
   "ban",[Alcotest.test_case "IP validation and row" `Quick test_bans];
   "webhook",[Alcotest.test_case "payload and events" `Quick test_webhook_and_events];
   "hooks",[Alcotest.test_case "typed model adapters" `Quick test_typed_hook_adapters;
+           Alcotest.test_case "precomputed search index" `Quick test_precomputed_search_index;
            Alcotest.test_case "ban transaction and events" `Quick test_ban_hook_transaction];
 ]

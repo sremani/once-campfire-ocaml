@@ -8,7 +8,7 @@ presentation parity. The rungs below remain hypotheses until that profile.
 
 ## Goal and decision rule
 
-Reach at least **80% of Go's throughput on each of the four authenticated GET
+Reach at least **85% of Go's throughput on each of the four authenticated GET
 routes and message POST** in the shared, same-host benchmark. A candidate must
 also pass response contracts, exact acknowledged-write audits, Cable behavior,
 and resilience checks. Do not trade correctness for requests per second.
@@ -90,7 +90,7 @@ decision authorizes a storage change.
 ## Rung 4: evaluate a domain-native request runtime
 
 Use this rung if whole-request parallelism or per-request cost remains short
-of the 80% target after the earlier changes. Prototype a full `/up` and one
+of the 85% target after the earlier changes. Prototype a full `/up` and one
 authenticated GET request on a runtime with an independent event loop in each
 OCaml 5 domain. Evaluate existing Eio/HTTP libraries and Async only after
 proving the chosen scheduler actually runs concurrent listeners in separate
@@ -105,13 +105,13 @@ The domain-native path therefore needs a different request scheduler, not
 another rendering pool.
 
 **Gate:** full route and write parity, cross-domain Cable behavior, resilience,
-and repeatable same-host throughput toward the 80% target. If the prototype
+and repeatable same-host throughput toward the 85% target. If the prototype
 does not beat the process model after its added complexity is counted, keep the
 process model.
 
 ## Completion
 
-Stop escalating when every required route reaches at least 80% of Go in a
+Stop escalating when every required route reaches at least 85% of Go in a
 validated same-host comparison and the Cable, write, backup, and resilience
 gates pass on the release image. Publish the exact image digests and raw
 summaries so the result can be reproduced.

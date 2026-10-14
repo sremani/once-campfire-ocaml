@@ -1354,6 +1354,12 @@ else if Array.length Sys.argv > 1 && Sys.argv.(1)="--dump-destroy" then
   let message,_=message_from_golden () in
   print_string (Views.message_destroy_stream message)
 else Alcotest.run "M4 views" [
+  "Tyxml serialization", [Alcotest.test_case "text bytes" `Quick
+    (fun () ->
+      let module H = Tyxml.Html in
+      let expected_text = Format.asprintf "%a" (H.pp_elt ()) (H.txt " />") in
+      Alcotest.(check string) "text keeps its leading space" expected_text
+        (Views.render (Views.text " />")))];
   "reference SVG and JSON", [
     Alcotest.test_case "avatar SVG" `Quick test_svg_golden;
     Alcotest.test_case "user JSON" `Quick test_json_golden;

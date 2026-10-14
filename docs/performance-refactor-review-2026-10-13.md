@@ -158,7 +158,7 @@ performance acceptance gate.
    uploads, and shutdown. Compare it against the correct process design on
    the same cores. Port more code only if it shows a repeatable advantage.
 
-The target remains at least 80% of Go on **each** of the five routes, with
+The current target is at least 85% of Go on **each** of the five routes, with
 correctness and resilience intact. That is a release gate, not a predicted
 gain from any one refactor. Review the profile table after step 1 and change
 the order of steps 4–6 if it points to a different dominant cost.

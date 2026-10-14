@@ -56,7 +56,7 @@ transient nonzero exit, and a subsequent unforced and forced invocation passed.
 
 Raw summaries: `once-campfire-verification/tmp/bench/ocaml55-authread-{A1,B1,B2,A2}-20261010/`.
 
-The gain is useful but well short of the 80%-of-Go completion target.
+The gain is useful but well short of the current 85%-of-Go completion target.
 
 ## Rung 2 diagnostic: independent request processes
 
@@ -213,7 +213,7 @@ changes, so the table does not isolate cache order from reader-path auth.
 The image was built from a dirty source tree, making this a development
 comparison rather than a release benchmark. Raw summaries are under
 `once-campfire-verification/tmp/bench/ocaml55-quietcores-{candidate,baseline,candidate-repeat}-20261010/`.
-The candidate is still far below the 80%-of-Go completion target and has not
+The candidate is still far below the current 85%-of-Go completion target and has not
 been deployed.
 
 ## Rung 3 follow-up: reuse SQLite statements on the writer (2026-10-13)
@@ -256,5 +256,53 @@ The full OCaml 5.5.1 forced suite passes with writer caching both enabled and
 disabled. A focused test exercises parameter rebinding, nested use of the
 same SQL, transaction rollback, recovery after a SQLite constraint error, and
 close/reopen. Writer caching is now the default; `CAMPFIRE_SQL_CACHE=0` keeps
-an opt-out. This remains a development image, and the 80%-of-Go target and
+an opt-out. This remains a development image, and the 85%-of-Go target and
 full release-image resilience gate are open.
+
+## Further request-path work (2026-10-13 to 2026-10-14)
+
+The clean, pinned OCaml 5.5.1 release comparison remains the acceptance
+baseline: room 5,608, messages 5,393, sidebar 6,124, search 5,735, and POST
+1,011 requests/s against Go's 54,104, 57,094, 63,170, 63,169, and 6,027.
+These are 9–17% of Go. The 85% gates from that paired comparison are 45,989,
+48,530, 53,695, 53,694, and 5,123 requests/s. A new clean paired release
+comparison is required after any candidate is promoted.
+
+The request profile found repeated route-pattern splitting, empty-body buffer
+allocation, two session/user queries, a fresh observer `PRAGMA data_version`
+statement per cached GET, and avoidable message POST reads. Compiled routes,
+header-line copying avoidance, one session/user JOIN, a reused observer
+statement, and direct construction of known inserted rows passed the full
+OCaml 5.5.1 suite. The strongest isolated same-image GET result was the JOIN:
+four direct-listener workers gained 12–22% across the four GETs. Direct
+`SO_REUSEPORT` increased GET throughput from approximately 6–7k per second
+with one worker to 23–27k with four; POST rose only from about 1.1k to 1.4k.
+With the row-construction change, POST rose from 1,462 to 1,709/s in a paired
+four-worker run. Raw summaries are under
+`tmp/bench/ocaml55-{reuseport-w*,authjoin-w4-*,postfast-w4-*}-20261013/` in
+the verification checkout. The four-worker boot is a diagnostic only: Cable,
+jobs, presence, and rate limits are still process-local.
+
+The next profile identified one SQLite writer job and four reader jobs per
+POST, with fresh statement preparation, HTML formatting, and rich-text
+conversion prominent in allocation samples. A selective authentication
+reader-statement cache, Tyxml's simple streaming printer, post-write reader
+fusion, precomputing plain text before the writer for non-markup messages, and
+reusing the message body and plain text in the view presenter are now
+implemented. The streaming path and reader-statement cache remain opt-in while
+their effect is uncertain. The POST code and presenter pass the full suite; the
+streaming path also passes all 121 rendered pinned view goldens. A focused
+test verifies that precomputed text and the ordinary conversion produce the
+same search-index row. In the last bracketed direct four-worker POST runs,
+presenter reuse reached 1,506–1,543/s; the adjacent prior-image runs were
+1,415–1,526/s. The benefit is small relative to shared-host variation.
+Raw summaries are under `tmp/bench/ocaml55-{stream-w4-*,authstmt-w4-*,postmain-w4-*,viewreuse-w4-*}-20261014/`.
+
+The host load climbed from roughly 20 to more than 50 runnable tasks during
+these short runs, and the same-image room route varied by over 30% between
+rounds. A route-index toggle comparison favored indexing for room and messages
+but was flat for search; it cannot establish an absolute throughput advance.
+Its raw summaries are under `tmp/bench/ocaml55-routeindex-w4-{A1,B2}-20261014/`.
+Keep these runs as directional evidence. The next hard gates are a quiet-host
+paired Go comparison, a release-compatible parallel request topology with
+cross-worker Cable and jobs, and a shorter serialized POST writer path.

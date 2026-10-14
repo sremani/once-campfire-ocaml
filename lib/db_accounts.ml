@@ -223,6 +223,18 @@ module User = struct
     bio=column_option s 6; bot_token=column_option s 7;
     created_at=Sqlite3.column_text s 8; updated_at=Sqlite3.column_text s 9;
   }
+  let of_authenticated (identity:Authentication.authenticated) =
+    let details = identity.user_details in
+    let status = match identity.user.status with
+      | Authentication.Active -> Active
+      | Authentication.Deactivated -> Deactivated
+      | Authentication.Banned -> Banned in
+    { id=identity.user.id; name=identity.user.name;
+      email_address=details.email_address;
+      password_digest=details.password_digest;
+      role=role_of_number details.role; status;
+      bio=details.bio; bot_token=details.bot_token;
+      created_at=details.created_at; updated_at=details.updated_at }
   let find_by_id db id = query_one db (select ^ " WHERE id=? LIMIT 1") [integer id] decode
   let find db id = find_by_id db id |> required "User"
   let find_active db id = query_one db (select ^ " WHERE status=0 AND id=? LIMIT 1") [integer id] decode |> required "User"

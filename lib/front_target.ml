@@ -11,6 +11,7 @@ exception Header_limit
 
 let max_header_bytes = 64 * 1024
 let max_header_lines = 256
+let header_fast_enabled = Sys.getenv_opt "CAMPFIRE_HEADER_FAST" <> Some "0"
 
 type phase = Initial | Headers | Body | Response | Idle | Upgrade
 
@@ -55,12 +56,21 @@ let serve ?stop ~socket ~read_timeout ~write_timeout ~idle_timeout ~callback () 
       include Cohttp_lwt_unix.IO
 
       let read_line ic =
-        let buffer = Buffer.create 128 in
+        let buffer = ref (if header_fast_enabled then None
+          else Some (Buffer.create 128)) in
+        let buffered () = match !buffer with
+          | Some value -> value
+          | None ->
+              let value = Buffer.create 128 in
+              buffer := Some value;
+              value in
         let rec next () =
           fill ic >>= function
           | false ->
-              if Buffer.length buffer = 0 then Lwt.return_none
-              else Lwt.return_some (Buffer.contents buffer)
+              (match !buffer with
+               | None -> Lwt.return_none
+               | Some value when Buffer.length value = 0 -> Lwt.return_none
+               | Some value -> Lwt.return_some (Buffer.contents value))
           | true ->
               if clock.phase = Initial then (
                 clock.phase <- Headers;
@@ -79,20 +89,29 @@ let serve ?stop ~socket ~read_timeout ~write_timeout ~idle_timeout ~callback () 
                 clock.header_bytes <- clock.header_bytes + count;
                 if clock.header_bytes > max_header_bytes then raise Header_limit);
               let copy_count = if Option.is_some newline then count - 1 else count in
-              Buffer.add_subbytes buffer input first copy_count;
               input_start := last;
               match newline with
               | None ->
-                  if Buffer.length buffer > max_header_bytes then raise Header_limit;
+                  let value = buffered () in
+                  Buffer.add_subbytes value input first copy_count;
+                  if Buffer.length value > max_header_bytes then raise Header_limit;
                   next ()
               | Some _ ->
                   if clock.phase = Headers then (
                     clock.header_lines <- clock.header_lines + 1;
                     if clock.header_lines > max_header_lines then raise Header_limit);
-                  let line = Buffer.contents buffer in
-                  let length = String.length line in
-                  Lwt.return_some (if length > 0 && line.[length - 1] = '\r' then
-                    String.sub line 0 (length - 1) else line) in
+                  (match !buffer with
+                   | None ->
+                       let length = if copy_count > 0 &&
+                         Bytes.get input (first + copy_count - 1) = '\r'
+                         then copy_count - 1 else copy_count in
+                       Lwt.return_some (Bytes.sub_string input first length)
+                   | Some value ->
+                       Buffer.add_subbytes value input first copy_count;
+                       let line = Buffer.contents value in
+                       let length = String.length line in
+                       Lwt.return_some (if length > 0 && line.[length - 1] = '\r' then
+                         String.sub line 0 (length - 1) else line)) in
         (* The idle timer covers the wait for the next request's first byte.
            The fixed header deadline then covers its entire first line. *)
         match clock.phase with
