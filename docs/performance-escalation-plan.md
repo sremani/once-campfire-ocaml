@@ -1,5 +1,11 @@
 # Performance escalation plan
 
+The [2026-10-13 profile and refactor review](performance-refactor-review-2026-10-13.md)
+supersedes this document's baseline and sets the next action: complete CPU,
+allocation, GC, and queue profiling, then refactor along the measured hot path.
+It also separates product/browser and migration contracts from Rails/Rust
+presentation parity. The rungs below remain hypotheses until that profile.
+
 ## Goal and decision rule
 
 Reach at least **80% of Go's throughput on each of the four authenticated GET
