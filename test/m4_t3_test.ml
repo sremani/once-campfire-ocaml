@@ -87,6 +87,16 @@ let test_policy () =
         let rec contains i = i + String.length needle <= String.length html &&
           (String.sub html i (String.length needle) = needle || contains (i+1)) in contains 0))
 
+let test_plain_ascii_message () =
+  let body = "bench write 012345abcdef" in
+  check_ok "plain message HTML"
+    ("<div class=\"lexxy-content\">\n  " ^ body ^ "\n</div>\n")
+    (Rich_text.render body);
+  check_ok "plain message search text" body (Rich_text.to_plain_text body);
+  Alcotest.(check (option string)) "plain message editable value"
+    (Some body) (match Rich_text.editable_value body with
+      | Ok value -> value | Error error -> Alcotest.fail error)
+
 let test_bounds () =
   let assert_error label body =
     match Rich_text.render body, Rich_text.to_plain_text body with
@@ -264,6 +274,7 @@ else if Array.length Sys.argv > 1 &&
 else if Array.length Sys.argv > 1 && Sys.argv.(1) = "--dump-json" then dump_json ()
 else Alcotest.run "M4-T3 Action Text" [
   "Rails corpus", [Alcotest.test_case "basic vectors" `Quick test_corpus];
+  "plain message", [Alcotest.test_case "ASCII words" `Quick test_plain_ascii_message];
   "security", [Alcotest.test_case "safe HTML policy" `Quick test_policy;
                  Alcotest.test_case "parser bounds" `Quick test_bounds;
                  Alcotest.test_case "autolink scale" `Quick test_autolink_scale];

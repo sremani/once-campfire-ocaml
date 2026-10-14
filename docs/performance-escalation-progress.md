@@ -798,3 +798,15 @@ under `tmp/bench/ocaml55-{gzipfast,gzipreuse,fastbusy,turbocap,post-offload}-*`.
 The read routes still require several HTTP workers to reach the Go target,
 while POST is fastest with one writer process. A worker and Cable routing
 design that preserves real-time delivery is the next architectural gate.
+
+For messages made solely of ASCII letters, digits, and internal spaces,
+rich-text rendering, search text, and editable text now take the equivalent
+plain-text path. This excludes markup, entities, URLs, email addresses,
+punctuation, Unicode, and leading or trailing spaces. A focused byte check and
+the full forced suite pass; `CAMPFIRE_PLAIN_ASCII_FAST=0` selects the old path.
+For 25,000 isolated benchmark bodies, process CPU time for those three
+functions fell from 243.4 ms to 3.7 ms, about 9.6 µs saved per message. In
+the live one-worker fixture, two alternating pairs measured 2,520/2,831 and
+2,998/2,923 requests/s (old/new); Java load changed across runs, so there
+is no end-to-end gain claim. All live responses and exact write audits passed.
+Raw summaries: `tmp/bench/ocaml55-plainascii-{A1,B1,A2,B2}-20261014/`.

@@ -16,6 +16,14 @@ type node = Text of string | Element of string * (string * string) list * node l
 external gumbo_parse : string -> (node list, string) result = "caml_campfire_gumbo_parse"
 
 let max_input_bytes = 16 * 1024 * 1024
+let plain_ascii_fast_enabled = Sys.getenv_opt "CAMPFIRE_PLAIN_ASCII_FAST" <> Some "0"
+let simple_plain_ascii value =
+  let n = String.length value in
+  plain_ascii_fast_enabled && n > 0 && n <= max_input_bytes &&
+  value.[0] <> ' ' && value.[n-1] <> ' ' &&
+  String.for_all (function
+    | 'a'..'z' | 'A'..'Z' | '0'..'9' | ' ' -> true
+    | _ -> false) value
 let parse_raw_nodes html =
   if String.length html > max_input_bytes then Error "rich-text input exceeds 16 MiB"
   else gumbo_parse html
@@ -591,6 +599,7 @@ and plain_node ~resolve_sgid ~resolve_gid ~depth ~list_depth ~list_kind ~list_in
           else Ok inner
 
 let to_plain_text ?(resolve_sgid=(fun _ -> None)) ?(resolve_gid=(fun _ -> None)) html =
+  if simple_plain_ascii html then Ok html else
   match load_nodes html with
   | Error e -> Error e
   | Ok nodes -> Result.map chomp_newlines (plain_nodes ~resolve_sgid ~resolve_gid ~depth:0 ~list_depth:0 ~list_kind:None nodes)
@@ -901,7 +910,9 @@ let autolink_html html =
   Buffer.contents out
 
 let render ?(resolve_sgid=(fun _ -> None)) ?(resolve_gid=(fun _ -> None)) ?request_host html =
-  match load_nodes html with
+  if simple_plain_ascii html then
+    Ok ("<div class=\"lexxy-content\">\n  " ^ html ^ "\n</div>\n")
+  else match load_nodes html with
   | Error e -> Error e
   | Ok nodes ->
     let nodes = solo_unfurled ?request_host nodes html ~resolve_sgid in
@@ -1011,6 +1022,7 @@ let rec normalize_editor_tree ~in_form ~foreign nodes =
       else [Element (name,attrs,children,html_namespace)]) nodes
 
 let editable_value ?(resolve_sgid=(fun _ -> None)) ?(resolve_gid=(fun _ -> None)) ?request_host html =
+  if simple_plain_ascii html then Ok (Some html) else
   match parse_nodes html with
   | Error e -> Error e
   | Ok nodes ->
