@@ -2,6 +2,15 @@
 # Keep both server processes in one container and deliver termination to both.
 set -uo pipefail
 cd /rails
+if [ "${CAMPFIRE_DIRECT_HTTP:-0}" = "1" ]; then
+  if [ -z "${DISABLE_SSL+x}" ] || [ -n "${TLS_DOMAIN:-}" ]; then
+    echo "CAMPFIRE_DIRECT_HTTP requires DISABLE_SSL and no TLS_DOMAIN" >&2
+    exit 2
+  fi
+  export TARGET_BIND="${CAMPFIRE_DIRECT_BIND:-0.0.0.0}"
+  export TARGET_PORT="${HTTP_PORT:-80}"
+  exec /usr/local/bin/campfire server
+fi
 /usr/local/bin/campfire server &
 app_pid=$!
 /usr/local/bin/campfire-front run &

@@ -16,9 +16,8 @@ docker build -t campfire-ocaml:local \
 The pinned multiarchitecture release workflow is
 `.github/workflows/publish-image.yml`. It builds on native GitHub amd64 and
 arm64 runners, pushes architecture tags, and assembles a manifest. The
-Dockerfile pins Debian trixie and Ubuntu 24.04 base image digests and the
-OCaml API, Caddy, libvips, and ffmpeg package versions. Ubuntu 24.04 provides
-OCaml 4.14, Mirage Crypto 0.11.2, and PBKDF 1.2.0 for the build. The runtime
+Dockerfile pins Debian trixie and the OCaml 5.5.1 build-image digests, plus
+Caddy, libvips, and ffmpeg package versions. The runtime
 is Debian trixie. Each image includes the exact build-stage package inventory
 and copyright notices under `/usr/share/doc/once-campfire-ocaml/`. Transitive apt
 dependencies still follow the configured distribution repositories; retain the
@@ -63,6 +62,14 @@ existing `storage/thruster` directory remains mounted. The front imports a
 valid legacy combined PEM certificate into Caddy storage on first run. Caddy
 uses a separate ACME account for later renewals; renewal continuity remains
 under the M7-T1 acceptance checks.
+
+For a private HTTP deployment such as a Tailscale-only hostname, set
+`DISABLE_SSL=1 CAMPFIRE_DIRECT_HTTP=1` and leave `TLS_DOMAIN` unset. The app
+then listens directly on `HTTP_PORT` (80 by default) and Caddy does not run.
+`CAMPFIRE_DIRECT_BIND` defaults to `0.0.0.0` inside the container; restrict
+the published host port to the Tailscale interface or with a host firewall.
+This mode keeps the single application process and its in-process Cable and
+jobs. It does not provide TLS or HTTP/2.
 
 `/hooks/pre-backup` invokes `campfire backup`, which writes a consistent
 snapshot at `storage/backups/<RAILS_ENV>.sqlite3`. `/hooks/post-restore` is

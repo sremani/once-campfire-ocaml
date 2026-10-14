@@ -542,3 +542,57 @@ gain did not follow the host control. The printer is now the default;
 `CAMPFIRE_STREAM_HTML=0` restores the Format printer. The forced suite,
 including rendered view goldens, passes with the new default. Raw summaries:
 `tmp/bench/ocaml55-stream-domains-{off-A1,on-B1,off-A2}-20261014/`.
+
+The clean `7897445` release image was then paired with Go on the same four
+server cores. It uses the supported one-process application behind Caddy.
+Both two-round runs passed all route contracts and the exact POST write
+audit; the comparison was marked release comparable. Median requests/s:
+
+| Route | OCaml release | Go | OCaml / Go |
+| --- | ---: | ---: | ---: |
+| Room show | 9,393 | 54,173 | 17.3% |
+| Messages page | 8,988 | 56,483 | 15.9% |
+| Sidebar | 10,052 | 58,381 | 17.2% |
+| Search | 9,964 | 60,919 | 16.4% |
+| Message POST | 2,147 | 5,909 | 36.3% |
+
+Raw summary:
+`once-campfire-verification/tmp/bench/ocaml55-release-7897445-go-20261014/summary.json`.
+This is a large improvement over the earlier clean release in absolute terms,
+but it remains far below the 85% target. The next release-compatible rung is
+a direct listener for private HTTP and a coordinated parallel topology.
+
+## Private direct HTTP and the Lwt scheduler boundary (2026-10-14)
+
+The production boot script now accepts `CAMPFIRE_DIRECT_HTTP=1` with
+`DISABLE_SSL=1` and no TLS domain. It binds the existing single app process
+directly to `HTTP_PORT`, bypassing Caddy for private HTTP deployments. This
+keeps Cable, jobs, presence, and rate limiting inside one process. The
+direct-mode route preflight passed; an alternating two-round OCaml/Go run
+passed all authenticated route contracts and exact POST audits. It measured:
+
+| Route | OCaml direct | Go | OCaml / Go |
+| --- | ---: | ---: | ---: |
+| Room show | 9,510 | 48,695 | 19.5% |
+| Messages page | 9,693 | 52,615 | 18.4% |
+| Sidebar | 11,168 | 58,033 | 19.2% |
+| Search | 10,371 | 58,157 | 17.8% |
+| Message POST | 2,788 | 5,229 | 53.3% |
+
+This development comparison is not a clean release image because the boot
+change was uncommitted at build time. The host also slowed during the run.
+The direct listener helps POST, but one Lwt event loop still limits GET.
+Raw summaries: `tmp/bench/ocaml55-direct-http-{preflight,go}-20261014/`.
+
+An isolated OCaml 5.5.1/Lwt 6.1.2 test started four domains and attempted an
+independent `Lwt_main.run` loop in each. One succeeded; three failed with
+`Nested calls to Lwt_main.run are not allowed`. The current Lwt scheduler is
+process-global, so copying the listener onto domains is not a valid route to
+parallel HTTP handling. Database work remains parallel on domains; HTTP
+parallelism requires coordinated processes or a domain-aware I/O rewrite.
+
+The profiler showed a SQLite observer generation check even on `/up` and POST,
+which never use the private response cache. A lazy single-check refactor passed
+the full suite, including cache invalidation tests, but an old/new/old direct
+benchmark gave mixed GETs and no convincing POST gain. It was removed. Raw
+summaries: `tmp/bench/ocaml55-lazycache-{old-A1,new-B1,old-A2}-20261014/`.
