@@ -66,16 +66,25 @@ under the M7-T1 acceptance checks.
 For a private HTTP deployment such as a Tailscale-only hostname, set
 `DISABLE_SSL=1 CAMPFIRE_DIRECT_HTTP=1` and leave `TLS_DOMAIN` unset. The app
 then listens directly on `HTTP_PORT` (80 by default) and Caddy does not run.
-Set `CAMPFIRE_HTTP_WORKERS=2` or `4` to start that many direct listeners on the
-same port. The boot script starts one local Cable broker, waits for the first
-worker to reset presence, and shares the login rate-limit window across all
-workers. The default remains one worker. This topology is still a performance
-candidate; use the full benchmark and WebSocket checks before promoting it to
-a published image.
+Set `CAMPFIRE_HTTP_WORKERS=2` or `4` to start that many HTTP workers. The boot
+script starts one local Cable broker, waits for the first worker to reset
+presence, and shares the login rate-limit window across all workers. With
+`CAMPFIRE_HTTP_DISPATCH=1`, one TCP router accepts connections and passes them
+to the workers; initial POST connections go to the local writer worker and
+other connections rotate across the workers. A connection that later switches
+methods remains on its selected worker. The default remains one worker.
+
+The pinned four-core benchmark reached at least 85% of Go on every tested
+route with `CAMPFIRE_HTTP_WORKERS=4 CAMPFIRE_HTTP_DISPATCH=1
+CAMPFIRE_CENTRAL_POST_WRITER=1 CAMPFIRE_POST_BATCH_CALLBACKS=1
+CAMPFIRE_SHARED_INTERESTS=1 CAMPFIRE_GZIP_LEVEL=1`. The full forced suite
+passed with shared interests both on and off. See
+[the measured comparison](performance-escalation-progress.md#clean-85-comparison-2026-10-14)
+for exact throughput, response and write audits, and workload limits. The
+published `v0.1.0` image on luigi predates these performance changes.
 `CAMPFIRE_DIRECT_BIND` defaults to `0.0.0.0` inside the container; restrict
 the published host port to the Tailscale interface or with a host firewall.
-This mode keeps the single application process and its in-process Cable and
-jobs. It does not provide TLS or HTTP/2.
+This mode does not provide TLS or HTTP/2.
 
 `/hooks/pre-backup` invokes `campfire backup`, which writes a consistent
 snapshot at `storage/backups/<RAILS_ENV>.sqlite3`. `/hooks/post-restore` is

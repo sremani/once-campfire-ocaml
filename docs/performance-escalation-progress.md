@@ -931,3 +931,35 @@ preservation of the peeked request bytes. The full forced suite passes. Raw
 summaries: `tmp/bench/ocaml55-33dc041-clean-go-20261014/` and
 `tmp/bench/ocaml55-dispatch-nodelay-room-20261014/`. A clean paired all-route
 comparison of the fixed revision is still required for the 85% gate.
+
+## Clean 85% comparison (2026-10-14)
+
+Committed revision `6649f5d` and the pinned Go image were compared for three
+three-second rounds at 16 clients on the same four server cores, using separate
+client cores and the same fixture. The benchmark marked both images and source
+trees clean and `release_comparable=true`. The tested OCaml configuration was
+`CAMPFIRE_DIRECT_HTTP=1`, `CAMPFIRE_HTTP_WORKERS=4`,
+`CAMPFIRE_HTTP_DISPATCH=1`, `CAMPFIRE_CENTRAL_POST_WRITER=1`,
+`CAMPFIRE_POST_BATCH_CALLBACKS=1`, `CAMPFIRE_SHARED_INTERESTS=1`,
+`CAMPFIRE_GZIP_LEVEL=1`, and `DISABLE_SSL=1`.
+
+| Route | Go median req/s | OCaml median req/s | OCaml / Go |
+| --- | ---: | ---: | ---: |
+| Room show | 56,077 | 63,899 | 113.9% |
+| Messages page | 56,823 | 68,624 | 120.8% |
+| Sidebar | 63,238 | 78,734 | 124.5% |
+| Search | 65,396 | 74,550 | 114.0% |
+| Message POST | 6,144 | 5,452 | 88.7% |
+| `/up` | 142,169 | 415,071 | 292.0% |
+
+Each paired POST round cleared 85% (90.1%, 88.4%, and 91.1%). The response
+contract validator counted 14,274,140 successful timed requests, zero HTTP
+errors, and zero invalid responses. Every POST write audit passed; the three
+OCaml rounds acknowledged and persisted 23,987, 24,000, and 23,799 messages.
+This meets the 85% throughput target on this pinned four-core fixture. It is
+a direct HTTP benchmark: the Caddy/TLS deployment path, other hardware,
+WebSocket load, and mixed route concurrency have different costs. The
+`CAMPFIRE_GZIP_LEVEL=1` choice increases compressed response size versus
+level 6, as recorded above. Raw artifact:
+`tmp/bench/ocaml55-6649f5d-clean-go-20261014/summary.json` in the
+verification repository; per-round JSON files hold the audits.
