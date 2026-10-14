@@ -306,6 +306,13 @@ let after_commit tx callback =
 let emit_after_commit tx callback = after_commit tx (fun _ -> callback ())
 
 type async_job = { run : unit -> unit; reject : exn -> unit }
+type async_worker_handle = Thread_worker of Thread.t | Domain_worker of unit Domain.t
+let async_domains_enabled = Sys.getenv_opt "CAMPFIRE_DB_DOMAINS" <> Some "0"
+let domain_readers = match Sys.getenv_opt "CAMPFIRE_DB_DOMAIN_READERS" with
+  | Some raw -> (match int_of_string_opt raw with
+    | Some count when count >= 1 && count <= 8 -> count | _ -> 2)
+  | None -> 2
+let execution_id () = Domain.self (), Thread.id (Thread.self ())
 
 type t = {
   path : string;
@@ -315,7 +322,7 @@ type t = {
   scheduler_ready : Condition.t;
   mutable queued_writers : Condition.t list;
   mutable writer_active : bool;
-  mutable writer_owner : int option;
+  mutable writer_owner : (Domain.id * int) option;
   pool_mutex : Mutex.t;
   pool_ready : Condition.t;
   mutable queued_readers : Condition.t list;
@@ -323,14 +330,14 @@ type t = {
   mutable checked_out : int;
   mutable closed : bool;
   readers : int;
-  owners : (int, int) Hashtbl.t;
+  owners : (Domain.id * int, int) Hashtbl.t;
   async_mutex : Mutex.t;
   async_ready : Condition.t;
   mutable async_started : bool;
   mutable async_write_queue : async_job list;
   mutable async_write_waiting : async_job list;
   mutable async_read_queue : async_job list;
-  mutable async_threads : Thread.t list;
+  mutable async_workers : async_worker_handle list;
   checkpoint_db : Sqlite3.db;
   checkpoint_mutex : Mutex.t;
   checkpoint_running : Mutex.t;
@@ -429,7 +436,7 @@ let open_db ?(readers=8) ?(prepare=true) ?(environment="production") path =
       closed = false; readers; owners = Hashtbl.create readers;
       async_mutex = Mutex.create (); async_ready = Condition.create ();
       async_started = false; async_write_queue = []; async_write_waiting = [];
-      async_read_queue = []; async_threads = [];
+      async_read_queue = []; async_workers = [];
       checkpoint_db; checkpoint_mutex = Mutex.create ();
       checkpoint_running = Mutex.create (); checkpoint_ready = Condition.create ();
       checkpoint_pending = false; checkpoint_woken_at = 0;
@@ -441,7 +448,7 @@ let open_db ?(readers=8) ?(prepare=true) ?(environment="production") path =
   with exn -> ignore (Sqlite3.db_close writer); raise exn
 
 let read t f =
-  let thread = Thread.id (Thread.self ()) in
+  let thread = execution_id () in
   Mutex.lock t.pool_mutex;
   let rec take ticket =
     if t.closed then (
@@ -490,7 +497,7 @@ let read t f =
 
 let enter_writer t =
   Mutex.lock t.scheduler_mutex;
-  let thread = Thread.id (Thread.self ()) in
+  let thread = execution_id () in
   let rec enter ticket =
     if t.closed then (
       (match ticket with
@@ -595,9 +602,13 @@ let ensure_async_workers t =
    else if not t.async_started then (
      Lwt_preemptive.simple_init ();
      t.async_started <- true;
-     t.async_threads <- Thread.create (fun () -> async_worker t ~writer:true) () ::
-       List.init t.readers (fun _ ->
-         Thread.create (fun () -> async_worker t ~writer:false) ())));
+     let spawn writer =
+       if async_domains_enabled then
+         Domain_worker (Domain.spawn (fun () -> async_worker t ~writer))
+       else Thread_worker (Thread.create (fun () -> async_worker t ~writer) ()) in
+     let reader_workers = if async_domains_enabled then min t.readers domain_readers
+       else t.readers in
+     t.async_workers <- spawn true :: List.init reader_workers (fun _ -> spawn false)));
   Mutex.unlock t.async_mutex
 
 let async_promise f =
@@ -641,11 +652,11 @@ let write_async t f =
 
 let close t =
   Mutex.lock t.pool_mutex;
-  let in_read = Hashtbl.mem t.owners (Thread.id (Thread.self ())) in
+  let in_read = Hashtbl.mem t.owners (execution_id ()) in
   Mutex.unlock t.pool_mutex;
   if in_read then invalid_arg "close inside database read";
   Mutex.lock t.scheduler_mutex;
-  if t.writer_owner = Some (Thread.id (Thread.self ())) then (
+  if t.writer_owner = Some (execution_id ()) then (
     Mutex.unlock t.scheduler_mutex; invalid_arg "close inside database write");
   if t.closed then (
     Mutex.unlock t.scheduler_mutex; invalid_arg "database already closed");
@@ -674,7 +685,8 @@ let close t =
     let readers = t.available in
     t.available <- [];
     Mutex.unlock t.pool_mutex;
-    List.iter Thread.join t.async_threads;
+    List.iter (function Thread_worker worker -> Thread.join worker
+      | Domain_worker worker -> Domain.join worker) t.async_workers;
     (match t.checkpoint_thread with Some thread -> Thread.join thread | None -> ());
     List.iter (fun db -> if not (close_reader db) then failwith "reader still busy") readers;
     if not (Sqlite3.db_close t.checkpoint_db) then failwith "checkpointer still busy";

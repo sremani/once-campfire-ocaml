@@ -306,3 +306,163 @@ Its raw summaries are under `tmp/bench/ocaml55-routeindex-w4-{A1,B2}-20261014/`.
 Keep these runs as directional evidence. The next hard gates are a quiet-host
 paired Go comparison, a release-compatible parallel request topology with
 cross-worker Cable and jobs, and a shorter serialized POST writer path.
+
+## Release comparison and rejected micro-optimizations (2026-10-14)
+
+The first-wave request-path changes were committed as `5a34416`, passed the
+forced suite and 121 rendered view goldens, and were built into a clean release
+image. A paired two-round Go/OCaml comparison passed every response contract
+and the exact POST write audit. Shared-host load lowered both programs from
+their earlier quiet figures. The clean run measured:
+
+| Route | Go requests/s | OCaml requests/s | OCaml / Go |
+| --- | ---: | ---: | ---: |
+| Room show | 23,202 | 3,378 | 14.6% |
+| Messages page | 24,146 | 3,203 | 13.3% |
+| Sidebar | 27,393 | 3,581 | 13.1% |
+| Search | 26,771 | 3,547 | 13.2% |
+| Message POST | 3,159 | 654 | 20.7% |
+
+Raw summary: `once-campfire-verification/tmp/bench/ocaml55-release-5a34416-go-20261014/summary.json`.
+The release still runs one application process behind Caddy. Four direct
+`SO_REUSEPORT` workers reach roughly 25–35k GETs/s and 1.7–1.9k POSTs/s in
+valid development probes, but their Cable, jobs, presence, and rate limit
+state is local to each process. They cannot be deployed as the release.
+
+A same-source four-worker HTTP/af probe passed all contracts and exact writes
+at 34,353 room, 33,146 messages, 31,459 sidebar, 28,620 search, and 1,894
+POST requests/s. Its matched Cohttp probe measured 24,997, 26,857, 31,004,
+33,054, and 1,870. HTTP/af helped room and messages, was flat on sidebar and
+POST, and regressed search. The first HTTP/af run had one unexplained HTTP 500
+and was excluded; the logged repeat was valid. Raw summaries are
+`tmp/bench/ocaml55-httpaf-w4-B2-20261014/` and
+`tmp/bench/ocaml55-cohttp-w4-A1-20261014/`. HTTP/af still lacks WebSocket,
+streaming upload, timeout, and shutdown support in this probe.
+
+The opt-in authenticated session-row cache passed the full suite, including
+revocation and membership invalidation tests, but the same-image four-worker
+bracket moved routes in different directions under host drift. It was removed.
+Moving search-index and unread writes into the message transaction passed the
+suite but yielded inconclusive and lower POST rates in a bracketed run, so it
+was removed. Checking WAL size every 16 writes, with per-write checks above
+9,000 pages, passed the sustained-write WAL test but changed POST by less than
+1% in its valid A/B; it was removed. A specialized presenter for freshly
+inserted plain messages passed the suite and live response audit but improved
+POST only 2% (1,687 to 1,721/s) in the same-image comparison, so it was
+removed. Raw summaries are under `tmp/bench/ocaml55-{authrow-safe,inline-index,checkpoint,new-view}-*-20261014/`.
+
+The focused one-worker POST profile after these request-path changes showed
+three reader jobs and one writer job per request. Across two rounds, the writer
+averaged 0.65–0.75 ms; message-view construction 0.41–0.47 ms; broadcast
+recipient lookup 0.21–0.25 ms; broadcast 0.15–0.17 ms; and response rendering
+0.13–0.14 ms. The reader jobs averaged 1.03–1.18 ms of execution each under
+profiling, with queue delay on top. Minor allocation was about 1.5 MB per
+message, with one major collection per roughly five messages. These timings
+overlap and include instrumentation contention; they guide changes rather
+than add up to a response time. Raw profile:
+`tmp/bench/runtime/3892197/ocaml-{1,2}/db/profile.tsv`.
+
+Same-image GC runs tested `OCAMLRUNPARAM=s=1M` and `s=4M` against the default
+on four direct workers. The 1M run had one invalid HTTP 500 and was excluded;
+its valid repeat improved some reads but regressed search. The 4M run passed
+all contracts, generally improved GET rates, and moved POST by only a few
+percent. Bracketed default runs varied substantially, so no runtime default
+has changed. Raw summaries are under `tmp/bench/ocaml55-gc-*-20261014/`.
+
+A separate OCaml 5.5.1 Flambda switch rebuilt the same dependency set and
+passed the full suite from a fresh Dune build directory. In a same-source,
+same-runtime-image-shape, single-process release comparison, Flambda changed
+room +2.7%, messages -3.4%, sidebar +1.1%, search +1.1%, and POST -4.7%.
+The differences are too small and mixed to justify changing the release
+compiler. Raw summaries are `tmp/bench/ocaml55-compiler-{vanilla-A1,flambda-B1}-20261014/`.
+The separate compiler recipe remains under `experiments/flambda/` for future
+reruns.
+
+Fusing message room membership and room lookup into the authentication reader
+job passed the full suite and every live POST contract. It removed one reader
+job per POST but did not improve throughput. In an A/B/A direct four-worker
+bracket, the two off medians were 1,434 and 1,438 POSTs/s; the on median was
+1,312. Room and `/up` controls drifted during the comparison, so this is not
+an exact regression estimate. The fused path was removed. Raw summaries:
+`tmp/bench/ocaml55-post-scope-{A1,B1,A2}-20261014/`.
+
+## Four workers behind the production front (2026-10-14)
+
+A disposable four-process image kept the normal Caddy front and used the same
+application binary as a direct-listener image. Both two-round 16-client runs
+passed every route contract and the exact acknowledged-write audit on the
+same fixture and assigned cores. Median requests/s were:
+
+| Route | Four workers through Caddy | Four direct workers | Direct / Caddy |
+| --- | ---: | ---: | ---: |
+| Room show | 7,498 | 15,628 | 2.08x |
+| Messages page | 7,832 | 14,106 | 1.80x |
+| Sidebar | 8,973 | 16,946 | 1.89x |
+| Search | 8,420 | 16,653 | 1.98x |
+| `/up` | about 11,912 | about 32,164 | 2.70x |
+| Message POST | 1,291 | 1,476 | 1.14x |
+
+The host was heavily loaded and the direct messages-page rounds varied, but
+the 1.8–2.1x GET gap appeared on all four routes. Caddy is a plain reverse
+proxy here; the app already supplies gzip and static responses. A correct
+multi-worker Cable bus alone cannot meet the 85%-of-Go read gate through this
+front. We need a release-compatible direct HTTP path for the Tailscale-only
+deployment or a materially faster front/transport, as well as shared Cable
+and lifecycle state. Raw summaries:
+`tmp/bench/ocaml55-{caddy-workers-A1,direct-workers-B1}-20261014/`.
+
+## SQLite write ceiling and OCaml 5 domains (2026-10-14)
+
+A standalone write probe uses the pinned SQLite seed and the real message
+creation path, including body, room touch, FTS, and unread writes. One process
+completed 5,000 writes in 0.401 seconds (12,475/s) on an assigned core. Four
+independent processes sharing one copied database completed 20,000 writes in
+2.004 seconds (about 10,000/s aggregate), with exactly 20,000 message and
+20,000 FTS rows verified. This isolates the database from HTTP, auth, view,
+and broadcast work. The database writer can exceed the 5,123 POST/s gate in
+this fixture; the full HTTP path remains the bottleneck. The reproducible
+probe is in `benchmarks/write-ceiling/`.
+
+The SQLite async worker pool now uses OCaml 5 domains by default: one writer
+domain and two reader domains, with the Lwt listener on the main domain.
+Worker ownership includes the domain ID so thread IDs from different domains
+cannot collide. `CAMPFIRE_DB_DOMAINS=0` restores the earlier thread workers;
+`CAMPFIRE_DB_DOMAIN_READERS` sets one to eight reader workers. The default-on
+forced test suite passed, including async close and ownership tests.
+
+A same-image, one-process release-style A/B/A comparison behind Caddy used
+two three-second rounds per run, 16 clients, assigned cores, exact response
+contracts, and acknowledged-write audits. Median requests/s were:
+
+| Route | Threads A1 | Domains B1 | Threads A2 |
+| --- | ---: | ---: | ---: |
+| Room show | 3,317 | 4,961 | 3,460 |
+| Messages page | 3,284 | 4,613 | 3,332 |
+| Sidebar | 3,498 | 5,205 | 3,535 |
+| Search | 3,270 | 5,274 | 3,523 |
+| Message POST | 574 | 1,010 | 627 |
+
+`/up` did not increase, which supports a real database-work parallelism
+effect rather than a faster host during B1. These are development images, not
+a clean release comparison. Raw summaries:
+`tmp/bench/ocaml55-dbdomains-{A1,B1,A2}-20261014/`.
+
+The reader-count runs drifted substantially: a one-reader room/POST sample
+was 5,051/1,076 per second, while a two-reader repeat was 3,828/969 as `/up`
+fell during the run. There is no reliable count ranking yet; two readers
+remains the default.
+
+Four direct diagnostic processes tested the domain option in an A/B/A
+sequence on the same image. The first domain run was about 16.8–21.1k GETs/s
+and 2,154 POSTs/s. The middle thread run was about 24.9–30.0k GETs/s and
+1,778 POSTs/s. The second domain run was about 22.5–24.5k GETs/s and 2,752
+POSTs/s. `/up` varied from roughly 31k to 57k and back to 38k across the
+runs; GET effects are therefore inconclusive on this loaded host. The POST
+gain is directional, not yet a reliable magnitude. Every run passed the
+response and write audits. These processes still have local Cable, jobs,
+presence, and rate limits, so they cannot replace the release topology.
+Raw summaries: `tmp/bench/ocaml55-{domains-direct4-r1,threads-direct4-r1,domains-direct4-r2}-20261014/`.
+
+Next: profile the domain-backed POST path; reduce HTTP and view work; build a
+correct multi-process state and Cable topology; then compare a clean release
+against Go on a quiet, matched host. The existing 85% gate is not met.

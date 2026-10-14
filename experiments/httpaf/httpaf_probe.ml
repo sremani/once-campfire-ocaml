@@ -8,6 +8,17 @@ let trace message =
   if Sys.getenv_opt "CAMPFIRE_HTTPAF_TRACE" = Some "1" then
     prerr_endline ("httpaf probe: " ^ message)
 
+let log_failure error =
+  let message = Printexc.to_string error ^ "\n" ^ Printexc.get_backtrace () in
+  prerr_endline message;
+  (try
+     let channel = open_out_gen [Open_creat;Open_append;Open_wronly]
+       0o600 "/rails/storage/db/httpaf-errors.log" in
+     Fun.protect ~finally:(fun () -> close_out channel) (fun () ->
+       output_string channel message;
+       output_char channel '\n')
+   with _ -> ())
+
 let body_string body =
   let finished, wake = Lwt.wait () in
   let buffer = Buffer.create 1024 in
@@ -34,6 +45,7 @@ let respond reqd (response, body) =
     (Httpaf.Response.create ~headers (`Code status)) bytes
 
 let run () =
+  Printexc.record_backtrace true;
   let config = match Campfire.Config.from_env () with
     | Ok config -> config | Error error -> failwith error in
   let front = Campfire.Front_config.from_env () in
@@ -104,7 +116,7 @@ let run () =
           trace "response sent";
           Lwt.return_unit)
         (fun exn ->
-          prerr_endline (Printexc.to_string exn);
+          log_failure exn;
           let response = Httpaf.Response.create `Internal_server_error in
           Httpaf.Reqd.respond_with_string reqd response "";
           Lwt.return_unit)) in
@@ -116,6 +128,8 @@ let run () =
     ~request_handler ~error_handler in
   let socket = Lwt_unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
   Lwt_unix.setsockopt socket Unix.SO_REUSEADDR true;
+  if Sys.getenv_opt "CAMPFIRE_REUSEPORT" = Some "1" then
+    Lwt_unix.setsockopt socket Unix.SO_REUSEPORT true;
   Lwt_main.run (
     Lwt_unix.bind socket (Unix.ADDR_INET
       (Unix.inet_addr_of_string front.target_bind, front.target_port))

@@ -1,0 +1,6 @@
+FROM campfire-ocaml:ocaml55-deps
+
+# Keep the same OCaml version and package set while rebuilding with Flambda.
+RUN opam install -y --jobs=4 --update-invariant \
+    ocaml-variants.5.5.1+options ocaml-options-only-flambda.1 && \
+    opam exec -- ocamlopt -config | grep '^flambda: true$'

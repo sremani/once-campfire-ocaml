@@ -508,15 +508,19 @@ let message_create c = scoped_room c >>= function
                 (fun tx blob_id -> create tx (Some blob_id))
             | _ -> write c (fun tx -> create tx None)) >>= fun message ->
            read c (fun db ->
-             View_presenter.message c db room message,
-             R.Room.user_ids db room,
-             webhook_candidates c db room message ~body) >>= fun (view,member_ids,bots) ->
-           with_cable c (fun cable -> Cable_broadcasts.message_create cable
-             ~room ~message ~member_ids
-             ~html:(Views.message_item view |> Views.render));
+             Perf_probe.time "post_present" (fun () ->
+               View_presenter.message c db room message),
+             Perf_probe.time "post_member_ids" (fun () -> R.Room.user_ids db room),
+             Perf_probe.time "post_webhook_candidates" (fun () ->
+               webhook_candidates c db room message ~body)) >>= fun (view,member_ids,bots) ->
+           Perf_probe.time "post_broadcast" (fun () ->
+             with_cable c (fun cable -> Cable_broadcasts.message_create cable
+               ~room ~message ~member_ids
+               ~html:(Views.message_item view |> Views.render)));
            deliver_webhooks_to_bots c message bots >>= fun () ->
-           turbo_only c (Views.message_create_stream
-             ~room:(View_presenter.room room) view))
+           Perf_probe.time "post_response_render" (fun () ->
+             turbo_only c (Views.message_create_stream
+               ~room:(View_presenter.room room) view)))
 let message_show c = scope_or_404 c (fun _ room ->
   message_or_404 c room "id" (fun message ->
     if not (accepts c Http_format.Html) then error 406 else

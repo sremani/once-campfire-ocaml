@@ -422,7 +422,7 @@ let test_async_reads_and_close () =
       let queued = List.init 100 (fun _ -> Db_runtime.read_async runtime (fun _ -> 1)) in
       Mutex.lock runtime.Db_runtime.async_mutex;
       let waiting = List.length runtime.Db_runtime.async_read_queue in
-      let workers = List.length runtime.Db_runtime.async_threads in
+      let workers = List.length runtime.Db_runtime.async_workers in
       Mutex.unlock runtime.Db_runtime.async_mutex;
       check "queued reads occupy no extra workers" (waiting = 100 && workers = 2);
       Lwt_unix.sleep 0.02 >>= fun () ->
