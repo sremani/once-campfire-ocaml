@@ -1,5 +1,10 @@
 # Performance escalation plan
 
+The [2026-10-16 HTTP timer and output-buffer measurements](performance-http-timer-buffer-2026-10-16.md)
+provide a newer grown-seed, identity-encoded five-route result. The older
+numbers below use different images and benchmark windows; use the newer
+evidence when assessing the F# comparison.
+
 The [2026-10-13 profile and refactor review](performance-refactor-review-2026-10-13.md)
 supersedes this document's baseline and sets the next action: complete CPU,
 allocation, GC, and queue profiling, then refactor along the measured hot path.

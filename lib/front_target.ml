@@ -48,9 +48,21 @@ type clock = {
 
 let within seconds operation =
   if seconds <= 0. then operation ()
-  else Lwt.pick [
-    operation ();
-    (Lwt_unix.sleep seconds >>= fun () -> Lwt.fail Deadline)]
+  else
+    let result = operation () in
+    (* Lwt's timer heap retains canceled sleepers until their deadline.
+       Buffered operations normally complete synchronously. For an operation
+       that waits, check the same absolute deadline in short intervals so a
+       canceled sleeper leaves the heap promptly after the operation ends. *)
+    match Lwt.state result with
+    | Lwt.Sleep ->
+        let deadline = Unix.gettimeofday () +. seconds in
+        let rec expire () =
+          let left = deadline -. Unix.gettimeofday () in
+          if left <= 0. then Lwt.fail Deadline
+          else Lwt_unix.sleep (min left 0.5) >>= expire in
+        Lwt.pick [result; expire ()]
+    | Lwt.Return _ | Lwt.Fail _ -> result
 
 let remaining = function
   | None -> 0.
@@ -384,7 +396,12 @@ let serve ?stop ?(raw_health=false) ?socket ?worker_socket
                   | _ -> "127.0.0.1" in
                 let input = Lwt_io.of_unix_fd ~mode:Lwt_io.input raw in
                 let output_fd = Unix.dup raw in
-                let output = Lwt_io.of_unix_fd ~mode:Lwt_io.output output_fd in
+                (* Cached page responses are hundreds of KiB. The default
+                   4 KiB buffer forces many copies and socket writes, while
+                   64 KiB stays modest per connected client. *)
+                let output = Lwt_io.of_unix_fd
+                  ~buffer:(Lwt_bytes.create (64 * 1024))
+                  ~mode:Lwt_io.output output_fd in
                 Lwt.async (fun () ->
                   Lwt.finalize
                     (fun () -> on_client peer input output)

@@ -11,6 +11,11 @@ their scoped gates. Final-source browser parity passes 5,890/5,890 applicable
 comparisons. The `v0.1.0` multiarchitecture image is published, verified, and
 deployed through ONCE on luigi.
 
+The [2026-10-16 direct HTTP performance run](docs/performance-http-timer-buffer-2026-10-16.md)
+records the OCaml 5.5.1 timer and output-buffer tuning against the pinned
+grown-seed F# benchmark. It measures a development image, not the deployed
+`v0.1.0` image.
+
 The port targets compatibility with existing Campfire installations: the SQLite schema, storage
 layout, and signed and encrypted cookies. The Rust source is pinned at
 `9872c1d9541551c0889a60e3d49a14488bd1e403` for initial comparisons.

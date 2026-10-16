@@ -103,6 +103,20 @@ let unsafe_domain () =
     with Invalid_argument _ -> true in
   check bool "invalid domain rejected" true rejected
 
+let target_deadline () =
+  let within = Campfire.Front_target.within in
+  check int "completed operation" 7
+    (Lwt_main.run (within 0.01 (fun () -> Lwt.return 7)));
+  let pending, _ = Lwt.wait () in
+  let started = Unix.gettimeofday () in
+  let expired = Lwt_main.run (Lwt.catch
+    (fun () -> within 0.03 (fun () -> pending) >|= fun _ -> false)
+    (function Campfire.Front_target.Deadline -> Lwt.return_true
+      | error -> Lwt.fail error)) in
+  check bool "pending operation expires" true expired;
+  check bool "deadline remains bounded" true
+    (Unix.gettimeofday () -. started < 0.2)
+
 let free_port () =
   let socket = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
   Fun.protect ~finally:(fun () -> Unix.close socket) (fun () ->
@@ -220,6 +234,7 @@ let () = run "front server" [
     test_case "Caddy config" `Quick config_text;
     test_case "invalid domain" `Quick unsafe_domain;
     test_case "issuer storage keys" `Quick issuer_keys];
+  "deadlines", [test_case "target operation deadline" `Quick target_deadline];
   "proxy boundary", [
     test_case "TLS strips spoofed forwarded values" `Quick boundary;
     test_case "explicit trust preserves edge values" `Quick forwarding_enabled];
